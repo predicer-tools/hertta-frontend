@@ -1,0 +1,79 @@
+/* App.css should only contain styles related to the layout of the App component */
+.App {
+  text-align: center;
+}
+
+.app-container {
+  display: flex; /* Establish a flex container */
+  height: 100vh; /* Take up the full viewport height */
+}
+
+.left-side, .right-side, .middle-section {
+  flex: 1; /* Each section takes up an equal width of the container */
+  padding: 20px; /* Add some spacing inside each section */
+}
+
+.middle-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.middle-section pre {
+  background-color: #f4f4f4;
+  padding: 10px;
+  border-radius: 5px;
+  width: 100%;
+  max-width: 600px;
+  overflow-x: auto;
+  text-align: left; /* Ensures text alignment is correct */
+}
+
+/* The App-header class seems to be part of a different layout system. 
+If you're not using it, it should be removed or updated accordingly. */
+.App-header {
+  background-color: #282c34;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+/* New styles for the graph container */
+.graph-container {
+  padding: 20px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  margin-top: 20px;
+}
+
+.graph-container h1 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+}
+
+.graph-container svg {
+  display: block;
+  margin: 0 auto;
+  border: 1px solid #ccc; /* Adds a border around the SVG */
+}
+
+.graph-container .node circle {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+.graph-container .node text {
+  font: 12px sans-serif;
+  pointer-events: none;
+}
+
+.graph-container .link {
+  stroke: #999;
+  stroke-opacity: 0.6;
+}
+
+.graph-container .node:hover {
+  cursor: pointer;
+}
