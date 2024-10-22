@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import './global.css';
 import './App.css';
 import FormRoom from './FormRoom';
-import InputRoom from './InputRoom'; // Import InputRoom component
 import DataTable from './DataTable';
 import DeviceCards from './DeviceCards';
 import InputDataSender from './InputDataSender';
@@ -14,11 +13,13 @@ import generateJsonContent from './generateJsonContent';
 import generateProcessesData from './Input_Processes'; // Import generateProcessesData
 import ResultCard from './ResultCard';
 import FormElectricHeater from './FormElectricHeater'; // Import FormElectricHeater
+import HeaterControlDropdown from './HeaterControlDropdown'; // Import HeaterControlDropdown
+import TurnOnLightButton from './TurnOnLightButton'; // Import TurnOnLightButton
 
 function App() {
   const [jsonContent, setJsonContent] = useState({});
   const [electricHeaters, setElectricHeaters] = useState([]);
-  const [processes, setProcesses] = useState({}); // State for process data
+  const [processes, setProcesses] = useState({});
   const [rooms, setRooms] = useState([]);
   const [activeDevices, setActiveDevices] = useState({});
   const [apiKey, setApiKey] = useState(localStorage.getItem('homeAssistantApiKey') || '');
@@ -136,6 +137,9 @@ function App() {
           <button onClick={fetchSensors}>Fetch Sensors</button>
           {error && <p style={{ color: 'red' }}><strong>Error:</strong> {error}</p>}
           <ResultCard results={results} />
+
+          {/* Add the TurnOnLightButton component and pass apiKey */}
+          <TurnOnLightButton apiKey={apiKey} />
         </div>
 
         <Routes>
@@ -146,8 +150,8 @@ function App() {
                 <div className="left-side">
                   <h1>Device Data Entry</h1>
                   <FormRoom addRoom={addRoom} homeAssistantSensors={homeAssistantSensors} />
-                  <InputRoom addInteriorAirSensor={addRoom} homeAssistantSensors={homeAssistantSensors} /> {/* Updated */}
                   <FormElectricHeater addElectricHeater={addElectricHeater} rooms={rooms} apiKey={apiKey} />
+                  <HeaterControlDropdown electricHeaters={electricHeaters} apiKey={apiKey} />
                 </div>
                 <div className="right-side">
                   <InputDataSender jsonContent={jsonContent} />
