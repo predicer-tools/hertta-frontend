@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import './DataForm.css'; // Import the updated CSS
+import './DataForm.css';
+import { controlElectricHeater, triggerTimeSeriesControl } from './ElectricHeaterControl'; // Import control functions
 
-function FormElectricHeater({ addElectricHeater, rooms }) {
+function FormElectricHeater({ addElectricHeater, rooms, apiKey }) {  // Pass the API Key from props
   const [heaterId, setHeaterId] = useState('');
   const [capacity, setCapacity] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -23,11 +24,12 @@ function FormElectricHeater({ addElectricHeater, rooms }) {
   return (
     <div className="device-form">
       <div className="input-group">
-        <label>Heater ID:</label>
+        <label>Heater ID (Lamp):</label>
         <input
           type="text"
           value={heaterId}
           onChange={(e) => setHeaterId(e.target.value)}
+          placeholder="electric_heater"  // You can make this default
         />
       </div>
       <div className="input-group">
@@ -49,7 +51,14 @@ function FormElectricHeater({ addElectricHeater, rooms }) {
           ))}
         </select>
       </div>
-      <button type="submit" onClick={handleSubmit}>Add Heater</button>
+      <button type="submit" onClick={handleSubmit}>Add Heater (Lamp)</button>
+
+      {/* On/Off buttons for controlling the lamp */}
+      <button onClick={() => controlElectricHeater('electric_heater', 'turn_on', apiKey)}>Turn On Heater</button>
+      <button onClick={() => controlElectricHeater('electric_heater', 'turn_off', apiKey)}>Turn Off Heater</button>
+
+      {/* Button for time-series control */}
+      <button onClick={() => triggerTimeSeriesControl('electric_heater')}>Start Time-Series Control</button>
     </div>
   );
 }

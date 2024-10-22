@@ -7,7 +7,7 @@ const generateProcessesData = (electricHeaters) => {
     const process = {
       id: heater.id,
       name: heater.name || heater.id,
-      groups: heater.groups || [],
+      groups: heater.groups || ["p1"],
       conversion: heater.conversion || 1,
       is_cf: heater.is_cf || false,
       is_cf_fix: heater.is_cf_fix || false,

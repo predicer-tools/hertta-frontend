@@ -11,7 +11,7 @@ import generateRiskData from './Input_Risk';
 import generateGenConstraintsData from './Input_GenConstraints';
 import generateBidSlotsData from './Input_BidSlots';
 
-const generateJsonContent = (electricHeaters, interiorAirSensors, activeDevices) => {
+const generateJsonContent = (electricHeaters, rooms, activeDevices) => {
   const startDate = new Date();
   let startHour = startDate.getHours();
   const currentMinutes = startDate.getMinutes();
@@ -36,32 +36,33 @@ const generateJsonContent = (electricHeaters, interiorAirSensors, activeDevices)
       dtf: 0.0,
       is_variable_dt: false,
       variable_dt: [], // Added for Rust Temporals structure compatibility
-      ts_format: "" // Added for Rust Temporals structure compatibility
-    }
+      ts_format: "",   // Added for Rust Temporals structure compatibility
+    },
   };
 
   // Call setup data
   const setupData = Input_SetupData();
 
-  // Filter out active heaters and sensors based on user activity
-  const activeHeaters = electricHeaters.filter(heater => activeDevices[heater.id]);
-  const activeSensors = interiorAirSensors.filter(sensor => activeDevices[sensor.sensorId]);
+  // Filter out active heaters and rooms based on user activity
+  const activeHeaters = electricHeaters.filter((heater) => activeDevices[heater.id]);
+  const activeRooms = rooms.filter((room) => activeDevices[room.sensorId]);
 
   // Generate processes for heaters (includes topologies)
-  const processesData = activeHeaters.length > 0 ? { processes: generateProcessesData(activeHeaters) } : {};
+  const processesData =
+    activeHeaters.length > 0 ? { processes: generateProcessesData(activeHeaters) } : {};
 
-  // Generate nodes data for the sensors and additional nodes
-  const nodesData = { nodes: generateNodesData(activeSensors) };
+  // Generate nodes data for the rooms (including envelope and soil nodes)
+  const nodesData = { nodes: generateNodesData(activeRooms) };
 
   // Generate node diffusions and time-series data
-  const nodeDiffusionsData = generateNodeDiffusions(activeSensors, timestamps);
+  const nodeDiffusionsData = generateNodeDiffusions(activeRooms, timestamps);
 
   // Generate other relevant datasets
   const marketData = generateMarketData();
   const groupsData = generateGroupsData(activeHeaters);
   const scenariosData = generateScenariosData();
   const riskData = generateRiskData();
-  const genConstraintsData = generateGenConstraintsData(activeSensors);
+  const genConstraintsData = generateGenConstraintsData(activeRooms);
   const bidSlotsData = generateBidSlotsData();
 
   // Prepare empty datasets for placeholders (reserve type, node delay, node histories, inflow blocks)
@@ -86,7 +87,7 @@ const generateJsonContent = (electricHeaters, interiorAirSensors, activeDevices)
     ...reserveType,
     ...nodeDelay,
     ...nodeHistories,
-    ...inflowBlocks
+    ...inflowBlocks,
   };
 };
 

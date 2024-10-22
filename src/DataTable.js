@@ -2,7 +2,7 @@ import React from 'react';
 import './DataTable.css';
 
 function DataTable({ electricHeaters, rooms, homeAssistantSensors, deleteHeater, deleteRoom }) {
-  console.log('Rendering DataTable with Home Assistant Sensors:', homeAssistantSensors);  // Debug print
+  console.log('Rendering DataTable with Home Assistant Sensors:', homeAssistantSensors);
 
   return (
     <div>
@@ -25,8 +25,8 @@ function DataTable({ electricHeaters, rooms, homeAssistantSensors, deleteHeater,
               <tr key={index}>
                 <td>{sensor.entity_id}</td>
                 <td>{sensor.state}</td>
-                <td>{sensor.attributes.friendly_name}</td>
-                <td>{sensor.attributes.unit_of_measurement}</td>
+                <td>{sensor.attributes.friendly_name || 'Unknown'}</td>
+                <td>{sensor.attributes.unit_of_measurement || ''}</td>
               </tr>
             ))
           ) : (

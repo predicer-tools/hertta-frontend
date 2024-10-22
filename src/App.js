@@ -3,26 +3,30 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import './global.css';
 import './App.css';
 import FormRoom from './FormRoom';
-import FormElectricHeater from './FormElectricHeater';
+import InputRoom from './InputRoom'; // Import InputRoom component
 import DataTable from './DataTable';
 import DeviceCards from './DeviceCards';
 import InputDataSender from './InputDataSender';
 import Layout from './Layout';
 import HomeEnergyFlowVisualization from './HomeEnergyFlowVisualization';
 import JsonViewer from './JsonViewer';
-import { fetchSensorsFromHomeAssistant } from './services/HomeAssistantInterface';
 import generateJsonContent from './generateJsonContent';
-import VisualizationGraph from './VisualizationGraph';
-
+import generateProcessesData from './Input_Processes'; // Import generateProcessesData
+import ResultCard from './ResultCard';
+import FormElectricHeater from './FormElectricHeater'; // Import FormElectricHeater
 
 function App() {
   const [jsonContent, setJsonContent] = useState({});
   const [electricHeaters, setElectricHeaters] = useState([]);
+  const [processes, setProcesses] = useState({}); // State for process data
   const [rooms, setRooms] = useState([]);
   const [activeDevices, setActiveDevices] = useState({});
   const [apiKey, setApiKey] = useState(localStorage.getItem('homeAssistantApiKey') || '');
   const [homeAssistantSensors, setHomeAssistantSensors] = useState([]);
+  const [results, setResults] = useState([]);
+  const [error, setError] = useState(null);
 
+  // Set initial active devices based on electric heaters and rooms
   useEffect(() => {
     const initialActiveDevices = {};
     electricHeaters.forEach((heater) => (initialActiveDevices[heater.id] = true));
@@ -30,51 +34,70 @@ function App() {
     setActiveDevices(initialActiveDevices);
   }, [electricHeaters, rooms]);
 
+  // Update jsonContent whenever electricHeaters, rooms, or activeDevices change
   useEffect(() => {
     setJsonContent(generateJsonContent(electricHeaters, rooms, activeDevices));
   }, [electricHeaters, rooms, activeDevices]);
 
+  // Generate processes whenever electric heaters change
+  useEffect(() => {
+    if (electricHeaters.length > 0) {
+      const processData = generateProcessesData(electricHeaters); // Generate process data
+      setProcesses(processData); // Set process data state
+      console.log('Generated processes:', processData); // Log process data
+    }
+  }, [electricHeaters]);
+
+  // Save API key to localStorage and trigger fetch when API key is available
   const handleSaveApiKey = () => {
     localStorage.setItem('homeAssistantApiKey', apiKey);
     alert('API Key saved!');
+    fetchSensors(); // Trigger fetching of sensors when the API key is saved
   };
 
+  // Fetch sensor data using the API key
   const fetchSensors = async () => {
+    if (!apiKey) {
+      setError('API key is missing. Please enter your API key.');
+      return;
+    }
     try {
-      if (!apiKey) {
-        alert('Please enter an API key');
-        return;
+      const response = await fetch('http://192.168.129.96:8123/api/states', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
       }
 
-      const sensors = await fetchSensorsFromHomeAssistant(apiKey);
+      const data = await response.json();
+      const sensors = data.filter(entity => entity.entity_id.startsWith('sensor.'));
       setHomeAssistantSensors(sensors);
-
-      if (sensors.length === 0) {
-        console.warn('No sensors were fetched from Home Assistant.');
-      }
+      setError(null);
     } catch (error) {
-      console.error('Failed to fetch sensors:', error);
+      console.error('Error:', error);
+      setError(error.message);
     }
   };
 
   const addRoom = (room) => {
-    // Find the sensor data from the fetched sensors based on the selected sensor ID
     const selectedSensorData = homeAssistantSensors.find(sensor => sensor.entity_id === room.sensorId);
-  
-    // Add the sensor state and unit to the room object
     const updatedRoom = {
       ...room,
       sensorState: selectedSensorData ? selectedSensorData.state : 'N/A',
       sensorUnit: selectedSensorData ? selectedSensorData.attributes.unit_of_measurement : '',
     };
-  
     const updatedRooms = [...rooms, updatedRoom];
     setRooms(updatedRooms);
-  };  
+  };
 
   const addElectricHeater = (heater) => {
     const updatedHeaters = [...electricHeaters, heater];
-    setElectricHeaters(updatedHeaters);
+    setElectricHeaters(updatedHeaters); // Add heater to state
   };
 
   const deleteHeater = (id) => {
@@ -111,6 +134,8 @@ function App() {
           </div>
           <button onClick={handleSaveApiKey}>Save API Key</button>
           <button onClick={fetchSensors}>Fetch Sensors</button>
+          {error && <p style={{ color: 'red' }}><strong>Error:</strong> {error}</p>}
+          <ResultCard results={results} />
         </div>
 
         <Routes>
@@ -121,7 +146,8 @@ function App() {
                 <div className="left-side">
                   <h1>Device Data Entry</h1>
                   <FormRoom addRoom={addRoom} homeAssistantSensors={homeAssistantSensors} />
-                  <FormElectricHeater addElectricHeater={addElectricHeater} rooms={rooms} />
+                  <InputRoom addInteriorAirSensor={addRoom} homeAssistantSensors={homeAssistantSensors} /> {/* Updated */}
+                  <FormElectricHeater addElectricHeater={addElectricHeater} rooms={rooms} apiKey={apiKey} />
                 </div>
                 <div className="right-side">
                   <InputDataSender jsonContent={jsonContent} />
@@ -130,26 +156,23 @@ function App() {
             }
           />
           <Route
-            path="/data-table"
-            element={
-              <DataTable
-                electricHeaters={electricHeaters}
-                rooms={rooms}
-                homeAssistantSensors={homeAssistantSensors}
-                deleteHeater={deleteHeater}
-                deleteRoom={deleteRoom}
-              />
-            }
-          />
-          <Route
             path="/device-cards"
             element={
-              <DeviceCards
-                electricHeaters={electricHeaters}
-                rooms={rooms}
-                activeDevices={activeDevices}
-                toggleDeviceStatus={toggleDeviceStatus}
-              />
+              <div>
+                <DeviceCards
+                  electricHeaters={electricHeaters}
+                  rooms={rooms}
+                  activeDevices={activeDevices}
+                  toggleDeviceStatus={toggleDeviceStatus}
+                />
+                <DataTable
+                  electricHeaters={electricHeaters}
+                  rooms={rooms}
+                  homeAssistantSensors={homeAssistantSensors} // Pass sensors to DataTable
+                  deleteHeater={deleteHeater}
+                  deleteRoom={deleteRoom}
+                />
+              </div>
             }
           />
           <Route
@@ -157,23 +180,13 @@ function App() {
             element={
               <div className="graph-container">
                 <h1>Processes Graph</h1>
-                <HomeEnergyFlowVisualization processes={jsonContent.processes || {}} />
+                <HomeEnergyFlowVisualization processes={processes} /> {/* Pass processes */}
               </div>
             }
           />
           <Route
             path="/json-viewer"
             element={<JsonViewer jsonContent={jsonContent} />}
-          />
-          <Route
-            path="/visualization-graph"
-            element={
-              <VisualizationGraph
-                rooms={rooms}
-                electricHeaters={electricHeaters}
-                processes={jsonContent.processes || {}} // Pass processes data
-              />
-            }
           />
         </Routes>
       </Layout>
