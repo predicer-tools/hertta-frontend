@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import './DataForm.css';
-import { controlElectricHeater, triggerTimeSeriesControl } from './ElectricHeaterControl'; // Import control functions
 
-function FormElectricHeater({ addElectricHeater, rooms, apiKey }) {  // Pass the API Key from props
+function FormElectricHeater({ addElectricHeater, rooms }) {  // No need to pass apiKey anymore
   const [heaterId, setHeaterId] = useState('');
   const [capacity, setCapacity] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -52,13 +51,6 @@ function FormElectricHeater({ addElectricHeater, rooms, apiKey }) {  // Pass the
         </select>
       </div>
       <button type="submit" onClick={handleSubmit}>Add Heater (Lamp)</button>
-
-      {/* On/Off buttons for controlling the lamp */}
-      <button onClick={() => controlElectricHeater('electric_heater', 'turn_on', apiKey)}>Turn On Heater</button>
-      <button onClick={() => controlElectricHeater('electric_heater', 'turn_off', apiKey)}>Turn Off Heater</button>
-
-      {/* Button for time-series control */}
-      <button onClick={() => triggerTimeSeriesControl('electric_heater')}>Start Time-Series Control</button>
     </div>
   );
 }
