@@ -1,7 +1,21 @@
-import React from 'react'; // Removed useEffect and useState since they're not used
+import React from 'react';
 import './DeviceCards.css';
+import { controlElectricHeater } from './ElectricHeaterControl'; // Import control function
 
-function DeviceCards({ electricHeaters, rooms, activeDevices, toggleDeviceStatus }) {
+function DeviceCards({ electricHeaters, rooms, activeDevices, toggleDeviceStatus, apiKey }) {
+  
+  // Toggle the electric heater on/off based on its current status
+  const handleToggleHeater = (heaterId, isChecked) => {
+    const action = isChecked ? 'turn_on' : 'turn_off'; // Turn on if checked, turn off if unchecked
+    controlElectricHeater(heaterId, action, apiKey); // Control the heater
+    toggleDeviceStatus(heaterId); // Update the local state to reflect the toggle
+  };
+
+  // Toggle the room sensor on/off
+  const handleToggleRoom = (sensorId, isChecked) => {
+    toggleDeviceStatus(sensorId); // Update local state for room sensors
+  };
+
   return (
     <div className="device-cards">
       <h2>Device Cards</h2>
@@ -15,8 +29,8 @@ function DeviceCards({ electricHeaters, rooms, activeDevices, toggleDeviceStatus
             <label>
               <input
                 type="checkbox"
-                checked={activeDevices[heater.id]}
-                onChange={() => toggleDeviceStatus(heater.id)}
+                checked={activeDevices[heater.id]} // Reflect the current status
+                onChange={(e) => handleToggleHeater(heater.id, e.target.checked)} // Handle toggle
               />
               On/Off
             </label>
@@ -36,13 +50,12 @@ function DeviceCards({ electricHeaters, rooms, activeDevices, toggleDeviceStatus
             <label>
               <input
                 type="checkbox"
-                checked={activeDevices[room.sensorId]}
-                onChange={() => toggleDeviceStatus(room.sensorId)}
+                checked={activeDevices[room.sensorId]} // Reflect the current status
+                onChange={(e) => handleToggleRoom(room.sensorId, e.target.checked)} // Handle toggle
               />
               On/Off
             </label>
             <p>Status: {activeDevices[room.sensorId] ? 'On' : 'Off'}</p>
-            {/* Show the stored sensor state from the room object */}
             <p>Current Temperature: {room.sensorState} {room.sensorUnit}</p>
           </div>
         ))}

@@ -11,23 +11,23 @@ import JsonViewer from './JsonViewer';
 import generateJsonContent from './generateJsonContent';
 import generateProcessesData from './Input_Processes';
 import FormElectricHeater from './FormElectricHeater';
+import DeviceCards from './DeviceCards'; // Use DeviceCards instead of ElectricHeaterCards
 
 function App() {
   const [jsonContent, setJsonContent] = useState({});
   const [electricHeaters, setElectricHeaters] = useState([]);
   const [processes, setProcesses] = useState({});
   const [rooms, setRooms] = useState([]);
-  const [apiKey, setApiKey] = useState(localStorage.getItem('homeAssistantApiKey') || ''); // Load API key from localStorage
-  const [homeAssistantSensors, setHomeAssistantSensors] = useState([]); // Sensors
-  const [fetchedDevices, setFetchedDevices] = useState([]); // All devices and sensors
-  const [error, setError] = useState(null); // Handle errors
+  const [apiKey, setApiKey] = useState(localStorage.getItem('homeAssistantApiKey') || '');
+  const [homeAssistantSensors, setHomeAssistantSensors] = useState([]);
+  const [fetchedDevices, setFetchedDevices] = useState([]);
+  const [activeDevices, setActiveDevices] = useState({});
+  const [error, setError] = useState(null);
 
-  // Update jsonContent whenever electricHeaters, rooms, or sensors change
   useEffect(() => {
     setJsonContent(generateJsonContent(electricHeaters, rooms, homeAssistantSensors));
   }, [electricHeaters, rooms, homeAssistantSensors]);
 
-  // Generate processes whenever electric heaters change
   useEffect(() => {
     if (electricHeaters.length > 0) {
       const processData = generateProcessesData(electricHeaters);
@@ -35,13 +35,11 @@ function App() {
     }
   }, [electricHeaters]);
 
-  // Save API key to localStorage
   const handleSaveApiKey = () => {
-    localStorage.setItem('homeAssistantApiKey', apiKey); // Save to localStorage
+    localStorage.setItem('homeAssistantApiKey', apiKey);
     alert('API Key saved!');
   };
 
-  // Fetch all devices and sensors from Home Assistant using the API key
   const fetchAllDevicesAndSensors = async () => {
     if (!apiKey) {
       setError('API key is missing. Please enter your API key.');
@@ -64,8 +62,8 @@ function App() {
       const sensors = data.filter(entity => entity.entity_id.startsWith('sensor.'));
       const nonSensorDevices = data.filter(entity => !entity.entity_id.startsWith('sensor.'));
 
-      setHomeAssistantSensors(sensors); // Store only sensors
-      setFetchedDevices(nonSensorDevices); // Store devices (non-sensors)
+      setHomeAssistantSensors(sensors);
+      setFetchedDevices(nonSensorDevices); // Store all devices
       setError(null);
     } catch (error) {
       console.error('Error fetching devices:', error);
@@ -97,6 +95,13 @@ function App() {
     setElectricHeaters(updatedHeaters);
   };
 
+  const toggleDeviceStatus = (id) => {
+    setActiveDevices((prevStatus) => ({
+      ...prevStatus,
+      [id]: !prevStatus[id],
+    }));
+  };
+
   return (
     <Router>
       <Layout>
@@ -125,7 +130,7 @@ function App() {
                 <div className="left-side">
                   <h1>Device Data Entry</h1>
                   <FormRoom addRoom={addRoom} homeAssistantSensors={homeAssistantSensors} />
-                  <FormElectricHeater addElectricHeater={addElectricHeater} rooms={rooms} />
+                  <FormElectricHeater addElectricHeater={addElectricHeater} rooms={rooms} fetchedDevices={fetchedDevices} />
                 </div>
                 <div className="right-side">
                   <InputDataSender jsonContent={jsonContent} />
@@ -160,6 +165,18 @@ function App() {
           <Route
             path="/json-viewer"
             element={<JsonViewer jsonContent={jsonContent} />}
+          />
+          <Route
+            path="/electric-heaters"
+            element={
+              <DeviceCards
+                electricHeaters={electricHeaters}
+                rooms={rooms}
+                activeDevices={activeDevices}
+                toggleDeviceStatus={toggleDeviceStatus}
+                apiKey={apiKey} // Pass API key for device control
+              />
+            }
           />
         </Routes>
       </Layout>

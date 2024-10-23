@@ -9,9 +9,10 @@ function Sidebar() {
       <h2>Navigation</h2>
       <ul>
         <li><Link to="/">User Input</Link></li>
-        <li><Link to="/device-cards">Device Cards</Link></li>
+        <li><Link to="/device-cards">Data Table</Link></li>
         <li><Link to="/processes-graph">Processes Graph</Link></li>
         <li><Link to="/json-viewer">JSON Viewer</Link></li>
+        <li><Link to="/electric-heaters">Electric Heaters</Link></li> {/* New Tab */}
       </ul>
     </div>
   );
