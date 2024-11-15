@@ -24,7 +24,7 @@
   },
   "scripts": {
     "start": "concurrently \"npm run start-react\" \"npm run start-python\"",
-    "start-react": "react-scripts start",
+    "start-react": "react-scripts start --stats-children",
     "start-python": "cd ../mock-home-assistant && python app.py",
     "build": "react-scripts build",
     "test": "react-scripts test",

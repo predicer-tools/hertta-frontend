@@ -3,8 +3,7 @@
 const generateScenariosData = () => {
     return {
       scenarios: {
-        s1: 0.5,
-        s2: 0.5
+        s1: 1.0
       }
     };
   };

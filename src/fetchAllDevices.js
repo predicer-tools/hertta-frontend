@@ -6,7 +6,7 @@ export const fetchAllDevices = async (apiKey, setResults, setError) => {
     }
   
     try {
-      const response = await fetch('http://192.168.129.96:8123/api/states', {
+      const response = await fetch('http://192.168.247.96:8123/api/states', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

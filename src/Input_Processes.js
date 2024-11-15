@@ -3,10 +3,20 @@
 // Function to generate processes data for electric heaters
 const generateProcessesData = (electricHeaters) => {
   return electricHeaters.reduce((acc, heater) => {
+    // Set cf and eff_ts to the desired structure
+    const cf = {
+      ts_data: [],
+      index: {}
+    };
+
+    const eff_ts = {
+      ts_data: [],
+      index: {}
+    };
+
     // Create the process data for each heater
     const process = {
-      id: heater.id,
-      name: heater.name || heater.id,
+      name: heater.id,
       groups: heater.groups || ["p1"],
       conversion: heater.conversion || 1,
       is_cf: heater.is_cf || false,
@@ -24,8 +34,8 @@ const generateProcessesData = (electricHeaters) => {
       initial_state: heater.initial_state !== undefined ? heater.initial_state : true,
       is_scenario_independent: heater.is_scenario_independent || false,
       topos: [],
-      cf: heater.cf || {},
-      eff_ts: heater.eff_ts || {},
+      cf: cf, // Assign the structured cf
+      eff_ts: eff_ts, // Assign the structured eff_ts
       eff_ops: heater.eff_ops || [],
       eff_fun: heater.eff_fun || []
     };
@@ -37,7 +47,12 @@ const generateProcessesData = (electricHeaters) => {
     const ramp_down = heater.ramp_down || 1.0;
     const initial_load = heater.initial_load || 0.7;
     const initial_flow = heater.initial_flow || 0.7;
-    const cap_ts = heater.cap_ts || {};
+
+    // Set cap_ts to the desired structure
+    const cap_ts = {
+      ts_data: [],
+      index: {}
+    };
 
     // Input topology: From 'electricitygrid' to the heater process
     const inputTopology = {
@@ -49,7 +64,7 @@ const generateProcessesData = (electricHeaters) => {
       ramp_down: ramp_down,
       initial_load: initial_load,
       initial_flow: initial_flow,
-      cap_ts: cap_ts
+      cap_ts: cap_ts // Assign the structured cap_ts
     };
 
     // Output topology: From the heater process to the room node
@@ -62,7 +77,7 @@ const generateProcessesData = (electricHeaters) => {
       ramp_down: ramp_down,
       initial_load: initial_load,
       initial_flow: initial_flow,
-      cap_ts: cap_ts
+      cap_ts: cap_ts // Assign the structured cap_ts
     };
 
     // Assign topologies to the process

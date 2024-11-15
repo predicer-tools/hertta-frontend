@@ -1,33 +1,31 @@
+// src/Input_GenConstraints.js
+
 const generateGenConstraintsData = (interiorAirSensors) => {
   const constraints = interiorAirSensors.reduce((acc, sensor) => {
     const upConstraint = {
       name: `c_${sensor.sensorId}_up`,
-      var_type: "st",
+      gc_type: "st",
       is_setpoint: true,
-      penalty: 1000.0,
+      penalty: 15.0,
       factors: [
         {
           var_type: "state",
           var_tuple: [sensor.sensorId, ""], // Tuple representation
           data: {
-            ts_data: [
-              { scenario: "s1", series: {} },
-              { scenario: "s2", series: {} }
-            ]
+            ts_data: [],
+            index: {}
           }
         }
       ],
       constant: {
-        ts_data: [
-          { scenario: "s1", series: {} },
-          { scenario: "s2", series: {} }
-        ]
+        ts_data: [],
+        index: {}
       }
     };
 
     const downConstraint = {
       name: `c_${sensor.sensorId}_down`,
-      var_type: "gt",
+      gc_type: "gt",
       is_setpoint: true,
       penalty: 1000.0,
       factors: [
@@ -35,18 +33,14 @@ const generateGenConstraintsData = (interiorAirSensors) => {
           var_type: "state",
           var_tuple: [sensor.sensorId, ""], // Tuple representation
           data: {
-            ts_data: [
-              { scenario: "s1", series: {} },
-              { scenario: "s2", series: {} }
-            ]
+            ts_data: [],
+            index: {}
           }
         }
       ],
       constant: {
-        ts_data: [
-          { scenario: "s1", series: {} },
-          { scenario: "s2", series: {} }
-        ]
+        ts_data: [],
+        index: {}
       }
     };
 

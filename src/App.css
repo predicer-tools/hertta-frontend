@@ -77,3 +77,20 @@ If you're not using it, it should be removed or updated accordingly. */
 .graph-container .node:hover {
   cursor: pointer;
 }
+
+/* Tooltip styles */
+.tooltip {
+  position: absolute;
+  text-align: center;
+  width: auto;
+  padding: 8px;
+  font: 12px sans-serif;
+  background: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
+  color: #fff; /* White text color */
+  border: 0px;
+  border-radius: 4px;
+  pointer-events: none; /* Prevents the tooltip from interfering with mouse events */
+  opacity: 0; /* Initially hidden */
+  transition: opacity 0.3s; /* Fade-in transition */
+}
+

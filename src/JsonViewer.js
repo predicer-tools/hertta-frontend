@@ -1,4 +1,5 @@
-// src/JsonViewer.js
+// JsonViewer.js
+
 import React from 'react';
 
 function JsonViewer({ jsonContent }) {

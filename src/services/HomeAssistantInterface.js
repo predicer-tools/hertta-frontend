@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const homeAssistantURL = 'http://localhost:8123/api'; // Mock server URL
+const homeAssistantURL = 'http://127.0.0.1:8123/api'; // Mock server URL
 
 // Function to fetch sensor data from Home Assistant
 export const fetchSensorsFromHomeAssistant = async (apiKey) => {

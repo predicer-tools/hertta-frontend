@@ -1,7 +1,7 @@
 // Function to control the electric heater (lamp)
 export const controlElectricHeater = async (entityId, action, apiKey) => {
     try {
-        const url = `http://192.168.129.96:8123/api/services/light/${action}`;
+        const url = `http://192.168.247.96:8123//api/services/light/${action}`;
         
         // Prepend "light." to the entityId if it doesn't already start with it
         const fullEntityId = entityId.startsWith('light.') ? entityId : `light.${entityId}`;
@@ -35,7 +35,7 @@ export const controlElectricHeater = async (entityId, action, apiKey) => {
 // Function to trigger time-series control of the heater (lamp)
 export const triggerTimeSeriesControl = async (entityId) => {
     try {
-        const response = await fetch('http://localhost:5000/api/time-series-control', {
+        const response = await fetch('http://127.0.0.1:5000/api/time-series-control', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -1,17 +1,21 @@
+// App.js
+
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import './global.css';
 import './App.css';
 import FormRoom from './FormRoom';
 import DataTable from './DataTable';
-import InputDataSender from './InputDataSender';
 import Layout from './Layout';
 import HomeEnergyFlowVisualization from './HomeEnergyFlowVisualization';
 import JsonViewer from './JsonViewer';
 import generateJsonContent from './generateJsonContent';
 import generateProcessesData from './Input_Processes';
 import FormElectricHeater from './FormElectricHeater';
-import DeviceCards from './DeviceCards'; // Use DeviceCards instead of ElectricHeaterCards
+import DeviceCards from './DeviceCards';
+import connectWebSocket from './homeAssistantWebSocket';
+import SendInputData from './SendInputData'; // Import the modified component
+import RoomPropertiesPopup from './RoomPropertiesPopup'; // Import the popup component
 
 function App() {
   const [jsonContent, setJsonContent] = useState({});
@@ -23,17 +27,63 @@ function App() {
   const [fetchedDevices, setFetchedDevices] = useState([]);
   const [activeDevices, setActiveDevices] = useState({});
   const [error, setError] = useState(null);
+  const [message] = useState('');
 
+  // State for the popup
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+
+  // Generate the JSON content whenever relevant states change
   useEffect(() => {
-    setJsonContent(generateJsonContent(electricHeaters, rooms, homeAssistantSensors));
-  }, [electricHeaters, rooms, homeAssistantSensors]);
+    const sensorStates = rooms.reduce((acc, room) => {
+      acc[room.sensorId] = room.sensorState || 273.15;
+      return acc;
+    }, {});
 
+    const generatedJson = generateJsonContent(electricHeaters, rooms, activeDevices, sensorStates);
+    setJsonContent(generatedJson);
+  }, [electricHeaters, rooms, activeDevices]);
+
+  // Update processes data when electric heaters change
   useEffect(() => {
     if (electricHeaters.length > 0) {
       const processData = generateProcessesData(electricHeaters);
       setProcesses(processData);
     }
   }, [electricHeaters]);
+
+  // Handle updates for sensor state changes
+  const handleSensorUpdate = (sensorId, newState) => {
+    setRooms((prevRooms) =>
+      prevRooms.map((room) => {
+        if (room.sensorId === sensorId) {
+          return { ...room, sensorState: newState.state, sensorUnit: newState.attributes.unit_of_measurement };
+        }
+        return room;
+      })
+    );
+
+    // Update the jsonContent with the new sensor state
+    setJsonContent((prevData) => {
+      if (!prevData.nodes) return prevData;
+      const updatedNodes = { ...prevData.nodes };
+
+      Object.keys(updatedNodes).forEach((nodeKey) => {
+        if (nodeKey.startsWith(sensorId)) {
+          updatedNodes[nodeKey].state.initial_state = parseFloat(newState.state);
+        }
+      });
+
+      return { ...prevData, nodes: updatedNodes };
+    });
+  };
+
+  // Establish WebSocket connection on apiKey change
+  useEffect(() => {
+    if (apiKey) {
+      connectWebSocket(apiKey, handleSensorUpdate);
+    }
+  }, [apiKey]);
 
   const handleSaveApiKey = () => {
     localStorage.setItem('homeAssistantApiKey', apiKey);
@@ -46,7 +96,7 @@ function App() {
       return;
     }
     try {
-      const response = await fetch('http://192.168.129.96:8123/api/states', {
+      const response = await fetch('http://192.168.247.96:8123/api/states', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -63,7 +113,7 @@ function App() {
       const nonSensorDevices = data.filter(entity => !entity.entity_id.startsWith('sensor.'));
 
       setHomeAssistantSensors(sensors);
-      setFetchedDevices(nonSensorDevices); // Store all devices
+      setFetchedDevices(nonSensorDevices);
       setError(null);
     } catch (error) {
       console.error('Error fetching devices:', error);
@@ -79,10 +129,19 @@ function App() {
       sensorUnit: selectedSensorData ? selectedSensorData.attributes.unit_of_measurement : '',
     };
     setRooms([...rooms, updatedRoom]);
+
+    setActiveDevices((prevStatus) => ({
+      ...prevStatus,
+      [room.sensorId]: true,
+    }));
   };
 
   const addElectricHeater = (heater) => {
     setElectricHeaters([...electricHeaters, heater]);
+    setActiveDevices((prevStatus) => ({
+      ...prevStatus,
+      [heater.id]: true,
+    }));
   };
 
   const deleteRoom = (sensorId) => {
@@ -102,85 +161,117 @@ function App() {
     }));
   };
 
-  return (
-    <Router>
-      <Layout>
-        <div className="device-form">
-          <h3>Enter Home Assistant API Key</h3>
-          <div className="input-group">
-            <label htmlFor="api-key">API Key</label>
-            <input
-              type="text"
-              id="api-key"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your Home Assistant API Key"
-            />
-          </div>
-          <button onClick={handleSaveApiKey}>Save API Key</button>
-          <button onClick={fetchAllDevicesAndSensors}>Fetch Sensors and Devices</button>
-          {error && <p style={{ color: 'red' }}><strong>Error:</strong> {error}</p>}
-        </div>
+  // Function to handle when a room is clicked in the visualization
+  const handleRoomClick = (room) => {
+    setSelectedRoom(room);
+    setIsPopupOpen(true);
+  };
 
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <div className="app-container">
-                <div className="left-side">
-                  <h1>Device Data Entry</h1>
-                  <FormRoom addRoom={addRoom} homeAssistantSensors={homeAssistantSensors} />
-                  <FormElectricHeater addElectricHeater={addElectricHeater} rooms={rooms} fetchedDevices={fetchedDevices} />
-                </div>
-                <div className="right-side">
-                  <InputDataSender jsonContent={jsonContent} />
-                </div>
-              </div>
-            }
+  // Function to handle saving the updated room data
+  const handleSaveRoom = (updatedRoom) => {
+    setRooms((prevRooms) =>
+      prevRooms.map((room) =>
+        room.sensorId === updatedRoom.sensorId ? updatedRoom : room
+      )
+    );
+  };
+
+  return (
+    <Layout>
+      <div className="device-form">
+        <h3>Enter Home Assistant API Key</h3>
+        <div className="input-group">
+          <label htmlFor="api-key">API Key</label>
+          <input
+            type="text"
+            id="api-key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="Enter your Home Assistant API Key"
           />
-          <Route
-            path="/device-cards"
-            element={
-              <div>
-                <DataTable
-                  electricHeaters={electricHeaters}
+        </div>
+        <button onClick={handleSaveApiKey}>Save API Key</button>
+        <button onClick={fetchAllDevicesAndSensors}>Fetch Sensors and Devices</button>
+        {error && (
+          <p style={{ color: 'red' }}>
+            <strong>Error:</strong> {error}
+          </p>
+        )}
+      </div>
+
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <div className="app-container">
+              <div className="left-side">
+                <h1>Device Data Entry</h1>
+                <FormRoom addRoom={addRoom} homeAssistantSensors={homeAssistantSensors} />
+                <FormElectricHeater
+                  addElectricHeater={addElectricHeater}
                   rooms={rooms}
-                  homeAssistantSensors={homeAssistantSensors}
                   fetchedDevices={fetchedDevices}
-                  deleteHeater={deleteHeater}
-                  deleteRoom={deleteRoom}
                 />
               </div>
-            }
-          />
-          <Route
-            path="/processes-graph"
-            element={
-              <div className="graph-container">
-                <h1>Processes Graph</h1>
-                <HomeEnergyFlowVisualization processes={processes} />
+              <div className="right-side">
+                {/* Include the SendInputData component and pass jsonContent */}
+                <SendInputData jsonContent={jsonContent} />
+                {message && <p>{message}</p>}
               </div>
-            }
-          />
-          <Route
-            path="/json-viewer"
-            element={<JsonViewer jsonContent={jsonContent} />}
-          />
-          <Route
-            path="/electric-heaters"
-            element={
-              <DeviceCards
+            </div>
+          }
+        />
+        <Route
+          path="/device-cards"
+          element={
+            <div>
+              <DataTable
                 electricHeaters={electricHeaters}
                 rooms={rooms}
-                activeDevices={activeDevices}
-                toggleDeviceStatus={toggleDeviceStatus}
-                apiKey={apiKey} // Pass API key for device control
+                homeAssistantSensors={homeAssistantSensors}
+                fetchedDevices={fetchedDevices}
+                deleteHeater={deleteHeater}
+                deleteRoom={deleteRoom}
               />
-            }
-          />
-        </Routes>
-      </Layout>
-    </Router>
+            </div>
+          }
+        />
+        <Route
+          path="/processes-graph"
+          element={
+            <div className="graph-container">
+              <h1>Processes Graph</h1>
+              <HomeEnergyFlowVisualization
+                processes={processes} // Ensure processes are passed
+                rooms={rooms}
+                onRoomClick={handleRoomClick} // Pass the handler
+              />
+              {/* Include the popup component */}
+              <RoomPropertiesPopup
+                roomData={selectedRoom}
+                isOpen={isPopupOpen}
+                onClose={() => setIsPopupOpen(false)}
+                onSave={handleSaveRoom}
+              />
+            </div>
+          }
+        />
+        {/* Pass the generated jsonContent to JsonViewer */}
+        <Route path="/json-viewer" element={<JsonViewer jsonContent={jsonContent} />} />
+        <Route
+          path="/electric-heaters"
+          element={
+            <DeviceCards
+              electricHeaters={electricHeaters}
+              rooms={rooms}
+              activeDevices={activeDevices}
+              toggleDeviceStatus={toggleDeviceStatus}
+              apiKey={apiKey}
+            />
+          }
+        />
+      </Routes>
+    </Layout>
   );
 }
 

@@ -34,37 +34,38 @@ const generateNodeDiffusions = (interiorAirSensors, timestamps) => {
       }, {});
     };
 
+    // Define ts_data with a single scenario and an index
     acc.push({
-      coefficient: {
-        ts_data: [
-          { scenario: "s1", series: createSeries(diff_env_int) },
-          { scenario: "s2", series: createSeries(diff_env_int) }
-        ]
-      },
       node1: sensor.sensorId,
-      node2: sensor.roomId
+      node2: sensor.roomId,
+      coefficient: {
+        ts_data: [
+          { scenario: "s1", series: createSeries(diff_env_int) }
+        ],
+        index: { s1: 1 }
+      }
     });
 
     acc.push({
+      node1: sensor.roomId,
+      node2: "outside",
       coefficient: {
         ts_data: [
-          { scenario: "s1", series: createSeries(diff_ext_env) },
-          { scenario: "s2", series: createSeries(diff_ext_env) }
-        ]
-      },
-      node1: sensor.roomId,
-      node2: "outside"
+          { scenario: "s1", series: createSeries(diff_ext_env) }
+        ],
+        index: { s1: 1 }
+      }
     });
 
     acc.push({
+      node1: sensor.roomId,
+      node2: "soil",
       coefficient: {
         ts_data: [
-          { scenario: "s1", series: createSeries(diff_soil_env) },
-          { scenario: "s2", series: createSeries(diff_soil_env) }
-        ]
-      },
-      node1: sensor.roomId,
-      node2: "soil"
+          { scenario: "s1", series: createSeries(diff_soil_env) }
+        ],
+        index: { s1: 1 }
+      }
     });
 
     return acc;
