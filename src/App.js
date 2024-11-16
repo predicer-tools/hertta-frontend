@@ -49,33 +49,69 @@ function App() {
     if (electricHeaters.length > 0) {
       const processData = generateProcessesData(electricHeaters);
       setProcesses(processData);
+    } else {
+      setProcesses({}); // Clear processes if no heaters
     }
   }, [electricHeaters]);
 
-  // Handle updates for sensor state changes
-  const handleSensorUpdate = (sensorId, newState) => {
-    setRooms((prevRooms) =>
-      prevRooms.map((room) => {
-        if (room.sensorId === sensorId) {
-          return { ...room, sensorState: newState.state, sensorUnit: newState.attributes.unit_of_measurement };
-        }
-        return room;
-      })
-    );
+  // Handle updates for sensor and device state changes
+  const handleSensorUpdate = (entityId, newState) => {
+    if (entityId.startsWith('sensor.')) {
+      // Handle sensor updates
+      setRooms((prevRooms) =>
+        prevRooms.map((room) => {
+          if (room.sensorId === entityId) {
+            return { ...room, sensorState: newState.state, sensorUnit: newState.attributes.unit_of_measurement };
+          }
+          return room;
+        })
+      );
 
-    // Update the jsonContent with the new sensor state
-    setJsonContent((prevData) => {
-      if (!prevData.nodes) return prevData;
-      const updatedNodes = { ...prevData.nodes };
+      // Update the jsonContent with the new sensor state
+      setJsonContent((prevData) => {
+        if (!prevData.nodes) return prevData;
+        const updatedNodes = { ...prevData.nodes };
 
-      Object.keys(updatedNodes).forEach((nodeKey) => {
-        if (nodeKey.startsWith(sensorId)) {
-          updatedNodes[nodeKey].state.initial_state = parseFloat(newState.state);
-        }
+        Object.keys(updatedNodes).forEach((nodeKey) => {
+          if (nodeKey.startsWith(entityId)) {
+            updatedNodes[nodeKey].state.initial_state = parseFloat(newState.state);
+          }
+        });
+
+        return { ...prevData, nodes: updatedNodes };
       });
+    } else {
+      // Handle device updates
+      // Update fetchedDevices
+      setFetchedDevices((prevDevices) =>
+        prevDevices.map((device) => {
+          if (device.entity_id === entityId) {
+            return { ...device, state: newState.state };
+          }
+          return device;
+        })
+      );
 
-      return { ...prevData, nodes: updatedNodes };
-    });
+      // Update activeDevices based on the device's new state
+      setActiveDevices((prevStatus) => ({
+        ...prevStatus,
+        [entityId]: newState.state === 'on', // Assuming 'on' signifies active
+      }));
+
+      // Optionally, update jsonContent if devices are part of it
+      setJsonContent((prevData) => {
+        if (!prevData.nodes) return prevData;
+        const updatedNodes = { ...prevData.nodes };
+
+        Object.keys(updatedNodes).forEach((nodeKey) => {
+          if (nodeKey === entityId) {
+            updatedNodes[nodeKey].status = newState.state === 'on' ? 'on' : 'off';
+          }
+        });
+
+        return { ...prevData, nodes: updatedNodes };
+      });
+    }
   };
 
   // Establish WebSocket connection on apiKey change
@@ -114,6 +150,14 @@ function App() {
 
       setHomeAssistantSensors(sensors);
       setFetchedDevices(nonSensorDevices);
+
+      // Initialize activeDevices based on device states
+      const initialActiveDevices = {};
+      nonSensorDevices.forEach(device => {
+        initialActiveDevices[device.entity_id] = device.state === 'on'; // Assuming 'on' signifies active
+      });
+      setActiveDevices(initialActiveDevices);
+
       setError(null);
     } catch (error) {
       console.error('Error fetching devices:', error);
@@ -152,6 +196,11 @@ function App() {
   const deleteHeater = (id) => {
     const updatedHeaters = electricHeaters.filter((heater) => heater.id !== id);
     setElectricHeaters(updatedHeaters);
+    setActiveDevices((prevStatus) => {
+      const updatedStatus = { ...prevStatus };
+      delete updatedStatus[id];
+      return updatedStatus;
+    });
   };
 
   const toggleDeviceStatus = (id) => {
@@ -244,6 +293,7 @@ function App() {
               <HomeEnergyFlowVisualization
                 processes={processes} // Ensure processes are passed
                 rooms={rooms}
+                activeDevices={activeDevices} // Pass activeDevices
                 onRoomClick={handleRoomClick} // Pass the handler
               />
               {/* Include the popup component */}

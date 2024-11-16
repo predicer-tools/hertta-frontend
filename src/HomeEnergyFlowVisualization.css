@@ -24,21 +24,27 @@
   }
   
   /* Device labels */
-  .device text {
+  .device-label {
     font-size: 12px;
     fill: #000;
   }
   
-  /* Device circles */
-  .device circle {
+  /* Device status labels */
+  .device-status-label {
+    font-size: 12px;
+    fill: #000;
+  }
+  
+  /* Device squares */
+  .device rect {
     stroke: #000;
     stroke-width: 1px;
   }
   
-  /* Room rectangles */
-  .room rect {
-    stroke: #000;
-    stroke-width: 2px;
+  /* Legend labels */
+  .legend-label {
+    font-size: 12px;
+    fill: #000;
   }
   
   /* Cursor styles */
