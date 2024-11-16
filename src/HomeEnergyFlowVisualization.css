@@ -1,0 +1,49 @@
+/* HomeEnergyFlowVisualization.css */
+
+/* Tooltip styles */
+.tooltip {
+    position: absolute;
+    text-align: center;
+    width: auto;
+    padding: 8px;
+    font: 12px sans-serif;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: 0px;
+    border-radius: 4px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  
+  /* Room labels */
+  .room-label {
+    font-weight: bold;
+    font-size: 14px;
+    fill: #333;
+  }
+  
+  /* Device labels */
+  .device text {
+    font-size: 12px;
+    fill: #000;
+  }
+  
+  /* Device circles */
+  .device circle {
+    stroke: #000;
+    stroke-width: 1px;
+  }
+  
+  /* Room rectangles */
+  .room rect {
+    stroke: #000;
+    stroke-width: 2px;
+  }
+  
+  /* Cursor styles */
+  .room:hover,
+  .device:hover {
+    cursor: pointer;
+  }
+  

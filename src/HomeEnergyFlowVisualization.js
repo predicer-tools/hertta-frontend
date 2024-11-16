@@ -1,7 +1,10 @@
+// HomeEnergyFlowVisualization.js
+
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
+import './HomeEnergyFlowVisualization.css'; // Import the CSS file
 
-function HomeEnergyFlowVisualization({ rooms, onRoomClick }) {
+function HomeEnergyFlowVisualization({ rooms, processes, onRoomClick }) {
   const svgRef = useRef();
 
   useEffect(() => {
@@ -9,22 +12,36 @@ function HomeEnergyFlowVisualization({ rooms, onRoomClick }) {
     d3.select(svgRef.current).selectAll('*').remove();
 
     // Prepare data
-    const nodeData = rooms
+    const nodeData = [];
+
+    // Create room nodes
+    const roomNodes = rooms
       .filter((room) => room && room.roomId)
-      .map((room) => ({
+      .map((room, index) => ({
         ...room,
         type: 'room',
         id: room.roomId,
+        // Assign initial positions to spread rooms out
+        x: (index % 3) * 300 + 150, // Adjust spacing as needed
+        y: Math.floor(index / 3) * 300 + 150,
+        fx: (index % 3) * 300 + 150, // Fix positions
+        fy: Math.floor(index / 3) * 300 + 150,
       }));
 
-    // Assign random positions
-    const width = 800;
-    const height = 600;
+    // Create device nodes from processes
+    const deviceNodes = Object.values(processes).map((process) => ({
+      ...process,
+      type: 'device',
+      id: process.name,
+      roomId: process.topos.find((topo) => topo.sink !== process.name)?.sink,
+    }));
 
-    nodeData.forEach((node) => {
-      node.x = Math.random() * width;
-      node.y = Math.random() * height;
-    });
+    // Combine nodes
+    nodeData.push(...roomNodes, ...deviceNodes);
+
+    // Assign dimensions
+    const width = 1000;
+    const height = 800;
 
     // Create SVG
     const svg = d3
@@ -32,36 +49,84 @@ function HomeEnergyFlowVisualization({ rooms, onRoomClick }) {
       .attr('width', width)
       .attr('height', height);
 
-    // Define color scale for node types
-    const color = d3.scaleOrdinal().domain(['room']).range(['#ffcc00']);
+    // Define color scales
+    const color = d3
+      .scaleOrdinal()
+      .domain(['room', 'device'])
+      .range(['#ffcc00', '#66ccff']);
 
-    // Initialize simulation without links
-    const simulation = d3
-      .forceSimulation(nodeData)
-      .force('charge', d3.forceManyBody().strength(-200))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .on('tick', ticked);
+    // Create groups for rooms
+    const roomGroups = svg
+      .selectAll('.room')
+      .data(roomNodes)
+      .enter()
+      .append('g')
+      .attr('class', 'room')
+      .attr('transform', (d) => `translate(${d.x}, ${d.y})`);
 
-    // Create tooltip div
+    // Draw room squares
+    roomGroups
+      .append('rect')
+      .attr('width', 200) // Increased size
+      .attr('height', 200)
+      .attr('x', -100)
+      .attr('y', -100)
+      .attr('fill', color('room'))
+      .attr('stroke', '#000')
+      .attr('stroke-width', 2);
+
+    // Add room labels
+    roomGroups
+      .append('text')
+      .text((d) => d.id)
+      .attr('text-anchor', 'middle')
+      .attr('dy', -110) // Position above the square
+      .attr('class', 'room-label');
+
+    // Create device nodes within rooms
+    roomGroups.each(function (room) {
+      const devicesInRoom = deviceNodes.filter(
+        (device) => device.roomId === room.id
+      );
+
+      // Calculate positions for devices within the room
+      const devicePositions = calculateDevicePositions(devicesInRoom.length);
+
+      // Create a group for devices within this room
+      const deviceGroup = d3
+        .select(this)
+        .selectAll('.device')
+        .data(devicesInRoom)
+        .enter()
+        .append('g')
+        .attr('class', 'device');
+
+      // Position devices at fixed positions within the room square
+      deviceGroup
+        .append('circle')
+        .attr('r', 30)
+        .attr('fill', color('device'))
+        .attr('cx', (d, i) => devicePositions[i].x)
+        .attr('cy', (d, i) => devicePositions[i].y);
+
+      // Add device labels
+      deviceGroup
+        .append('text')
+        .text((d) => d.id)
+        .attr('text-anchor', 'middle')
+        .attr('dy', 5)
+        .attr('x', (d, i) => devicePositions[i].x)
+        .attr('y', (d, i) => devicePositions[i].y);
+    });
+
+    // Tooltip
     const tooltip = d3
       .select('body')
       .append('div')
       .attr('class', 'tooltip');
 
-    // Create node elements
-    const node = svg
-      .selectAll('.node')
-      .data(nodeData)
-      .enter()
-      .append('g')
-      .attr('class', 'node')
-      .style('cursor', 'pointer')
-      .call(
-        d3.drag()
-          .on('start', dragStarted)
-          .on('drag', dragged)
-          .on('end', dragEnded)
-      )
+    // Room interactions
+    roomGroups
       .on('click', function (event, d) {
         if (d.type === 'room') {
           onRoomClick(d);
@@ -87,50 +152,52 @@ function HomeEnergyFlowVisualization({ rooms, onRoomClick }) {
         tooltip.style('opacity', 0);
       });
 
-    // Append squares for room nodes with increased size
-    node
-      .append('rect')
-      .attr('width', 80)
-      .attr('height', 80)
-      .attr('x', -40)
-      .attr('y', -40)
-      .attr('fill', color('room'));
-
-    // Add labels
-    node
-      .append('text')
-      .text((d) => d.id)
-      .attr('text-anchor', 'middle')
-      .attr('dy', 5);
-
-    function ticked() {
-      node.attr('transform', (d) => `translate(${d.x}, ${d.y})`);
-    }
-
-    // Drag functions
-    function dragStarted(event, d) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
-    }
-
-    function dragged(event, d) {
-      d.fx = event.x;
-      d.fy = event.y;
-    }
-
-    function dragEnded(event, d) {
-      if (!event.active) simulation.alphaTarget(0);
-      d.fx = null;
-      d.fy = null;
-    }
+    // Device interactions
+    svg
+      .selectAll('.device')
+      .on('mouseover', function (event, d) {
+        tooltip
+          .style('opacity', 0.9)
+          .html(
+            `<strong>Device ID:</strong> ${d.id}<br>
+             <strong>Capacity:</strong> ${d.capacity} kW`
+          )
+          .style('left', event.pageX + 10 + 'px')
+          .style('top', event.pageY - 28 + 'px');
+      })
+      .on('mousemove', function (event) {
+        tooltip
+          .style('left', event.pageX + 10 + 'px')
+          .style('top', event.pageY - 28 + 'px');
+      })
+      .on('mouseout', function () {
+        tooltip.style('opacity', 0);
+      });
 
     // Clean up on unmount
     return () => {
-      simulation.stop();
-      tooltip.remove(); // Remove the tooltip when unmounting
+      tooltip.remove();
     };
-  }, [rooms, onRoomClick]);
+  }, [rooms, processes, onRoomClick]);
+
+  // Function to calculate fixed positions for devices within a room
+  function calculateDevicePositions(deviceCount) {
+    const positions = [];
+    const spacing = 60; // Adjust spacing between devices
+    const startX = -60; // Starting x position
+    const startY = -60; // Starting y position
+    const maxPerRow = 3; // Max devices per row
+
+    for (let i = 0; i < deviceCount; i++) {
+      const row = Math.floor(i / maxPerRow);
+      const col = i % maxPerRow;
+      positions.push({
+        x: startX + col * spacing,
+        y: startY + row * spacing,
+      });
+    }
+    return positions;
+  }
 
   return <svg ref={svgRef}></svg>;
 }
