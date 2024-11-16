@@ -1,6 +1,6 @@
 // App.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import './global.css';
 import './App.css';
@@ -36,7 +36,7 @@ function App() {
   // Generate the JSON content whenever relevant states change
   useEffect(() => {
     const sensorStates = rooms.reduce((acc, room) => {
-      acc[room.sensorId] = room.sensorState || 273.15;
+      acc[room.sensorId] = room.sensorState !== undefined && room.sensorState !== null ? room.sensorState : 'N/A';
       return acc;
     }, {});
 
@@ -55,7 +55,7 @@ function App() {
   }, [electricHeaters]);
 
   // Handle updates for sensor and device state changes
-  const handleSensorUpdate = (entityId, newState) => {
+  const handleEntityUpdate = useCallback((entityId, newState) => {
     if (entityId.startsWith('sensor.')) {
       // Handle sensor updates
       setRooms((prevRooms) =>
@@ -112,14 +112,18 @@ function App() {
         return { ...prevData, nodes: updatedNodes };
       });
     }
-  };
+  }, []);
 
   // Establish WebSocket connection on apiKey change
   useEffect(() => {
     if (apiKey) {
-      connectWebSocket(apiKey, handleSensorUpdate);
+      const disconnect = connectWebSocket(apiKey, handleEntityUpdate);
+      // Clean up the connection on component unmount or apiKey change
+      return () => {
+        disconnect();
+      };
     }
-  }, [apiKey]);
+  }, [apiKey, handleEntityUpdate]);
 
   const handleSaveApiKey = () => {
     localStorage.setItem('homeAssistantApiKey', apiKey);
@@ -170,7 +174,7 @@ function App() {
     const updatedRoom = {
       ...room,
       sensorState: selectedSensorData ? selectedSensorData.state : 'N/A',
-      sensorUnit: selectedSensorData ? selectedSensorData.attributes.unit_of_measurement : '',
+      sensorUnit: selectedSensorData ? selectedSensorData.attributes.unit_of_measurement : '°C', // Default to '°C' if missing
     };
     setRooms([...rooms, updatedRoom]);
 

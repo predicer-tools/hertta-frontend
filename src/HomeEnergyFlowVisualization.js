@@ -1,11 +1,42 @@
 // HomeEnergyFlowVisualization.js
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
 import './HomeEnergyFlowVisualization.css'; // Import the CSS file
 
 function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomClick }) {
   const svgRef = useRef();
+
+  // Function to convert temperature based on unit
+  const convertTemperature = useCallback((temperature, unit) => {
+    if (isNaN(parseFloat(temperature))) return 'N/A';
+    let temp = parseFloat(temperature);
+    
+    switch (unit) {
+      case '°F':
+        // Assuming sensor data is in Celsius, convert to Fahrenheit
+        temp = (temp * 9/5) + 32;
+        return `${temp.toFixed(2)} °F`;
+      case '°C':
+        // Temperature is already in Celsius, no conversion needed
+        return `${temp.toFixed(2)} °C`;
+      case 'K':
+      case '°K':
+        // If unit is Kelvin, convert to Celsius
+        temp = temp - 273.15;
+        return `${temp.toFixed(2)} °C`;
+      default:
+        // For any other units, assume Celsius
+        return `${temp.toFixed(2)} °C`;
+    }
+  }, []);
+
+  // Function to get temperature display for room
+  const getTemperatureDisplay = useCallback((room) => {
+    if (room.sensorState === undefined || room.sensorState === null) return 'N/A';
+    const unit = room.sensorUnit || '°C'; // Default to Celsius if unit is missing
+    return convertTemperature(room.sensorState, unit);
+  }, [convertTemperature]);
 
   useEffect(() => {
     // Clear previous visualization
@@ -44,11 +75,11 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
     const width = 1000;
     const height = 800;
 
-    // Create SVG
+    // Create SVG with responsive design
     const svg = d3
       .select(svgRef.current)
-      .attr('width', width)
-      .attr('height', height);
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet');
 
     // Define color scales
     const color = d3
@@ -63,7 +94,10 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
       .enter()
       .append('g')
       .attr('class', 'room')
-      .attr('transform', (d) => `translate(${d.x}, ${d.y})`);
+      .attr('transform', (d) => `translate(${d.x}, ${d.y})`)
+      .attr('tabindex', 0) // Make room groups focusable
+      .attr('role', 'button') // Define role for accessibility
+      .attr('aria-label', (d) => `Room ${d.id}, Temperature ${getTemperatureDisplay(d)}`);
 
     // Draw room squares
     roomGroups
@@ -76,13 +110,24 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
       .attr('stroke', '#000')
       .attr('stroke-width', 2);
 
-    // Add room labels
+    // Add room ID labels
     roomGroups
       .append('text')
       .text((d) => d.id)
       .attr('text-anchor', 'middle')
       .attr('dy', -110) // Position above the square
       .attr('class', 'room-label');
+
+    // Add Temperature Labels
+    roomGroups
+      .append('text')
+      .text((d) => {
+        const tempDisplay = getTemperatureDisplay(d);
+        return `Temp: ${tempDisplay}`;
+      })
+      .attr('text-anchor', 'middle')
+      .attr('dy', -90) // Position below the room ID label
+      .attr('class', 'room-temperature-label');
 
     // Create device nodes within rooms
     roomGroups.each(function (room) {
@@ -100,7 +145,10 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
         .data(devicesInRoom)
         .enter()
         .append('g')
-        .attr('class', 'device');
+        .attr('class', 'device')
+        .attr('tabindex', 0) // Make devices focusable
+        .attr('role', 'button') // Define role for accessibility
+        .attr('aria-label', (d) => `Device ${d.id}, Status ${d.status}`);
 
       // Position devices at fixed positions within the room square
       deviceGroup
@@ -111,7 +159,10 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
         .attr('y', (d, i) => devicePositions[i].y - 30)
         .attr('fill', (d) => color(`device-${d.status}`)) // Color based on status
         .attr('stroke', '#000')
-        .attr('stroke-width', 1);
+        .attr('stroke-width', 1)
+        .transition()
+        .duration(500)
+        .attr('fill', (d) => color(`device-${d.status}`));
 
       // Add device labels
       deviceGroup
@@ -152,8 +203,8 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
           .style('opacity', 0.9)
           .html(
             `<strong>Room ID:</strong> ${d.id}<br>
-             <strong>Max Temp:</strong> ${(d.maxTemp - 273.15).toFixed(2)} °C<br>
-             <strong>Min Temp:</strong> ${(d.minTemp - 273.15).toFixed(2)} °C`
+             <strong>Max Temp:</strong> ${convertTemperature(d.maxTemp, d.sensorUnit)}<br>
+             <strong>Min Temp:</strong> ${convertTemperature(d.minTemp, d.sensorUnit)}`
           )
           .style('left', event.pageX + 10 + 'px')
           .style('top', event.pageY - 28 + 'px');
@@ -227,7 +278,7 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
     return () => {
       tooltip.remove();
     };
-  }, [rooms, processes, activeDevices, onRoomClick]);
+  }, [rooms, processes, activeDevices, onRoomClick, getTemperatureDisplay, convertTemperature]);
 
   // Function to calculate fixed positions for devices within a room
   function calculateDevicePositions(deviceCount) {

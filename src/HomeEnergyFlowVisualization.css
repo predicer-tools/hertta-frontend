@@ -23,6 +23,12 @@
     fill: #333;
   }
   
+  /* Room temperature labels */
+  .room-temperature-label {
+    font-size: 12px;
+    fill: #555;
+  }
+  
   /* Device labels */
   .device-label {
     font-size: 12px;
@@ -51,5 +57,11 @@
   .room:hover,
   .device:hover {
     cursor: pointer;
+  }
+  
+  /* Focus styles for accessibility */
+  .room:focus,
+  .device:focus {
+    outline: 2px solid #000;
   }
   
