@@ -1,67 +1,123 @@
 /* HomeEnergyFlowVisualization.css */
 
-/* Tooltip styles */
-.tooltip {
+/* Container for the entire visualization and controls */
+.visualization-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+  
+  /* Control Signals Section */
+  .control-signals-section {
+    width: 100%;
+    max-width: 800px;
+    margin-bottom: 20px;
+    overflow-x: auto; /* Enable horizontal scroll if table is wide */
+  }
+  
+  .control-signals-section h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 10px;
+  }
+  
+  .control-signals-device {
+    margin-bottom: 20px;
+  }
+  
+  .control-signals-device h3 {
+    margin-bottom: 10px;
+    color: #555;
+  }
+  
+  .control-signals-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .control-signals-table th, .control-signals-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+  }
+  
+  .control-signals-table th {
+    background-color: #f2f2f2;
+    color: #333;
+  }
+  
+  .control-signals-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  
+  .control-signals-table tr:hover {
+    background-color: #ddd;
+  }
+  
+  /* Optimize Button Section */
+  .optimize-section {
+    margin-bottom: 20px;
+  }
+  
+  .optimize-button {
+    padding: 10px 20px;
+    background-color: #4CAF50; /* Green */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .optimize-button:hover {
+    background-color: #45a049;
+  }
+  
+  .optimize-button:disabled {
+    background-color: #a5d6a7;
+    cursor: not-allowed;
+  }
+  
+  /* Tooltip Styling */
+  .tooltip {
     position: absolute;
     text-align: center;
-    width: auto;
     padding: 8px;
     font: 12px sans-serif;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.8);
     color: #fff;
     border: 0px;
     border-radius: 4px;
     pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s;
   }
   
-  /* Room labels */
-  .room-label {
-    font-weight: bold;
-    font-size: 14px;
+  /* Legend Styling */
+  .legend-label {
+    font-size: 12px;
     fill: #333;
   }
   
-  /* Room temperature labels */
+  /* Room Labels */
+  .room-label {
+    font-size: 16px;
+    fill: #333;
+  }
+  
   .room-temperature-label {
-    font-size: 12px;
+    font-size: 14px;
     fill: #555;
   }
   
-  /* Device labels */
+  /* Device Labels */
   .device-label {
     font-size: 12px;
-    fill: #000;
+    fill: #fff;
   }
   
-  /* Device status labels */
   .device-status-label {
     font-size: 12px;
-    fill: #000;
-  }
-  
-  /* Device squares */
-  .device rect {
-    stroke: #000;
-    stroke-width: 1px;
-  }
-  
-  /* Legend labels */
-  .legend-label {
-    font-size: 12px;
-    fill: #000;
-  }
-  
-  /* Cursor styles */
-  .room:hover,
-  .device:hover {
-    cursor: pointer;
-  }
-  
-  /* Focus styles for accessibility */
-  .room:focus,
-  .device:focus {
-    outline: 2px solid #000;
+    fill: #fff;
   }
   

@@ -1,4 +1,4 @@
-// App.js
+// src/App.js
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Route, Routes } from 'react-router-dom';
@@ -16,6 +16,8 @@ import DeviceCards from './DeviceCards';
 import connectWebSocket from './homeAssistantWebSocket';
 import SendInputData from './SendInputData'; // Import the modified component
 import RoomPropertiesPopup from './RoomPropertiesPopup'; // Import the popup component
+import ControlSignalsPopup from './ControlSignalsPopup'; // Import the new popup component
+import { generateControlSignals } from './utils/generateControlSignals'; // Import the utility function
 
 function App() {
   const [jsonContent, setJsonContent] = useState({});
@@ -29,9 +31,17 @@ function App() {
   const [error, setError] = useState(null);
   const [message] = useState('');
 
-  // State for the popup
+  // State for the room properties popup
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
+
+  // State for the control signals popup
+  const [isControlPopupOpen, setIsControlPopupOpen] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [controlSignals, setControlSignals] = useState([]);
+
+  // New State: User-Defined Heating Devices
+  const [userHeatingDevices, setUserHeatingDevices] = useState([]);
 
   // Generate the JSON content whenever relevant states change
   useEffect(() => {
@@ -49,8 +59,10 @@ function App() {
     if (electricHeaters.length > 0) {
       const processData = generateProcessesData(electricHeaters);
       setProcesses(processData);
+      console.log('Generated Processes:', processData); // Debugging
     } else {
       setProcesses({}); // Clear processes if no heaters
+      console.log('No heating devices present.');
     }
   }, [electricHeaters]);
 
@@ -190,6 +202,8 @@ function App() {
       ...prevStatus,
       [heater.id]: true,
     }));
+    // Update userHeatingDevices
+    setUserHeatingDevices([...userHeatingDevices, heater.id]);
   };
 
   const deleteRoom = (sensorId) => {
@@ -200,6 +214,7 @@ function App() {
   const deleteHeater = (id) => {
     const updatedHeaters = electricHeaters.filter((heater) => heater.id !== id);
     setElectricHeaters(updatedHeaters);
+    setUserHeatingDevices(userHeatingDevices.filter(deviceId => deviceId !== id));
     setActiveDevices((prevStatus) => {
       const updatedStatus = { ...prevStatus };
       delete updatedStatus[id];
@@ -227,6 +242,15 @@ function App() {
         room.sensorId === updatedRoom.sensorId ? updatedRoom : room
       )
     );
+  };
+
+  // Function to handle when a device is clicked to show control signals
+  const handleDeviceClick = (device) => { // Updated to accept device object
+    console.log('Device clicked:', device); // Debugging: Log the device object
+    setSelectedDevice(device.id); // Extract and set the device ID as a string
+    const signals = generateControlSignals(); // Generate mock control signals
+    setControlSignals(signals);
+    setIsControlPopupOpen(true);
   };
 
   return (
@@ -299,13 +323,22 @@ function App() {
                 rooms={rooms}
                 activeDevices={activeDevices} // Pass activeDevices
                 onRoomClick={handleRoomClick} // Pass the handler
+                onDeviceClick={handleDeviceClick} // Pass the device click handler
+                userHeatingDevices={userHeatingDevices} // Pass the user-defined heating devices
               />
-              {/* Include the popup component */}
+              {/* Include the room properties popup component */}
               <RoomPropertiesPopup
                 roomData={selectedRoom}
                 isOpen={isPopupOpen}
                 onClose={() => setIsPopupOpen(false)}
                 onSave={handleSaveRoom}
+              />
+              {/* Include the control signals popup component */}
+              <ControlSignalsPopup
+                isOpen={isControlPopupOpen}
+                onClose={() => setIsControlPopupOpen(false)}
+                deviceId={selectedDevice}
+                controlSignals={controlSignals}
               />
             </div>
           }

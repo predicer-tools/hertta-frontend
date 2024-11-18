@@ -1,3 +1,5 @@
+// src/FormElectricHeater.js
+
 import React, { useState, useEffect } from 'react';
 import './DataForm.css';
 
@@ -32,7 +34,7 @@ function FormElectricHeater({ addElectricHeater, rooms = [], fetchedDevices = []
         <select value={heaterId} onChange={(e) => setHeaterId(e.target.value)}>
           <option value="">Select a Device</option>
           {fetchedDevices.map((device, index) => (
-            <option key={index} value={device.entity_id}>
+            <option key={device.entity_id || index} value={device.entity_id}>
               {device.entity_id} ({device.attributes?.friendly_name || 'Unknown'})
             </option>
           ))}
@@ -51,7 +53,7 @@ function FormElectricHeater({ addElectricHeater, rooms = [], fetchedDevices = []
         <select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
           <option value="">Select a Room</option>
           {rooms.map((room, index) => (
-            <option key={index} value={room.roomId}>
+            <option key={room.roomId || index} value={room.roomId}>
               {room.roomId}
             </option>
           ))}

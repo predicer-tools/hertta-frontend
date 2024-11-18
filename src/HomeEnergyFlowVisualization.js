@@ -1,11 +1,15 @@
-// HomeEnergyFlowVisualization.js
+// src/HomeEnergyFlowVisualization.js
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as d3 from 'd3';
 import './HomeEnergyFlowVisualization.css'; // Import the CSS file
 
-function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomClick }) {
+function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomClick, onDeviceClick, userHeatingDevices }) {
   const svgRef = useRef();
+
+  // State for Optimize Button and Control Signals
+  const [controlSignalsData, setControlSignalsData] = useState(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   // Function to convert temperature based on unit
   const convertTemperature = useCallback((temperature, unit) => {
@@ -37,6 +41,44 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
     const unit = room.sensorUnit || '°C'; // Default to Celsius if unit is missing
     return convertTemperature(room.sensorState, unit);
   }, [convertTemperature]);
+
+  // Function to generate or fetch control signals
+  const generateControlSignals = useCallback(() => {
+    // This function should fetch or compute control signals from backend or other sources
+    // For demonstration, we'll generate dummy data
+
+    const generateDummySignals = (deviceId) => {
+      const signals = [];
+      const now = new Date();
+      for (let i = 0; i < 24; i++) { // 24 intervals (6 hours * 4)
+        const time = new Date(now.getTime() + i * 15 * 60000); // 15 minutes in ms
+        const status = Math.random() > 0.5 ? 'on' : 'off'; // Random on/off
+        signals.push({
+          time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status,
+        });
+      }
+      return signals;
+    };
+
+    // Filter heating devices from userHeatingDevices
+    const heatingDevices = userHeatingDevices.filter(deviceId => processes[deviceId]);
+
+    if (heatingDevices.length === 0) {
+      setControlSignalsData(null);
+      setIsOptimizing(false);
+      return;
+    }
+
+    // Generate control signals for each heating device
+    const signals = heatingDevices.reduce((acc, deviceId) => {
+      acc[deviceId] = generateDummySignals(deviceId);
+      return acc;
+    }, {});
+
+    setControlSignalsData(signals);
+    setIsOptimizing(false);
+  }, [processes, userHeatingDevices]);
 
   useEffect(() => {
     // Clear previous visualization
@@ -183,6 +225,13 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
         .attr('x', (d, i) => devicePositions[i].x)
         .attr('y', (d, i) => devicePositions[i].y)
         .attr('class', 'device-status-label');
+
+      // Add click event to deviceGroup
+      deviceGroup
+        .on('click', function(event, d) {
+          event.stopPropagation(); // Prevent triggering parent click events
+          onDeviceClick(d); // Call the handler passed from App.js
+        });
     });
 
     // Tooltip
@@ -278,7 +327,7 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
     return () => {
       tooltip.remove();
     };
-  }, [rooms, processes, activeDevices, onRoomClick, getTemperatureDisplay, convertTemperature]);
+  }, [rooms, processes, activeDevices, onRoomClick, onDeviceClick, getTemperatureDisplay, convertTemperature]);
 
   // Function to calculate fixed positions for devices within a room
   function calculateDevicePositions(deviceCount) {
@@ -299,7 +348,67 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
     return positions;
   }
 
-  return <svg ref={svgRef}></svg>;
+  // Handle Optimize Button Click
+  const handleOptimizeClick = () => {
+    if (userHeatingDevices.length === 0) {
+      setControlSignalsData(null);
+      return;
+    }
+    setIsOptimizing(true);
+    // Here you can fetch or compute the actual control signals
+    // For demonstration, we'll simulate a delay and then generate dummy data
+    setTimeout(() => {
+      generateControlSignals();
+    }, 1000); // Simulate network delay
+  };
+
+  return (
+    <div className="visualization-container">
+      {/* Control Signals Section */}
+      <div className="control-signals-section">
+        <h2>Control Signals</h2>
+        {userHeatingDevices.length === 0 ? (
+          <p>No heating devices added yet for optimize.</p>
+        ) : (
+          controlSignalsData ? (
+            Object.entries(controlSignalsData).map(([deviceId, signals]) => (
+              <div key={deviceId} className="control-signals-device">
+                <h3>{deviceId}</h3>
+                <table className="control-signals-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {signals.map((signal, index) => (
+                      <tr key={index}>
+                        <td>{signal.time}</td>
+                        <td>{signal.status.toUpperCase()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))
+          ) : (
+            <p>No control signals available.</p>
+          )
+        )}
+      </div>
+
+      {/* Optimize Button */}
+      <div className="optimize-section">
+        <button className="optimize-button" onClick={handleOptimizeClick} disabled={isOptimizing}>
+          {isOptimizing ? 'Optimizing...' : 'Optimize'}
+        </button>
+      </div>
+
+      {/* D3 Visualization SVG */}
+      <svg ref={svgRef}></svg>
+    </div>
+  );
 }
 
 export default HomeEnergyFlowVisualization;
