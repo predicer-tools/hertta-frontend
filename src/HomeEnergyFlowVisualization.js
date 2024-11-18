@@ -3,13 +3,27 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as d3 from 'd3';
 import './HomeEnergyFlowVisualization.css'; // Import the CSS file
+import Popup from './Popup'; // Import the Popup component
+import electricityPrices from './utils/electricityPrices'; // Import test electricity price data
+import { getTestOutsideTemperature } from './utils/outsideTemperature'; // Import the test temperature function
 
-function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomClick, onDeviceClick, userHeatingDevices }) {
+function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onDeviceClick, userHeatingDevices }) {
   const svgRef = useRef();
 
   // State for Optimize Button and Control Signals
   const [controlSignalsData, setControlSignalsData] = useState(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
+
+  // State for Popup
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+
+  // State for Outside Temperature (without setter)
+  const [outsideTemp] = useState(() => {
+    return getTestOutsideTemperature(); // Retrieves the test temperature
+  });
+
+  // New State for Last Optimized Time
+  const [lastOptimized, setLastOptimized] = useState(null); // Initialize as null
 
   // Function to convert temperature based on unit
   const convertTemperature = useCallback((temperature, unit) => {
@@ -78,9 +92,16 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
 
     setControlSignalsData(signals);
     setIsOptimizing(false);
+
+    // Update Last Optimized Time
+    setLastOptimized(new Date()); // Capture the current date and time
   }, [processes, userHeatingDevices]);
 
   useEffect(() => {
+    // Assign dimensions
+    const width = 1000;
+    const height = 800;
+
     // Clear previous visualization
     d3.select(svgRef.current).selectAll('*').remove();
 
@@ -95,27 +116,35 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
         type: 'room',
         id: room.roomId,
         // Assign initial positions to spread rooms out
-        x: (index % 3) * 300 + 150, // Adjust spacing as needed
-        y: Math.floor(index / 3) * 300 + 150,
-        fx: (index % 3) * 300 + 150, // Fix positions
-        fy: Math.floor(index / 3) * 300 + 150,
+        x: (index % 3) * 300 + 200, // Adjust spacing as needed
+        y: Math.floor(index / 3) * 300 + 200,
+        fx: (index % 3) * 300 + 200, // Fix positions
+        fy: Math.floor(index / 3) * 300 + 200,
       }));
 
     // Create device nodes from processes
-    const deviceNodes = Object.values(processes).map((process) => ({
+    const deviceNodes = Object.values(processes).map((process, index) => ({
       ...process,
       type: 'device',
       id: process.name,
       roomId: process.topos.find((topo) => topo.sink !== process.name)?.sink,
       status: activeDevices[process.name] ? 'on' : 'off', // Add status based on activeDevices
+      x: (index % 3) * 300 + 200, // Optional: Assign initial positions if needed
+      y: Math.floor(index / 3) * 300 + 200,
     }));
 
-    // Combine nodes
-    nodeData.push(...roomNodes, ...deviceNodes);
+    // Define Electricity Grid Node
+    const gridNode = {
+      type: 'electricityGrid',
+      id: 'Electricity Grid',
+      x: 100, // Position outside rooms (left side)
+      y: height / 2, // Vertically centered
+      fx: 100,
+      fy: height / 2,
+    };
 
-    // Assign dimensions
-    const width = 1000;
-    const height = 800;
+    // Combine nodes
+    nodeData.push(...roomNodes, ...deviceNodes, gridNode);
 
     // Create SVG with responsive design
     const svg = d3
@@ -126,8 +155,39 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
     // Define color scales
     const color = d3
       .scaleOrdinal()
-      .domain(['room', 'device-on', 'device-off'])
-      .range(['#ffcc00', '#4CAF50', '#F44336']); // Yellow for rooms, Green for on, Red for off
+      .domain(['room', 'device-on', 'device-off', 'electricityGrid'])
+      .range(['#ffcc00', '#4CAF50', '#F44336', '#2196F3']); // Yellow for rooms, Green for on, Red for off, Blue for grid
+
+    // Removed links connecting Electricity Grid to devices
+
+    // Draw Electricity Grid
+    const gridGroup = svg
+      .append('g')
+      .attr('class', 'electricityGrid')
+      .attr('transform', `translate(${gridNode.x}, ${gridNode.y})`)
+      .attr('tabindex', 0)
+      .attr('role', 'button')
+      .attr('aria-label', `Electricity Grid`)
+      .on('click', () => setIsPopupOpen(true)); // Add click handler to open popup
+
+    // Draw grid square
+    gridGroup
+      .append('rect')
+      .attr('width', 100)
+      .attr('height', 100)
+      .attr('x', -50)
+      .attr('y', -50)
+      .attr('fill', color('electricityGrid'))
+      .attr('stroke', '#000')
+      .attr('stroke-width', 2);
+
+    // Add grid label
+    gridGroup
+      .append('text')
+      .text('Electricity Grid')
+      .attr('text-anchor', 'middle')
+      .attr('dy', 10)
+      .attr('class', 'grid-label');
 
     // Create groups for rooms
     const roomGroups = svg
@@ -136,10 +196,7 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
       .enter()
       .append('g')
       .attr('class', 'room')
-      .attr('transform', (d) => `translate(${d.x}, ${d.y})`)
-      .attr('tabindex', 0) // Make room groups focusable
-      .attr('role', 'button') // Define role for accessibility
-      .attr('aria-label', (d) => `Room ${d.id}, Temperature ${getTemperatureDisplay(d)}`);
+      .attr('transform', (d) => `translate(${d.x}, ${d.y})`);
 
     // Draw room squares
     roomGroups
@@ -190,7 +247,11 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
         .attr('class', 'device')
         .attr('tabindex', 0) // Make devices focusable
         .attr('role', 'button') // Define role for accessibility
-        .attr('aria-label', (d) => `Device ${d.id}, Status ${d.status}`);
+        .attr('aria-label', (d) => `Device ${d.id}, Status ${d.status}`)
+        .on('click', function(event, d) {
+          event.stopPropagation(); // Prevent triggering parent click events
+          onDeviceClick(d); // Call the handler passed from App.js
+        });
 
       // Position devices at fixed positions within the room square
       deviceGroup
@@ -225,13 +286,6 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
         .attr('x', (d, i) => devicePositions[i].x)
         .attr('y', (d, i) => devicePositions[i].y)
         .attr('class', 'device-status-label');
-
-      // Add click event to deviceGroup
-      deviceGroup
-        .on('click', function(event, d) {
-          event.stopPropagation(); // Prevent triggering parent click events
-          onDeviceClick(d); // Call the handler passed from App.js
-        });
     });
 
     // Tooltip
@@ -240,32 +294,7 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
       .append('div')
       .attr('class', 'tooltip');
 
-    // Room interactions
-    roomGroups
-      .on('click', function (event, d) {
-        if (d.type === 'room') {
-          onRoomClick(d);
-        }
-      })
-      .on('mouseover', function (event, d) {
-        tooltip
-          .style('opacity', 0.9)
-          .html(
-            `<strong>Room ID:</strong> ${d.id}<br>
-             <strong>Max Temp:</strong> ${convertTemperature(d.maxTemp, d.sensorUnit)}<br>
-             <strong>Min Temp:</strong> ${convertTemperature(d.minTemp, d.sensorUnit)}`
-          )
-          .style('left', event.pageX + 10 + 'px')
-          .style('top', event.pageY - 28 + 'px');
-      })
-      .on('mousemove', function (event) {
-        tooltip
-          .style('left', event.pageX + 10 + 'px')
-          .style('top', event.pageY - 28 + 'px');
-      })
-      .on('mouseout', function () {
-        tooltip.style('opacity', 0);
-      });
+    // Removed Room Interactions
 
     // Device interactions
     svg
@@ -292,6 +321,7 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
 
     // Add Legend
     const legendData = [
+      { label: 'Electricity Grid', color: color('electricityGrid') },
       { label: 'Room', color: color('room') },
       { label: 'Device On', color: color('device-on') },
       { label: 'Device Off', color: color('device-off') },
@@ -323,11 +353,65 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
         .attr('class', 'legend-label');
     });
 
+    // Add Background Rectangle for Temperature Display (Optional)
+    svg.append('rect')
+      .attr('x', width - 250) // Adjust based on text width
+      .attr('y', 20) // Positioning
+      .attr('width', 200)
+      .attr('height', 40)
+      .attr('fill', '#f0f0f0') // Light gray background
+      .attr('stroke', '#000') // Black border
+      .attr('stroke-width', 1);
+
+    // Determine Text Color Based on Temperature (Optional)
+    const tempColor = outsideTemp < 0 ? '#0000FF' : outsideTemp > 25 ? '#FF0000' : '#000000';
+
+    // Add Outside Temperature Display with Dynamic Color
+    svg.append('text')
+      .attr('x', width - 150) // Center within the rectangle
+      .attr('y', 50) // Position vertically centered within the rectangle
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '18px')
+      .attr('fill', tempColor) // Dynamic color
+      .attr('aria-label', `Outside Temperature is ${outsideTemp} degrees Celsius`) // Accessibility
+      .text(`Outside Temperature: ${outsideTemp} °C`);
+
+    // Add Background Rectangle for Last Optimized Display (Optional)
+    svg.append('rect')
+      .attr('x', width - 250) // Same x as temperature display
+      .attr('y', 80) // Positioned below the temperature display
+      .attr('width', 200)
+      .attr('height', 40)
+      .attr('fill', '#f0f0f0') // Light gray background
+      .attr('stroke', '#000') // Black border
+      .attr('stroke-width', 1);
+
+    // Format Last Optimized Time
+    const formattedLastOptimized = lastOptimized
+      ? lastOptimized.toLocaleString([], { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        })
+      : 'N/A';
+
+    // Add Last Optimized Display
+    svg.append('text')
+      .attr('x', width - 150) // Center within the rectangle
+      .attr('y', 110) // Position vertically centered within the rectangle
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '16px')
+      .attr('fill', '#000') // Static color
+      .attr('aria-label', `Last Optimized on ${formattedLastOptimized}`) // Accessibility
+      .text(`Last Optimized: ${formattedLastOptimized}`);
+
     // Clean up on unmount
     return () => {
       tooltip.remove();
     };
-  }, [rooms, processes, activeDevices, onRoomClick, onDeviceClick, getTemperatureDisplay, convertTemperature]);
+  }, [rooms, processes, activeDevices, onDeviceClick, getTemperatureDisplay, convertTemperature, outsideTemp, lastOptimized]);
 
   // Function to calculate fixed positions for devices within a room
   function calculateDevicePositions(deviceCount) {
@@ -407,6 +491,30 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onRoomCl
 
       {/* D3 Visualization SVG */}
       <svg ref={svgRef}></svg>
+
+      {/* Popup for Electricity Prices */}
+      {isPopupOpen && (
+        <Popup onClose={() => setIsPopupOpen(false)}>
+          <h2>Current Electricity Prices</h2>
+          <table className="control-signals-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Price ($/kWh)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {electricityPrices.map((price, index) => (
+                <tr key={index}>
+                  <td>{price.time}</td>
+                  <td>{price.price.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button onClick={() => setIsPopupOpen(false)}>Close</button>
+        </Popup>
+      )}
     </div>
   );
 }

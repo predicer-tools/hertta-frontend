@@ -121,3 +121,21 @@
     fill: #fff;
   }
   
+  /* Electricity Grid Label */
+  .grid-label {
+    font-size: 14px;
+    fill: #fff;
+    pointer-events: none; /* Prevent tooltip interference */
+  }
+  
+  /* Link Styling */
+  .link {
+    stroke: #000;
+    stroke-width: 2px;
+  }
+  
+  /* Arrow Marker */
+  .marker-end {
+    fill: #000;
+  }
+  

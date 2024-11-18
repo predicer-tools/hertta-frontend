@@ -15,7 +15,6 @@ import FormElectricHeater from './FormElectricHeater';
 import DeviceCards from './DeviceCards';
 import connectWebSocket from './homeAssistantWebSocket';
 import SendInputData from './SendInputData'; // Import the modified component
-import RoomPropertiesPopup from './RoomPropertiesPopup'; // Import the popup component
 import ControlSignalsPopup from './ControlSignalsPopup'; // Import the new popup component
 import { generateControlSignals } from './utils/generateControlSignals'; // Import the utility function
 
@@ -31,9 +30,9 @@ function App() {
   const [error, setError] = useState(null);
   const [message] = useState('');
 
-  // State for the room properties popup
-  const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState(null);
+  // Removed Room Popup State Variables
+  // const [isPopupOpen, setIsPopupOpen] = useState(false);
+  // const [selectedRoom, setSelectedRoom] = useState(null);
 
   // State for the control signals popup
   const [isControlPopupOpen, setIsControlPopupOpen] = useState(false);
@@ -229,20 +228,19 @@ function App() {
     }));
   };
 
-  // Function to handle when a room is clicked in the visualization
-  const handleRoomClick = (room) => {
-    setSelectedRoom(room);
-    setIsPopupOpen(true);
-  };
+  // Removed Room Click Handlers
+  // const handleRoomClick = (room) => {
+  //   setSelectedRoom(room);
+  //   setIsPopupOpen(true);
+  // };
 
-  // Function to handle saving the updated room data
-  const handleSaveRoom = (updatedRoom) => {
-    setRooms((prevRooms) =>
-      prevRooms.map((room) =>
-        room.sensorId === updatedRoom.sensorId ? updatedRoom : room
-      )
-    );
-  };
+  // const handleSaveRoom = (updatedRoom) => {
+  //   setRooms((prevRooms) =>
+  //     prevRooms.map((room) =>
+  //       room.sensorId === updatedRoom.sensorId ? updatedRoom : room
+  //     )
+  //   );
+  // };
 
   // Function to handle when a device is clicked to show control signals
   const handleDeviceClick = (device) => { // Updated to accept device object
@@ -322,17 +320,19 @@ function App() {
                 processes={processes} // Ensure processes are passed
                 rooms={rooms}
                 activeDevices={activeDevices} // Pass activeDevices
-                onRoomClick={handleRoomClick} // Pass the handler
+                // onRoomClick={handleRoomClick} // Removed
                 onDeviceClick={handleDeviceClick} // Pass the device click handler
                 userHeatingDevices={userHeatingDevices} // Pass the user-defined heating devices
               />
-              {/* Include the room properties popup component */}
+              {/* Removed the room properties popup component */}
+              {/* 
               <RoomPropertiesPopup
                 roomData={selectedRoom}
                 isOpen={isPopupOpen}
                 onClose={() => setIsPopupOpen(false)}
                 onSave={handleSaveRoom}
               />
+              */}
               {/* Include the control signals popup component */}
               <ControlSignalsPopup
                 isOpen={isControlPopupOpen}
