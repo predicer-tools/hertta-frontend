@@ -1,19 +1,61 @@
 // src/Sidebar.js
+
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import './Sidebar.css';
 
-function Sidebar() {
+function Sidebar({ isOpen }) {
   return (
-    <div className="sidebar">
-      <h2>Navigation</h2>
-      <ul>
-        <li><Link to="/">User Input</Link></li>
-        <li><Link to="/device-cards">Data Table</Link></li>
-        <li><Link to="/processes-graph">Processes Graph</Link></li>
-        <li><Link to="/json-viewer">JSON Viewer</Link></li>
-        <li><Link to="/electric-heaters">Electric Heaters</Link></li> {/* New Tab */}
-      </ul>
+    <div className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
+      {isOpen && (
+        <>
+          <h2>Navigation</h2>
+          <ul>
+            {/* Updated Links */}
+            <li>
+              <NavLink 
+                to="/" 
+                className={({ isActive }) => (isActive ? 'active-link' : '')}
+                end
+              >
+                Processes Graph
+              </NavLink>
+            </li>
+            <li>
+              <NavLink 
+                to="/input-data" 
+                className={({ isActive }) => (isActive ? 'active-link' : '')}
+              >
+                Input Data
+              </NavLink>
+            </li>
+            <li>
+              <NavLink 
+                to="/device-cards" 
+                className={({ isActive }) => (isActive ? 'active-link' : '')}
+              >
+                Data Table
+              </NavLink>
+            </li>
+            <li>
+              <NavLink 
+                to="/json-viewer" 
+                className={({ isActive }) => (isActive ? 'active-link' : '')}
+              >
+                JSON Viewer
+              </NavLink>
+            </li>
+            <li>
+              <NavLink 
+                to="/electric-heaters" 
+                className={({ isActive }) => (isActive ? 'active-link' : '')}
+              >
+                Electric Heaters
+              </NavLink>
+            </li>
+          </ul>
+        </>
+      )}
     </div>
   );
 }

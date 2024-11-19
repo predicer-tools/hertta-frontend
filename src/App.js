@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Route, Routes } from 'react-router-dom';
-import './global.css';
 import './App.css';
 import FormRoom from './FormRoom';
 import DataTable from './DataTable';
@@ -29,10 +28,6 @@ function App() {
   const [activeDevices, setActiveDevices] = useState({});
   const [error, setError] = useState(null);
   const [message] = useState('');
-
-  // Removed Room Popup State Variables
-  // const [isPopupOpen, setIsPopupOpen] = useState(false);
-  // const [selectedRoom, setSelectedRoom] = useState(null);
 
   // State for the control signals popup
   const [isControlPopupOpen, setIsControlPopupOpen] = useState(false);
@@ -228,20 +223,6 @@ function App() {
     }));
   };
 
-  // Removed Room Click Handlers
-  // const handleRoomClick = (room) => {
-  //   setSelectedRoom(room);
-  //   setIsPopupOpen(true);
-  // };
-
-  // const handleSaveRoom = (updatedRoom) => {
-  //   setRooms((prevRooms) =>
-  //     prevRooms.map((room) =>
-  //       room.sensorId === updatedRoom.sensorId ? updatedRoom : room
-  //     )
-  //   );
-  // };
-
   // Function to handle when a device is clicked to show control signals
   const handleDeviceClick = (device) => { // Updated to accept device object
     console.log('Device clicked:', device); // Debugging: Log the device object
@@ -253,34 +234,63 @@ function App() {
 
   return (
     <Layout>
-      <div className="device-form">
-        <h3>Enter Home Assistant API Key</h3>
-        <div className="input-group">
-          <label htmlFor="api-key">API Key</label>
-          <input
-            type="text"
-            id="api-key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your Home Assistant API Key"
-          />
-        </div>
-        <button onClick={handleSaveApiKey}>Save API Key</button>
-        <button onClick={fetchAllDevicesAndSensors}>Fetch Sensors and Devices</button>
-        {error && (
-          <p style={{ color: 'red' }}>
-            <strong>Error:</strong> {error}
-          </p>
-        )}
-      </div>
-
       <Routes>
+        {/* Visualization as Home Page */}
         <Route
           path="/"
+          element={
+            <div className="graph-container">
+              <h1>Processes Graph</h1>
+              <HomeEnergyFlowVisualization
+                processes={processes} // Ensure processes are passed
+                rooms={rooms}
+                activeDevices={activeDevices} // Pass activeDevices
+                onDeviceClick={handleDeviceClick} // Pass the device click handler
+                userHeatingDevices={userHeatingDevices} // Pass the user-defined heating devices
+              />
+              {/* Include the control signals popup component */}
+              <ControlSignalsPopup
+                isOpen={isControlPopupOpen}
+                onClose={() => setIsControlPopupOpen(false)}
+                deviceId={selectedDevice}
+                controlSignals={controlSignals}
+              />
+            </div>
+          }
+        />
+
+        {/* Input Data Forms Route */}
+        <Route
+          path="/input-data"
           element={
             <div className="app-container">
               <div className="left-side">
                 <h1>Device Data Entry</h1>
+                {/* API Key Input and Forms */}
+                <div className="device-form">
+                  <h3>Enter Home Assistant API Key</h3>
+                  <div className="input-group">
+                    <label htmlFor="api-key">API Key</label>
+                    <input
+                      type="text"
+                      id="api-key"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="Enter your Home Assistant API Key"
+                    />
+                  </div>
+                  <div className="button-group">
+                    <button onClick={handleSaveApiKey}>Save API Key</button>
+                    <button onClick={fetchAllDevicesAndSensors}>Fetch Sensors and Devices</button>
+                  </div>
+                  {error && (
+                    <p className="error-message">
+                      <strong>Error:</strong> {error}
+                    </p>
+                  )}
+                </div>
+
+                {/* Forms for Room and Electric Heater */}
                 <FormRoom addRoom={addRoom} homeAssistantSensors={homeAssistantSensors} />
                 <FormElectricHeater
                   addElectricHeater={addElectricHeater}
@@ -296,6 +306,8 @@ function App() {
             </div>
           }
         />
+
+        {/* Other Routes */}
         <Route
           path="/device-cards"
           element={
@@ -312,39 +324,9 @@ function App() {
           }
         />
         <Route
-          path="/processes-graph"
-          element={
-            <div className="graph-container">
-              <h1>Processes Graph</h1>
-              <HomeEnergyFlowVisualization
-                processes={processes} // Ensure processes are passed
-                rooms={rooms}
-                activeDevices={activeDevices} // Pass activeDevices
-                // onRoomClick={handleRoomClick} // Removed
-                onDeviceClick={handleDeviceClick} // Pass the device click handler
-                userHeatingDevices={userHeatingDevices} // Pass the user-defined heating devices
-              />
-              {/* Removed the room properties popup component */}
-              {/* 
-              <RoomPropertiesPopup
-                roomData={selectedRoom}
-                isOpen={isPopupOpen}
-                onClose={() => setIsPopupOpen(false)}
-                onSave={handleSaveRoom}
-              />
-              */}
-              {/* Include the control signals popup component */}
-              <ControlSignalsPopup
-                isOpen={isControlPopupOpen}
-                onClose={() => setIsControlPopupOpen(false)}
-                deviceId={selectedDevice}
-                controlSignals={controlSignals}
-              />
-            </div>
-          }
+          path="/json-viewer"
+          element={<JsonViewer jsonContent={jsonContent} />}
         />
-        {/* Pass the generated jsonContent to JsonViewer */}
-        <Route path="/json-viewer" element={<JsonViewer jsonContent={jsonContent} />} />
         <Route
           path="/electric-heaters"
           element={

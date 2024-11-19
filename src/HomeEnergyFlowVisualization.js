@@ -1,13 +1,19 @@
 // src/HomeEnergyFlowVisualization.js
 
-import React, { useEffect, useRef, useCallback, useState } from 'react';
-import * as d3 from 'd3';
-import './HomeEnergyFlowVisualization.css'; // Import the CSS file
-import Popup from './Popup'; // Import the Popup component
-import electricityPrices from './utils/electricityPrices'; // Import test electricity price data
-import { getTestOutsideTemperature } from './utils/outsideTemperature'; // Import the test temperature function
+import React, { useEffect, useRef, useCallback, useState } from "react";
+import * as d3 from "d3";
+import "./HomeEnergyFlowVisualization.css"; // Import the CSS file
+import Popup from "./Popup"; // Import the Popup component
+import electricityPrices from "./utils/electricityPrices"; // Import test electricity price data
+import { getTestOutsideTemperature } from "./utils/outsideTemperature"; // Import the test temperature function
 
-function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onDeviceClick, userHeatingDevices }) {
+function HomeEnergyFlowVisualization({
+  rooms,
+  processes,
+  activeDevices,
+  onDeviceClick,
+  userHeatingDevices,
+}) {
   const svgRef = useRef();
 
   // State for Optimize Button and Control Signals
@@ -17,29 +23,27 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onDevice
   // State for Popup
   const [isPopupOpen, setIsPopupOpen] = useState(false);
 
-  // State for Outside Temperature (without setter)
-  const [outsideTemp] = useState(() => {
-    return getTestOutsideTemperature(); // Retrieves the test temperature
-  });
+  // State for Outside Temperature
+  const [outsideTemp] = useState(getTestOutsideTemperature());
 
-  // New State for Last Optimized Time
-  const [lastOptimized, setLastOptimized] = useState(null); // Initialize as null
+  // State for Last Optimized Time
+  const [lastOptimized, setLastOptimized] = useState(null);
 
   // Function to convert temperature based on unit
   const convertTemperature = useCallback((temperature, unit) => {
-    if (isNaN(parseFloat(temperature))) return 'N/A';
+    if (isNaN(parseFloat(temperature))) return "N/A";
     let temp = parseFloat(temperature);
-    
+
     switch (unit) {
-      case '°F':
+      case "°F":
         // Assuming sensor data is in Celsius, convert to Fahrenheit
-        temp = (temp * 9/5) + 32;
+        temp = (temp * 9) / 5 + 32;
         return `${temp.toFixed(2)} °F`;
-      case '°C':
+      case "°C":
         // Temperature is already in Celsius, no conversion needed
         return `${temp.toFixed(2)} °C`;
-      case 'K':
-      case '°K':
+      case "K":
+      case "°K":
         // If unit is Kelvin, convert to Celsius
         temp = temp - 273.15;
         return `${temp.toFixed(2)} °C`;
@@ -50,11 +54,15 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onDevice
   }, []);
 
   // Function to get temperature display for room
-  const getTemperatureDisplay = useCallback((room) => {
-    if (room.sensorState === undefined || room.sensorState === null) return 'N/A';
-    const unit = room.sensorUnit || '°C'; // Default to Celsius if unit is missing
-    return convertTemperature(room.sensorState, unit);
-  }, [convertTemperature]);
+  const getTemperatureDisplay = useCallback(
+    (room) => {
+      if (room.sensorState === undefined || room.sensorState === null)
+        return "N/A";
+      const unit = room.sensorUnit || "°C"; // Default to Celsius if unit is missing
+      return convertTemperature(room.sensorState, unit);
+    },
+    [convertTemperature]
+  );
 
   // Function to generate or fetch control signals
   const generateControlSignals = useCallback(() => {
@@ -64,11 +72,12 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onDevice
     const generateDummySignals = (deviceId) => {
       const signals = [];
       const now = new Date();
-      for (let i = 0; i < 24; i++) { // 24 intervals (6 hours * 4)
+      for (let i = 0; i < 24; i++) {
+        // 24 intervals (6 hours * 4)
         const time = new Date(now.getTime() + i * 15 * 60000); // 15 minutes in ms
-        const status = Math.random() > 0.5 ? 'on' : 'off'; // Random on/off
+        const status = Math.random() > 0.5 ? "on" : "off"; // Random on/off
         signals.push({
-          time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           status,
         });
       }
@@ -76,7 +85,9 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onDevice
     };
 
     // Filter heating devices from userHeatingDevices
-    const heatingDevices = userHeatingDevices.filter(deviceId => processes[deviceId]);
+    const heatingDevices = userHeatingDevices.filter((deviceId) =>
+      processes.hasOwnProperty(deviceId)
+    );
 
     if (heatingDevices.length === 0) {
       setControlSignalsData(null);
@@ -97,354 +108,376 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onDevice
     setLastOptimized(new Date()); // Capture the current date and time
   }, [processes, userHeatingDevices]);
 
+  // Zoom State
+  const [zoomState, setZoomState] = useState(d3.zoomIdentity);
+
+  // Initialize Zoom and Pan only once
   useEffect(() => {
-    // Assign dimensions
-    const width = 1000;
-    const height = 800;
+    const svg = d3.select(svgRef.current);
+    const container = svg.append("g");
 
-    // Clear previous visualization
-    d3.select(svgRef.current).selectAll('*').remove();
+    const zoom = d3
+      .zoom()
+      .scaleExtent([0.5, 3])
+      .on("zoom", (event) => {
+        container.attr("transform", event.transform);
+        setZoomState(event.transform); // Update zoomState
+      });
 
-    // Prepare data
-    const nodeData = [];
+    svg.call(zoom).call(zoom.transform, zoomState); // Apply persisted zoom
 
-    // Create room nodes
-    const roomNodes = rooms
-      .filter((room) => room && room.roomId)
-      .map((room, index) => ({
-        ...room,
-        type: 'room',
-        id: room.roomId,
-        // Assign initial positions to spread rooms out
-        x: (index % 3) * 300 + 200, // Adjust spacing as needed
-        y: Math.floor(index / 3) * 300 + 200,
-        fx: (index % 3) * 300 + 200, // Fix positions
-        fy: Math.floor(index / 3) * 300 + 200,
-      }));
-
-    // Create device nodes from processes
-    const deviceNodes = Object.values(processes).map((process, index) => ({
-      ...process,
-      type: 'device',
-      id: process.name,
-      roomId: process.topos.find((topo) => topo.sink !== process.name)?.sink,
-      status: activeDevices[process.name] ? 'on' : 'off', // Add status based on activeDevices
-      x: (index % 3) * 300 + 200, // Optional: Assign initial positions if needed
-      y: Math.floor(index / 3) * 300 + 200,
-    }));
-
-    // Define Electricity Grid Node
-    const gridNode = {
-      type: 'electricityGrid',
-      id: 'Electricity Grid',
-      x: 100, // Position outside rooms (left side)
-      y: height / 2, // Vertically centered
-      fx: 100,
-      fy: height / 2,
+    // Cleanup on unmount
+    return () => {
+      svg.on(".zoom", null);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array ensures this runs once
 
-    // Combine nodes
-    nodeData.push(...roomNodes, ...deviceNodes, gridNode);
+  // Render Visualization
+  const renderVisualization = useCallback(() => {
+    // Guard Clause: Ensure svgRef.current exists
+    if (!svgRef.current) {
+      return;
+    }
 
-    // Create SVG with responsive design
-    const svg = d3
-      .select(svgRef.current)
-      .attr('viewBox', `0 0 ${width} ${height}`)
-      .attr('preserveAspectRatio', 'xMidYMid meet');
+    const svg = d3.select(svgRef.current).select("g");
+    svg.selectAll("*").remove(); // Clear previous content
+
+    // Guard Clause: Ensure there are rooms and devices to visualize
+    if (rooms.length === 0 || userHeatingDevices.length === 0) {
+      return;
+    }
+
+    // Define dimensions based on container
+    const containerWidth = svgRef.current.parentElement.offsetWidth;
+    const containerHeight = containerWidth * 0.8; // Maintain aspect ratio
+
+    // Define dynamic grid based on number of rooms
+    const numRooms = rooms.length;
+    const numCols = Math.ceil(Math.sqrt(numRooms));
+    const numRows = Math.ceil(numRooms / numCols);
+    const roomWidth = containerWidth / (numCols + 1);
+    const roomHeight = containerHeight / (numRows + 1);
+    const roomSize = Math.min(roomWidth, roomHeight) * 0.8; // 80% of grid cell
+
+    // Calculate room positions
+    const roomData = rooms.map((room, index) => {
+      const col = index % numCols;
+      const row = Math.floor(index / numCols);
+      return {
+        ...room,
+        x: (col + 1) * (containerWidth / (numCols + 1)),
+        y: (row + 1) * (containerHeight / (numRows + 1)),
+      };
+    });
 
     // Define color scales
     const color = d3
       .scaleOrdinal()
-      .domain(['room', 'device-on', 'device-off', 'electricityGrid'])
-      .range(['#ffcc00', '#4CAF50', '#F44336', '#2196F3']); // Yellow for rooms, Green for on, Red for off, Blue for grid
-
-    // Removed links connecting Electricity Grid to devices
+      .domain(["room", "device-on", "device-off", "electricityGrid"])
+      .range(["#ffcc00", "#4CAF50", "#F44336", "#2196F3"]); // Yellow for rooms, Green for on, Red for off, Blue for grid
 
     // Draw Electricity Grid
+    const gridNode = {
+      type: "electricityGrid",
+      id: "Electricity Grid",
+      x: containerWidth / 2,
+      y: containerHeight - 100,
+    };
+
     const gridGroup = svg
-      .append('g')
-      .attr('class', 'electricityGrid')
-      .attr('transform', `translate(${gridNode.x}, ${gridNode.y})`)
-      .attr('tabindex', 0)
-      .attr('role', 'button')
-      .attr('aria-label', `Electricity Grid`)
-      .on('click', () => setIsPopupOpen(true)); // Add click handler to open popup
+      .append("g")
+      .attr("class", "electricityGrid")
+      .attr("transform", `translate(${gridNode.x}, ${gridNode.y})`)
+      .attr("tabindex", 0)
+      .attr("role", "button")
+      .attr("aria-label", `Electricity Grid`)
+      .on("click", () => setIsPopupOpen(true)); // Add click handler to open popup
 
-    // Draw grid square
     gridGroup
-      .append('rect')
-      .attr('width', 100)
-      .attr('height', 100)
-      .attr('x', -50)
-      .attr('y', -50)
-      .attr('fill', color('electricityGrid'))
-      .attr('stroke', '#000')
-      .attr('stroke-width', 2);
+      .append("rect")
+      .attr("width", 80) // Increased size
+      .attr("height", 80)
+      .attr("x", -40)
+      .attr("y", -40)
+      .attr("fill", color("electricityGrid"))
+      .attr("stroke", "#000")
+      .attr("stroke-width", 2);
 
-    // Add grid label
     gridGroup
-      .append('text')
-      .text('Electricity Grid')
-      .attr('text-anchor', 'middle')
-      .attr('dy', 10)
-      .attr('class', 'grid-label');
+      .append("text")
+      .text("Electricity Grid")
+      .attr("text-anchor", "middle")
+      .attr("dy", 50) // Position below the square
+      .attr("class", "grid-label")
+      .attr("font-size", "16px"); // Increased font size
 
-    // Create groups for rooms
+    // Draw Rooms
     const roomGroups = svg
-      .selectAll('.room')
-      .data(roomNodes)
+      .selectAll(".room")
+      .data(roomData)
       .enter()
-      .append('g')
-      .attr('class', 'room')
-      .attr('transform', (d) => `translate(${d.x}, ${d.y})`);
+      .append("g")
+      .attr("class", "room")
+      .attr("transform", (d) => `translate(${d.x}, ${d.y})`);
 
-    // Draw room squares
     roomGroups
-      .append('rect')
-      .attr('width', 200) // Increased size
-      .attr('height', 200)
-      .attr('x', -100)
-      .attr('y', -100)
-      .attr('fill', color('room'))
-      .attr('stroke', '#000')
-      .attr('stroke-width', 2);
+      .append("rect")
+      .attr("width", roomSize)
+      .attr("height", roomSize)
+      .attr("x", -roomSize / 2)
+      .attr("y", -roomSize / 2)
+      .attr("fill", color("room"))
+      .attr("stroke", "#000")
+      .attr("stroke-width", 2);
 
-    // Add room ID labels
     roomGroups
-      .append('text')
-      .text((d) => d.id)
-      .attr('text-anchor', 'middle')
-      .attr('dy', -110) // Position above the square
-      .attr('class', 'room-label');
+      .append("text")
+      .text((d) => d.roomId)
+      .attr("text-anchor", "middle")
+      .attr("dy", -roomSize / 2 - 10)
+      .attr("class", "room-label")
+      .attr("font-size", "22px"); // Increased font size
 
-    // Add Temperature Labels
     roomGroups
-      .append('text')
-      .text((d) => {
-        const tempDisplay = getTemperatureDisplay(d);
-        return `Temp: ${tempDisplay}`;
-      })
-      .attr('text-anchor', 'middle')
-      .attr('dy', -90) // Position below the room ID label
-      .attr('class', 'room-temperature-label');
+      .append("text")
+      .text((d) => `Temp: ${getTemperatureDisplay(d)}`)
+      .attr("text-anchor", "middle")
+      .attr("dy", -roomSize / 2 + 10)
+      .attr("class", "room-temperature-label")
+      .attr("font-size", "18px"); // Increased font size
 
-    // Create device nodes within rooms
+    // Draw Devices within Rooms
     roomGroups.each(function (room) {
-      const devicesInRoom = deviceNodes.filter(
-        (device) => device.roomId === room.id
+      const devicesInRoom = Object.values(processes).filter(
+        (device) => device.roomId === room.roomId
       );
 
-      // Calculate positions for devices within the room
-      const devicePositions = calculateDevicePositions(devicesInRoom.length);
+      if (devicesInRoom.length === 0) return; // Skip if no devices
 
-      // Create a group for devices within this room
+      const devicePositions = calculateDevicePositions(devicesInRoom.length, roomSize);
+
       const deviceGroup = d3
         .select(this)
-        .selectAll('.device')
+        .selectAll(".device")
         .data(devicesInRoom)
         .enter()
-        .append('g')
-        .attr('class', 'device')
-        .attr('tabindex', 0) // Make devices focusable
-        .attr('role', 'button') // Define role for accessibility
-        .attr('aria-label', (d) => `Device ${d.id}, Status ${d.status}`)
-        .on('click', function(event, d) {
-          event.stopPropagation(); // Prevent triggering parent click events
+        .append("g")
+        .attr("class", "device")
+        .attr("transform", (d, i) => `translate(${devicePositions[i].x}, ${devicePositions[i].y})`)
+        .attr("tabindex", 0) // Make devices focusable
+        .attr("role", "button") // Define role for accessibility
+        .attr("aria-label", (d) => `Device ${d.id}, Status ${d.status}`)
+        .on("click", (event, d) => {
+          event.stopPropagation(); // Prevent triggering room click
           onDeviceClick(d); // Call the handler passed from App.js
         });
 
-      // Position devices at fixed positions within the room square
       deviceGroup
-        .append('rect') // Changed from circle to rect
-        .attr('width', 60)
-        .attr('height', 60)
-        .attr('x', (d, i) => devicePositions[i].x - 30) // Center the square
-        .attr('y', (d, i) => devicePositions[i].y - 30)
-        .attr('fill', (d) => color(`device-${d.status}`)) // Color based on status
-        .attr('stroke', '#000')
-        .attr('stroke-width', 1)
+        .append("rect") // Changed from circle to rect
+        .attr("width", 80) // Increased size
+        .attr("height", 80)
+        .attr("x", -40) // Center the square
+        .attr("y", -40)
+        .attr("fill", (d) => color(`device-${d.status}`)) // Color based on status
+        .attr("stroke", "#000")
+        .attr("stroke-width", 2)
+        .attr("rx", 15) // Rounded corners
+        .attr("ry", 15)
         .transition()
         .duration(500)
-        .attr('fill', (d) => color(`device-${d.status}`));
+        .attr("fill", (d) => color(`device-${d.status}`));
 
       // Add device labels
       deviceGroup
-        .append('text')
+        .append("text")
         .text((d) => d.id)
-        .attr('text-anchor', 'middle')
-        .attr('dy', 5)
-        .attr('x', (d, i) => devicePositions[i].x)
-        .attr('y', (d, i) => devicePositions[i].y)
-        .attr('class', 'device-label');
+        .attr("text-anchor", "middle")
+        .attr("dy", 25) // Adjusted position
+        .attr("class", "device-label")
+        .attr("font-size", "16px"); // Increased font size
 
       // Add status label inside the square
       deviceGroup
-        .append('text')
+        .append("text")
         .text((d) => `Status: ${d.status}`)
-        .attr('text-anchor', 'middle')
-        .attr('dy', 25)
-        .attr('x', (d, i) => devicePositions[i].x)
-        .attr('y', (d, i) => devicePositions[i].y)
-        .attr('class', 'device-status-label');
+        .attr("text-anchor", "middle")
+        .attr("dy", 45)
+        .attr("class", "device-status-label")
+        .attr("font-size", "16px"); // Increased font size
     });
 
     // Tooltip
     const tooltip = d3
-      .select('body')
-      .append('div')
-      .attr('class', 'tooltip');
-
-    // Removed Room Interactions
+      .select("body")
+      .append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
 
     // Device interactions
     svg
-      .selectAll('.device')
-      .on('mouseover', function (event, d) {
+      .selectAll(".device")
+      .on("mouseover", function (event, d) {
         tooltip
-          .style('opacity', 0.9)
+          .style("opacity", 0.9)
           .html(
             `<strong>Device ID:</strong> ${d.id}<br>
              <strong>Capacity:</strong> ${d.capacity} kW<br>
              <strong>Status:</strong> ${d.status}`
           )
-          .style('left', event.pageX + 10 + 'px')
-          .style('top', event.pageY - 28 + 'px');
+          .style("left", event.pageX + 10 + "px")
+          .style("top", event.pageY - 28 + "px");
       })
-      .on('mousemove', function (event) {
+      .on("mousemove", function (event) {
         tooltip
-          .style('left', event.pageX + 10 + 'px')
-          .style('top', event.pageY - 28 + 'px');
+          .style("left", event.pageX + 10 + "px")
+          .style("top", event.pageY - 28 + "px");
       })
-      .on('mouseout', function () {
-        tooltip.style('opacity', 0);
+      .on("mouseout", function () {
+        tooltip.style("opacity", 0);
       });
 
     // Add Legend
     const legendData = [
-      { label: 'Electricity Grid', color: color('electricityGrid') },
-      { label: 'Room', color: color('room') },
-      { label: 'Device On', color: color('device-on') },
-      { label: 'Device Off', color: color('device-off') },
+      { label: "Electricity Grid", color: color("electricityGrid") },
+      { label: "Room", color: color("room") },
+      { label: "Device On", color: color("device-on") },
+      { label: "Device Off", color: color("device-off") },
     ];
 
     const legend = svg
-      .append('g')
-      .attr('class', 'legend')
-      .attr('transform', `translate(${width - 150}, 50)`); // Position the legend
+      .append("g")
+      .attr("class", "legend")
+      .attr("transform", `translate(${containerWidth - 250}, 50)`); // Adjusted position
 
     legendData.forEach((item, index) => {
       const legendRow = legend
-        .append('g')
-        .attr('transform', `translate(0, ${index * 25})`);
+        .append("g")
+        .attr("transform", `translate(0, ${index * 40})`); // Increased spacing
 
       // Rectangle for color
       legendRow
-        .append('rect')
-        .attr('width', 20)
-        .attr('height', 20)
-        .attr('fill', item.color);
+        .append("rect")
+        .attr("width", 30) // Increased size
+        .attr("height", 30)
+        .attr("fill", item.color);
 
       // Text label
       legendRow
-        .append('text')
-        .attr('x', 30)
-        .attr('y', 15)
+        .append("text")
+        .attr("x", 40)
+        .attr("y", 22) // Adjusted for vertical alignment
         .text(item.label)
-        .attr('class', 'legend-label');
+        .attr("class", "legend-label")
+        .attr("font-size", "18px"); // Increased font size
     });
 
-    // Add Background Rectangle for Temperature Display (Optional)
-    svg.append('rect')
-      .attr('x', width - 250) // Adjust based on text width
-      .attr('y', 20) // Positioning
-      .attr('width', 200)
-      .attr('height', 40)
-      .attr('fill', '#f0f0f0') // Light gray background
-      .attr('stroke', '#000') // Black border
-      .attr('stroke-width', 1);
+    // Add Background Rectangle for Temperature Display
+    svg
+      .append("rect")
+      .attr("x", 50) // Positioned at top-left
+      .attr("y", 20) // Positioning
+      .attr("width", 300)
+      .attr("height", 80)
+      .attr("fill", "#f0f0f0") // Light gray background
+      .attr("stroke", "#000") // Black border
+      .attr("stroke-width", 2);
 
-    // Determine Text Color Based on Temperature (Optional)
-    const tempColor = outsideTemp < 0 ? '#0000FF' : outsideTemp > 25 ? '#FF0000' : '#000000';
+    // Determine Text Color Based on Temperature
+    const tempColor =
+      outsideTemp < 0 ? "#0000FF" : outsideTemp > 25 ? "#FF0000" : "#000000";
 
     // Add Outside Temperature Display with Dynamic Color
-    svg.append('text')
-      .attr('x', width - 150) // Center within the rectangle
-      .attr('y', 50) // Position vertically centered within the rectangle
-      .attr('text-anchor', 'middle')
-      .attr('font-size', '18px')
-      .attr('fill', tempColor) // Dynamic color
-      .attr('aria-label', `Outside Temperature is ${outsideTemp} degrees Celsius`) // Accessibility
-      .text(`Outside Temperature: ${outsideTemp} °C`);
+    svg
+      .append("text")
+      .attr("x", 200) // Center within the rectangle
+      .attr("y", 60) // Position vertically centered within the rectangle
+      .attr("text-anchor", "middle")
+      .attr("font-size", "20px") // Increased font size
+      .attr("fill", tempColor) // Dynamic color
+      .attr(
+        "aria-label",
+        `Outside Temperature is ${outsideTemp} degrees Celsius`
+      ) // Accessibility
+      .text(`Outside Temp: ${outsideTemp} °C`);
 
-    // Add Background Rectangle for Last Optimized Display (Optional)
-    svg.append('rect')
-      .attr('x', width - 250) // Same x as temperature display
-      .attr('y', 80) // Positioned below the temperature display
-      .attr('width', 200)
-      .attr('height', 40)
-      .attr('fill', '#f0f0f0') // Light gray background
-      .attr('stroke', '#000') // Black border
-      .attr('stroke-width', 1);
+    // Add Background Rectangle for Last Optimized Display
+    svg
+      .append("rect")
+      .attr("x", 50) // Same x as temperature display
+      .attr("y", 120) // Positioned below the temperature display
+      .attr("width", 300)
+      .attr("height", 80)
+      .attr("fill", "#f0f0f0") // Light gray background
+      .attr("stroke", "#000") // Black border
+      .attr("stroke-width", 2);
 
     // Format Last Optimized Time
     const formattedLastOptimized = lastOptimized
-      ? lastOptimized.toLocaleString([], { 
-          year: 'numeric', 
-          month: 'short', 
-          day: 'numeric', 
-          hour: '2-digit', 
-          minute: '2-digit' 
+      ? lastOptimized.toLocaleString([], {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
         })
-      : 'N/A';
+      : "N/A";
 
     // Add Last Optimized Display
-    svg.append('text')
-      .attr('x', width - 150) // Center within the rectangle
-      .attr('y', 110) // Position vertically centered within the rectangle
-      .attr('text-anchor', 'middle')
-      .attr('font-size', '16px')
-      .attr('fill', '#000') // Static color
-      .attr('aria-label', `Last Optimized on ${formattedLastOptimized}`) // Accessibility
+    svg
+      .append("text")
+      .attr("x", 200) // Center within the rectangle
+      .attr("y", 160) // Position vertically centered within the rectangle
+      .attr("text-anchor", "middle")
+      .attr("font-size", "18px") // Increased font size
+      .attr("fill", "#000") // Static color
+      .attr(
+        "aria-label",
+        `Last Optimized on ${formattedLastOptimized}`
+      ) // Accessibility
       .text(`Last Optimized: ${formattedLastOptimized}`);
 
-    // Clean up on unmount
-    return () => {
-      tooltip.remove();
-    };
-  }, [rooms, processes, activeDevices, onDeviceClick, getTemperatureDisplay, convertTemperature, outsideTemp, lastOptimized]);
+    // Note: Zoom and Pan behavior is already initialized in useEffect above
+  }, [
+    rooms,
+    processes,
+    onDeviceClick,
+    getTemperatureDisplay,
+    outsideTemp,
+    lastOptimized,
+    userHeatingDevices,
+  ]); // Removed 'activeDevices' from dependencies as it's not used here
 
-  // Function to calculate fixed positions for devices within a room
-  function calculateDevicePositions(deviceCount) {
-    const positions = [];
-    const spacing = 80; // Adjust spacing between devices
-    const startX = -80; // Starting x position
-    const startY = -80; // Starting y position
-    const maxPerRow = 3; // Max devices per row
-
-    for (let i = 0; i < deviceCount; i++) {
-      const row = Math.floor(i / maxPerRow);
-      const col = i % maxPerRow;
-      positions.push({
-        x: startX + col * spacing,
-        y: startY + row * spacing,
-      });
-    }
-    return positions;
-  }
+  // Effect to render visualization when dependencies change
+  useEffect(() => {
+    renderVisualization();
+  }, [renderVisualization]);
 
   // Handle Optimize Button Click
-  const handleOptimizeClick = () => {
+  const handleOptimizeClick = useCallback(() => {
     if (userHeatingDevices.length === 0) {
       setControlSignalsData(null);
       return;
     }
     setIsOptimizing(true);
-    // Here you can fetch or compute the actual control signals
-    // For demonstration, we'll simulate a delay and then generate dummy data
+    // Simulate fetching control signals
     setTimeout(() => {
       generateControlSignals();
     }, 1000); // Simulate network delay
-  };
+  }, [generateControlSignals, userHeatingDevices]);
+
+  // Listen to window resize to re-render visualization
+  useEffect(() => {
+    const handleResize = () => {
+      renderVisualization();
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [renderVisualization]);
 
   return (
     <div className="visualization-container">
@@ -452,71 +485,99 @@ function HomeEnergyFlowVisualization({ rooms, processes, activeDevices, onDevice
       <div className="control-signals-section">
         <h2>Control Signals</h2>
         {userHeatingDevices.length === 0 ? (
-          <p>No heating devices added yet for optimize.</p>
-        ) : (
-          controlSignalsData ? (
-            Object.entries(controlSignalsData).map(([deviceId, signals]) => (
-              <div key={deviceId} className="control-signals-device">
-                <h3>{deviceId}</h3>
-                <table className="control-signals-table">
-                  <thead>
-                    <tr>
-                      <th>Timestamp</th>
-                      <th>Status</th>
+          <p>No heating devices added yet for optimization.</p>
+        ) : controlSignalsData ? (
+          Object.entries(controlSignalsData).map(([deviceId, signals]) => (
+            <div key={deviceId} className="control-signals-device">
+              <h3>{deviceId}</h3>
+              <table className="control-signals-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {signals.map((signal, index) => (
+                    <tr key={index}>
+                      <td>{signal.time}</td>
+                      <td>{signal.status.toUpperCase()}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {signals.map((signal, index) => (
-                      <tr key={index}>
-                        <td>{signal.time}</td>
-                        <td>{signal.status.toUpperCase()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))
-          ) : (
-            <p>No control signals available.</p>
-          )
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))
+        ) : (
+          <p>No control signals available.</p>
         )}
       </div>
 
       {/* Optimize Button */}
       <div className="optimize-section">
-        <button className="optimize-button" onClick={handleOptimizeClick} disabled={isOptimizing}>
-          {isOptimizing ? 'Optimizing...' : 'Optimize'}
+        <button
+          className="optimize-button"
+          onClick={handleOptimizeClick}
+          disabled={isOptimizing}
+        >
+          {isOptimizing ? "Optimizing..." : "Optimize"}
         </button>
       </div>
 
-      {/* D3 Visualization SVG */}
-      <svg ref={svgRef}></svg>
+      {/* Conditional Rendering for Rooms and Devices */}
+      {rooms.length === 0 || userHeatingDevices.length === 0 ? (
+        <p className="no-data-message">
+          No rooms or devices added. Please go to the "Input Data" section to add properties of your building.
+        </p>
+      ) : (
+        <div className="svg-container">
+          <svg ref={svgRef}></svg>
+        </div>
+      )}
 
       {/* Popup for Electricity Prices */}
       {isPopupOpen && (
         <Popup onClose={() => setIsPopupOpen(false)}>
-          <h2>Current Electricity Prices</h2>
-          <table className="control-signals-table">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Price ($/kWh)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {electricityPrices.map((price, index) => (
-                <tr key={index}>
-                  <td>{price.time}</td>
-                  <td>{price.price.toFixed(2)}</td>
+          <div className="popup-content">
+            <h2>Current Electricity Prices</h2>
+            <table className="control-signals-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Price ($/kWh)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <button onClick={() => setIsPopupOpen(false)}>Close</button>
+              </thead>
+              <tbody>
+                {electricityPrices.map((price, index) => (
+                  <tr key={index}>
+                    <td>{price.time}</td>
+                    <td>{price.price.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button onClick={() => setIsPopupOpen(false)}>Close</button>
+          </div>
         </Popup>
       )}
     </div>
   );
+}
+
+// Helper function to calculate device positions within a room
+function calculateDevicePositions(deviceCount, roomSize) {
+  const positions = [];
+  const radius = roomSize / 2 - 50; // 50px padding from room edges
+  const angleStep = (2 * Math.PI) / deviceCount;
+
+  for (let i = 0; i < deviceCount; i++) {
+    const angle = i * angleStep;
+    const x = radius * Math.cos(angle);
+    const y = radius * Math.sin(angle);
+    positions.push({ x, y });
+  }
+
+  return positions;
 }
 
 export default HomeEnergyFlowVisualization;
