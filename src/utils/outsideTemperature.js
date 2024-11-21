@@ -5,6 +5,5 @@
  * @returns {number} - The test temperature.
  */
 export function getTestOutsideTemperature() {
-    return 15.5; // Example temperature in °C
-  }
-  
+  return 15.5; // Example temperature in °C
+}

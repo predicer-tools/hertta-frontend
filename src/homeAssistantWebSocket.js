@@ -1,7 +1,7 @@
 // homeAssistantWebSocket.js
 
 const connectWebSocket = (apiKey, onEntityUpdate) => {
-    const wsUrl = `ws://192.168.247.96:8123/api/websocket`;
+    const wsUrl = `ws://192.168.41.27/8123/api/websocket`;
     let ws;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 10;

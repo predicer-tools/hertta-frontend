@@ -1,5 +1,37 @@
 /* src/App.css */
 
+/* Import Roboto from Google Fonts using @import (if not using <link> in index.html) */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+/* Define CSS Variables in the :root selector */
+:root {
+  /* Font Sizes */
+  --font-size-xs: 0.75rem;  /* 12px */
+  --font-size-sm: 0.875rem; /* 14px */
+  --font-size-md: 1rem;      /* 16px */
+  --font-size-lg: 1.25rem;   /* 20px */
+  --font-size-xl: 1.5rem;    /* 24px */
+  --font-size-xxl: 2rem;     /* 32px */
+
+  /* Font Families */
+  --font-family-primary: 'Roboto', sans-serif;
+  --font-family-secondary: 'Helvetica, sans-serif';
+
+  /* Highlight Color for Focus States */
+  --highlight-color: #ffd700; /* Gold */
+}
+
+/* Base Styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-md); /* 16px */
+  line-height: 1.6;
+  color: #333;
+  background-color: #fff;
+}
+
 /* Container for forms and visualization */
 .app-container {
   display: flex;
@@ -45,6 +77,7 @@
 .input-group label {
   margin-bottom: 0.3125rem; /* 5px */
   font-weight: bold;
+  font-size: var(--font-size-sm); /* 14px */
 }
 
 .input-group input,
@@ -52,6 +85,7 @@
   padding: 0.5rem; /* 8px */
   border: 0.0625rem solid #ccc; /* 1px */
   border-radius: 0.25rem; /* 4px */
+  font-size: var(--font-size-md); /* 16px */
 }
 
 .button-group {
@@ -68,7 +102,7 @@
   color: white;
   cursor: pointer;
   transition: background-color 0.3s ease;
-  font-size: 1rem; /* 16px */
+  font-size: var(--font-size-md); /* 16px */
 }
 
 .button-group button:hover {
@@ -80,10 +114,38 @@
   cursor: not-allowed;
 }
 
+/* Optimize Button Styling */
+.optimize-section {
+  margin-bottom: 1.25rem; /* 20px */
+  display: flex;
+  justify-content: center;
+}
+
+.optimize-button {
+  padding: 0.625rem 1.25rem; /* 10px 20px */
+  font-size: var(--font-size-md); /* 16px */
+  background-color: #2196F3; /* Blue */
+  color: white;
+  border: none;
+  border-radius: 0.25rem; /* 4px */
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.optimize-button:hover {
+  background-color: #1976D2;
+}
+
+.optimize-button:disabled {
+  background-color: #90CAF9; /* Light Blue */
+  cursor: not-allowed;
+}
+
 /* Error Message Styling */
 .error-message {
   color: red;
   margin-top: 0.625rem; /* 10px */
+  font-size: var(--font-size-sm); /* 14px */
 }
 
 /* Responsive SVG Styling */
@@ -105,6 +167,7 @@
 
 .control-signals-section h2 {
   margin-bottom: 0.625rem; /* 10px */
+  font-size: var(--font-size-lg); /* 20px */
 }
 
 .control-signals-device {
@@ -113,6 +176,7 @@
 
 .control-signals-device h3 {
   margin-bottom: 0.3125rem; /* 5px */
+  font-size: var(--font-size-md); /* 16px */
 }
 
 .control-signals-table {
@@ -125,7 +189,7 @@
   border: 1px solid #ddd;
   padding: 0.5rem; /* 8px */
   text-align: left;
-  font-size: 1rem; /* 16px */
+  font-size: var(--font-size-md); /* 16px */
 }
 
 .control-signals-table th {
@@ -140,35 +204,30 @@
   background-color: #ddd;
 }
 
-/* Optimize Button Styling */
-.optimize-section {
-  margin-bottom: 1.25rem; /* 20px */
-  display: flex;
-  justify-content: center;
-}
-
-.optimize-button {
-  padding: 0.625rem 1.25rem; /* 10px 20px */
-  font-size: 1rem; /* 16px */
-  background-color: #2196F3; /* Blue */
-  color: white;
-  border: none;
-  border-radius: 0.25rem; /* 4px */
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.optimize-button:hover {
-  background-color: #1976D2;
-}
-
-.optimize-button:disabled {
-  background-color: #90CAF9; /* Light Blue */
-  cursor: not-allowed;
+/* No Data Message Styling */
+.no-data-message {
+  font-size: var(--font-size-xl); /* 24px */
+  color: #555;
+  margin-top: 3.125rem; /* 50px */
+  text-align: center;
 }
 
 /* Responsive Design Adjustments */
+@media (max-width: 1200px) {
+  /* Adjust padding and font sizes for large screens */
+  .app-container {
+    padding: 1rem; /* 16px */
+  }
+
+  .left-side,
+  .right-side {
+    flex: 1 1 100%; /* Take full width on medium screens */
+    padding: 1rem; /* 16px */
+  }
+}
+
 @media (max-width: 1024px) {
+  /* Further adjustments for medium screens */
   .left-side,
   .right-side {
     flex: 1 1 100%; /* Take full width on medium screens */
@@ -177,9 +236,14 @@
   .graph-container svg {
     max-height: none; /* Allow full scaling */
   }
+
+  .control-signals-section h2 {
+    font-size: var(--font-size-xl); /* 24px */
+  }
 }
 
 @media (max-width: 768px) {
+  /* Mobile devices */
   .button-group {
     flex-direction: column;
     align-items: stretch;
@@ -197,32 +261,31 @@
   .right-side {
     padding: 0.9375rem; /* 15px */
   }
-}
 
-@media (max-width: 480px) {
+  /* Adjust font sizes for smaller screens */
   .input-group label,
   .input-group input,
   .input-group select {
-    font-size: 0.875rem; /* 14px */
+    font-size: var(--font-size-sm); /* 14px */
   }
 
   .button-group button {
-    font-size: 0.875rem; /* 14px */
+    font-size: var(--font-size-sm); /* 14px */
     padding: 0.5rem 0.75rem; /* 8px 12px */
   }
 
   .control-signals-table th,
   .control-signals-table td {
     padding: 0.375rem; /* 6px */
-    font-size: 0.875rem; /* 14px */
+    font-size: var(--font-size-sm); /* 14px */
   }
 
   .control-signals-section h2 {
-    font-size: 1.125rem; /* 18px */
+    font-size: var(--font-size-md); /* 16px */
   }
 
   .device-form h3 {
-    font-size: 1.125rem; /* 18px */
+    font-size: var(--font-size-md); /* 16px */
   }
 
   .graph-container h1 {
@@ -231,6 +294,41 @@
 
   .left-side h1 {
     font-size: 1.5rem; /* 24px */
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small devices */
+  .input-group label,
+  .input-group input,
+  .input-group select {
+    font-size: var(--font-size-xs); /* 12px */
+  }
+
+  .button-group button {
+    font-size: var(--font-size-xs); /* 12px */
+    padding: 0.5rem 0.75rem; /* 8px 12px */
+  }
+
+  .control-signals-section h2 {
+    font-size: var(--font-size-sm); /* 14px */
+  }
+
+  .device-form h3 {
+    font-size: var(--font-size-sm); /* 14px */
+  }
+
+  .graph-container h1 {
+    font-size: 1.5rem; /* 24px */
+  }
+
+  .left-side h1 {
+    font-size: 1.5rem; /* 24px */
+  }
+
+  .control-signals-table th,
+  .control-signals-table td {
+    font-size: var(--font-size-xs); /* 12px */
   }
 }
 
@@ -250,4 +348,25 @@ body {
 
 .content {
   overflow-y: auto;
+}
+
+/* Additional Utility Classes */
+.text-center {
+  text-align: center;
+}
+
+.mt-1 {
+  margin-top: 0.25rem; /* 4px */
+}
+
+.mt-2 {
+  margin-top: 0.5rem; /* 8px */
+}
+
+.mb-1 {
+  margin-bottom: 0.25rem; /* 4px */
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem; /* 8px */
 }

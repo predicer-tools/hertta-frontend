@@ -1,7 +1,9 @@
+// src/DataTable.js
+
 import React from 'react';
 import './DataTable.css';
 
-function DataTable({ electricHeaters, rooms, homeAssistantSensors, fetchedDevices, deleteHeater, deleteRoom }) {
+function DataTable({ rooms, homeAssistantSensors, fetchedDevices, deleteHeater, deleteRoom }) {
   return (
     <div>
       <h2>Data Table</h2>
@@ -76,17 +78,19 @@ function DataTable({ electricHeaters, rooms, homeAssistantSensors, fetchedDevice
           </tr>
         </thead>
         <tbody>
-          {electricHeaters.length > 0 ? (
-            electricHeaters.map((heater, index) => (
-              <tr key={index}>
-                <td>{heater.id}</td>
-                <td>{heater.capacity}</td>
-                <td>{heater.roomId}</td>
-                <td>
-                  <button onClick={() => deleteHeater(heater.id)}>Delete</button>
-                </td>
-              </tr>
-            ))
+          {rooms.length > 0 ? (
+            rooms.flatMap((room) =>
+              room.devices.map((heater) => (
+                <tr key={heater.id}>
+                  <td>{heater.id}</td>
+                  <td>{heater.capacity}</td>
+                  <td>{room.roomId}</td>
+                  <td>
+                    <button onClick={() => deleteHeater(heater.id, room.roomId)}>Delete</button>
+                  </td>
+                </tr>
+              ))
+            )
           ) : (
             <tr>
               <td colSpan="4">No electric heaters available</td>

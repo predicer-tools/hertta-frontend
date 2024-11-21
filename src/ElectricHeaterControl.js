@@ -1,7 +1,7 @@
 // Function to control the electric heater (lamp)
 export const controlElectricHeater = async (entityId, action, apiKey) => {
     try {
-        const url = `http://192.168.247.96:8123//api/services/light/${action}`;
+        const url = `http://192.168.41.27:8123//api/services/light/${action}`;
         
         // Prepend "light." to the entityId if it doesn't already start with it
         const fullEntityId = entityId.startsWith('light.') ? entityId : `light.${entityId}`;

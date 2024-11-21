@@ -9,7 +9,6 @@ import { getTestOutsideTemperature } from "./utils/outsideTemperature"; // Impor
 
 function HomeEnergyFlowVisualization({
   rooms,
-  processes,
   activeDevices,
   onDeviceClick,
   userHeatingDevices,
@@ -73,7 +72,7 @@ function HomeEnergyFlowVisualization({
       const signals = [];
       const now = new Date();
       for (let i = 0; i < 24; i++) {
-        // 24 intervals (6 hours * 4)
+        // 24 intervals (15 minutes each)
         const time = new Date(now.getTime() + i * 15 * 60000); // 15 minutes in ms
         const status = Math.random() > 0.5 ? "on" : "off"; // Random on/off
         signals.push({
@@ -84,19 +83,8 @@ function HomeEnergyFlowVisualization({
       return signals;
     };
 
-    // Filter heating devices from userHeatingDevices
-    const heatingDevices = userHeatingDevices.filter((deviceId) =>
-      processes.hasOwnProperty(deviceId)
-    );
-
-    if (heatingDevices.length === 0) {
-      setControlSignalsData(null);
-      setIsOptimizing(false);
-      return;
-    }
-
     // Generate control signals for each heating device
-    const signals = heatingDevices.reduce((acc, deviceId) => {
+    const signals = userHeatingDevices.reduce((acc, deviceId) => {
       acc[deviceId] = generateDummySignals(deviceId);
       return acc;
     }, {});
@@ -106,7 +94,17 @@ function HomeEnergyFlowVisualization({
 
     // Update Last Optimized Time
     setLastOptimized(new Date()); // Capture the current date and time
-  }, [processes, userHeatingDevices]);
+  }, [userHeatingDevices]);
+
+  // Function to get the current electricity price based on the current hour
+  const getCurrentElectricityPrice = useCallback(() => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const priceData = electricityPrices.find(
+      (entry) => parseInt(entry.time.split(":")[0], 10) === currentHour
+    );
+    return priceData ? priceData.price.toFixed(2) : "N/A";
+  }, []);
 
   // Zoom State
   const [zoomState, setZoomState] = useState(d3.zoomIdentity);
@@ -124,14 +122,19 @@ function HomeEnergyFlowVisualization({
         setZoomState(event.transform); // Update zoomState
       });
 
-    svg.call(zoom).call(zoom.transform, zoomState); // Apply persisted zoom
+    svg.call(zoom);
 
     // Cleanup on unmount
     return () => {
       svg.on(".zoom", null);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array ensures this runs once
+
+  // Apply persisted zoomState whenever it changes
+  useEffect(() => {
+    const svg = d3.select(svgRef.current);
+    svg.call(d3.zoom().transform, zoomState); // Apply persisted zoom
+  }, [zoomState]);
 
   // Render Visualization
   const renderVisualization = useCallback(() => {
@@ -177,41 +180,6 @@ function HomeEnergyFlowVisualization({
       .domain(["room", "device-on", "device-off", "electricityGrid"])
       .range(["#ffcc00", "#4CAF50", "#F44336", "#2196F3"]); // Yellow for rooms, Green for on, Red for off, Blue for grid
 
-    // Draw Electricity Grid
-    const gridNode = {
-      type: "electricityGrid",
-      id: "Electricity Grid",
-      x: containerWidth / 2,
-      y: containerHeight - 100,
-    };
-
-    const gridGroup = svg
-      .append("g")
-      .attr("class", "electricityGrid")
-      .attr("transform", `translate(${gridNode.x}, ${gridNode.y})`)
-      .attr("tabindex", 0)
-      .attr("role", "button")
-      .attr("aria-label", `Electricity Grid`)
-      .on("click", () => setIsPopupOpen(true)); // Add click handler to open popup
-
-    gridGroup
-      .append("rect")
-      .attr("width", 80) // Increased size
-      .attr("height", 80)
-      .attr("x", -40)
-      .attr("y", -40)
-      .attr("fill", color("electricityGrid"))
-      .attr("stroke", "#000")
-      .attr("stroke-width", 2);
-
-    gridGroup
-      .append("text")
-      .text("Electricity Grid")
-      .attr("text-anchor", "middle")
-      .attr("dy", 50) // Position below the square
-      .attr("class", "grid-label")
-      .attr("font-size", "16px"); // Increased font size
-
     // Draw Rooms
     const roomGroups = svg
       .selectAll(".room")
@@ -231,6 +199,7 @@ function HomeEnergyFlowVisualization({
       .attr("stroke", "#000")
       .attr("stroke-width", 2);
 
+    // Room ID Label
     roomGroups
       .append("text")
       .text((d) => d.roomId)
@@ -239,23 +208,83 @@ function HomeEnergyFlowVisualization({
       .attr("class", "room-label")
       .attr("font-size", "22px"); // Increased font size
 
+    // Room Temperature Label - Centered
     roomGroups
       .append("text")
       .text((d) => `Temp: ${getTemperatureDisplay(d)}`)
       .attr("text-anchor", "middle")
-      .attr("dy", -roomSize / 2 + 10)
+      .attr("dy", 0) // Center vertically
+      .attr("dominant-baseline", "middle") // Perfect vertical centering
       .attr("class", "room-temperature-label")
-      .attr("font-size", "18px"); // Increased font size
+      .attr("font-size", "18px") // Increased font size
+      .attr("fill", "#000"); // Optional: Ensure text color contrasts with room color
+
+    // Determine maximum y-coordinate among all rooms
+    const maxY = d3.max(roomData, (d) => d.y);
+
+    // Define Electricity Grid Position
+    const gridNode = {
+      type: "electricityGrid",
+      id: "Electricity Grid",
+      x: containerWidth / 2,
+      y: maxY + roomSize + 100, // Positioned below the rooms with padding
+    };
+
+    const gridGroup = svg
+      .append("g")
+      .attr("class", "electricityGrid")
+      .attr("transform", `translate(${gridNode.x}, ${gridNode.y})`)
+      .attr("tabindex", 0)
+      .attr("role", "button")
+      .attr("aria-label", "Electricity Grid")
+      .on("click", () => setIsPopupOpen(true)); // Add click handler to open popup
+
+    gridGroup
+      .append("rect")
+      .attr("width", roomSize)
+      .attr("height", roomSize)
+      .attr("x", -roomSize / 2)
+      .attr("y", -roomSize / 2)
+      .attr("fill", color("electricityGrid"))
+      .attr("stroke", "#000")
+      .attr("stroke-width", 2);
+
+    // Electricity Grid Label - Above the square
+    gridGroup
+      .append("text")
+      .text("Electricity Grid")
+      .attr("text-anchor", "middle")
+      .attr("dy", -roomSize / 2 - 10)
+      .attr("class", "grid-label")
+      .attr("font-size", "22px")
+      .attr("fill", "#000");
+
+    // Electricity Price Label - Centered
+    const currentElectricityPrice = getCurrentElectricityPrice();
+
+    gridGroup
+      .append("text")
+      .text(`Price: $${currentElectricityPrice}/kWh`)
+      .attr("text-anchor", "middle")
+      .attr("dy", 0) // Center vertically
+      .attr("dominant-baseline", "middle") // Perfect vertical centering
+      .attr("class", "grid-price-label")
+      .attr("font-size", "18px")
+      .attr("fill", "#000");
 
     // Draw Devices within Rooms
     roomGroups.each(function (room) {
-      const devicesInRoom = Object.values(processes).filter(
-        (device) => device.roomId === room.roomId
-      );
+      const devicesInRoom = room.devices.map((device) => ({
+        ...device,
+        status: activeDevices[device.id] ? "on" : "off",
+      }));
 
       if (devicesInRoom.length === 0) return; // Skip if no devices
 
-      const devicePositions = calculateDevicePositions(devicesInRoom.length, roomSize);
+      const { positions: devicePositions, deviceSize } = calculateDevicePositions(
+        devicesInRoom.length,
+        roomSize
+      );
 
       const deviceGroup = d3
         .select(this)
@@ -264,7 +293,10 @@ function HomeEnergyFlowVisualization({
         .enter()
         .append("g")
         .attr("class", "device")
-        .attr("transform", (d, i) => `translate(${devicePositions[i].x}, ${devicePositions[i].y})`)
+        .attr(
+          "transform",
+          (d, i) => `translate(${devicePositions[i].x}, ${devicePositions[i].y})`
+        )
         .attr("tabindex", 0) // Make devices focusable
         .attr("role", "button") // Define role for accessibility
         .attr("aria-label", (d) => `Device ${d.id}, Status ${d.status}`)
@@ -274,16 +306,16 @@ function HomeEnergyFlowVisualization({
         });
 
       deviceGroup
-        .append("rect") // Changed from circle to rect
-        .attr("width", 80) // Increased size
-        .attr("height", 80)
-        .attr("x", -40) // Center the square
-        .attr("y", -40)
+        .append("rect")
+        .attr("width", deviceSize * 0.8) // Slightly smaller to avoid overlap
+        .attr("height", deviceSize * 0.8)
+        .attr("x", -deviceSize * 0.4) // Center the square
+        .attr("y", -deviceSize * 0.4)
         .attr("fill", (d) => color(`device-${d.status}`)) // Color based on status
         .attr("stroke", "#000")
         .attr("stroke-width", 2)
-        .attr("rx", 15) // Rounded corners
-        .attr("ry", 15)
+        .attr("rx", 5) // Rounded corners
+        .attr("ry", 5)
         .transition()
         .duration(500)
         .attr("fill", (d) => color(`device-${d.status}`));
@@ -293,18 +325,18 @@ function HomeEnergyFlowVisualization({
         .append("text")
         .text((d) => d.id)
         .attr("text-anchor", "middle")
-        .attr("dy", 25) // Adjusted position
+        .attr("dy", deviceSize * 0.2) // Adjusted position
         .attr("class", "device-label")
-        .attr("font-size", "16px"); // Increased font size
+        .attr("font-size", "12px"); // Adjust font size as needed
 
       // Add status label inside the square
       deviceGroup
         .append("text")
         .text((d) => `Status: ${d.status}`)
         .attr("text-anchor", "middle")
-        .attr("dy", 45)
+        .attr("dy", deviceSize * 0.35)
         .attr("class", "device-status-label")
-        .attr("font-size", "16px"); // Increased font size
+        .attr("font-size", "12px"); // Adjust font size as needed
     });
 
     // Tooltip
@@ -436,17 +468,16 @@ function HomeEnergyFlowVisualization({
         `Last Optimized on ${formattedLastOptimized}`
       ) // Accessibility
       .text(`Last Optimized: ${formattedLastOptimized}`);
-
-    // Note: Zoom and Pan behavior is already initialized in useEffect above
   }, [
     rooms,
-    processes,
     onDeviceClick,
     getTemperatureDisplay,
     outsideTemp,
     lastOptimized,
     userHeatingDevices,
-  ]); // Removed 'activeDevices' from dependencies as it's not used here
+    getCurrentElectricityPrice,
+    activeDevices, // Ensure activeDevices is included in dependencies
+  ]);
 
   // Effect to render visualization when dependencies change
   useEffect(() => {
@@ -567,17 +598,27 @@ function HomeEnergyFlowVisualization({
 // Helper function to calculate device positions within a room
 function calculateDevicePositions(deviceCount, roomSize) {
   const positions = [];
-  const radius = roomSize / 2 - 50; // 50px padding from room edges
-  const angleStep = (2 * Math.PI) / deviceCount;
+  const maxCols = Math.ceil(Math.sqrt(deviceCount));
+  const maxRows = Math.ceil(deviceCount / maxCols);
 
-  for (let i = 0; i < deviceCount; i++) {
-    const angle = i * angleStep;
-    const x = radius * Math.cos(angle);
-    const y = radius * Math.sin(angle);
-    positions.push({ x, y });
+  const padding = roomSize * 0.1; // 10% padding
+  const availableSize = roomSize - 2 * padding;
+  const deviceSize = availableSize / Math.max(maxCols, maxRows);
+
+  const startX = -availableSize / 2 + deviceSize / 2;
+  const startY = -availableSize / 2 + deviceSize / 2;
+
+  let index = 0;
+  for (let row = 0; row < maxRows; row++) {
+    for (let col = 0; col < maxCols; col++) {
+      if (index >= deviceCount) break;
+      const x = startX + col * deviceSize;
+      const y = startY + row * deviceSize;
+      positions.push({ x, y });
+      index++;
+    }
   }
-
-  return positions;
+  return { positions, deviceSize };
 }
 
 export default HomeEnergyFlowVisualization;

@@ -9,7 +9,6 @@ import Layout from './Layout';
 import HomeEnergyFlowVisualization from './HomeEnergyFlowVisualization';
 import JsonViewer from './JsonViewer';
 import generateJsonContent from './generateJsonContent';
-import generateProcessesData from './Input_Processes';
 import FormElectricHeater from './FormElectricHeater';
 import DeviceCards from './DeviceCards';
 import connectWebSocket from './homeAssistantWebSocket';
@@ -19,8 +18,6 @@ import { generateControlSignals } from './utils/generateControlSignals'; // Impo
 
 function App() {
   const [jsonContent, setJsonContent] = useState({});
-  const [electricHeaters, setElectricHeaters] = useState([]);
-  const [processes, setProcesses] = useState({});
   const [rooms, setRooms] = useState([]);
   const [apiKey, setApiKey] = useState(localStorage.getItem('homeAssistantApiKey') || '');
   const [homeAssistantSensors, setHomeAssistantSensors] = useState([]);
@@ -40,25 +37,17 @@ function App() {
   // Generate the JSON content whenever relevant states change
   useEffect(() => {
     const sensorStates = rooms.reduce((acc, room) => {
-      acc[room.sensorId] = room.sensorState !== undefined && room.sensorState !== null ? room.sensorState : 'N/A';
+      acc[room.sensorId] =
+        room.sensorState !== undefined && room.sensorState !== null ? room.sensorState : 'N/A';
       return acc;
     }, {});
 
-    const generatedJson = generateJsonContent(electricHeaters, rooms, activeDevices, sensorStates);
-    setJsonContent(generatedJson);
-  }, [electricHeaters, rooms, activeDevices]);
+    // Collect all devices from rooms
+    const allDevices = rooms.flatMap((room) => room.devices);
 
-  // Update processes data when electric heaters change
-  useEffect(() => {
-    if (electricHeaters.length > 0) {
-      const processData = generateProcessesData(electricHeaters);
-      setProcesses(processData);
-      console.log('Generated Processes:', processData); // Debugging
-    } else {
-      setProcesses({}); // Clear processes if no heaters
-      console.log('No heating devices present.');
-    }
-  }, [electricHeaters]);
+    const generatedJson = generateJsonContent(allDevices, rooms, activeDevices, sensorStates);
+    setJsonContent(generatedJson);
+  }, [rooms, activeDevices]);
 
   // Handle updates for sensor and device state changes
   const handleEntityUpdate = useCallback((entityId, newState) => {
@@ -67,7 +56,11 @@ function App() {
       setRooms((prevRooms) =>
         prevRooms.map((room) => {
           if (room.sensorId === entityId) {
-            return { ...room, sensorState: newState.state, sensorUnit: newState.attributes.unit_of_measurement };
+            return {
+              ...room,
+              sensorState: newState.state,
+              sensorUnit: newState.attributes.unit_of_measurement,
+            };
           }
           return room;
         })
@@ -88,7 +81,6 @@ function App() {
       });
     } else {
       // Handle device updates
-      // Update fetchedDevices
       setFetchedDevices((prevDevices) =>
         prevDevices.map((device) => {
           if (device.entity_id === entityId) {
@@ -142,11 +134,11 @@ function App() {
       return;
     }
     try {
-      const response = await fetch('http://192.168.247.96:8123/api/states', {
+      const response = await fetch('http://YOUR_HOME_ASSISTANT_IP:8123/api/states', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
         },
       });
 
@@ -155,15 +147,15 @@ function App() {
       }
 
       const data = await response.json();
-      const sensors = data.filter(entity => entity.entity_id.startsWith('sensor.'));
-      const nonSensorDevices = data.filter(entity => !entity.entity_id.startsWith('sensor.'));
+      const sensors = data.filter((entity) => entity.entity_id.startsWith('sensor.'));
+      const nonSensorDevices = data.filter((entity) => !entity.entity_id.startsWith('sensor.'));
 
       setHomeAssistantSensors(sensors);
       setFetchedDevices(nonSensorDevices);
 
       // Initialize activeDevices based on device states
       const initialActiveDevices = {};
-      nonSensorDevices.forEach(device => {
+      nonSensorDevices.forEach((device) => {
         initialActiveDevices[device.entity_id] = device.state === 'on'; // Assuming 'on' signifies active
       });
       setActiveDevices(initialActiveDevices);
@@ -175,14 +167,11 @@ function App() {
     }
   };
 
+  // Modify addRoom
   const addRoom = (room) => {
-    const selectedSensorData = homeAssistantSensors.find(sensor => sensor.entity_id === room.sensorId);
-    const updatedRoom = {
-      ...room,
-      sensorState: selectedSensorData ? selectedSensorData.state : 'N/A',
-      sensorUnit: selectedSensorData ? selectedSensorData.attributes.unit_of_measurement : '°C', // Default to '°C' if missing
-    };
-    setRooms([...rooms, updatedRoom]);
+    // Initialize devices array
+    const newRoom = { ...room, devices: [] };
+    setRooms([...rooms, newRoom]);
 
     setActiveDevices((prevStatus) => ({
       ...prevStatus,
@@ -190,30 +179,55 @@ function App() {
     }));
   };
 
+  // Modify addElectricHeater
   const addElectricHeater = (heater) => {
-    setElectricHeaters([...electricHeaters, heater]);
+    setRooms((prevRooms) =>
+      prevRooms.map((room) => {
+        if (room.roomId === heater.roomId) {
+          // Add device to this room's devices array
+          return {
+            ...room,
+            devices: [...room.devices, heater],
+          };
+        } else {
+          return room;
+        }
+      })
+    );
+
+    // Update activeDevices and userHeatingDevices if needed
     setActiveDevices((prevStatus) => ({
       ...prevStatus,
       [heater.id]: true,
     }));
-    // Update userHeatingDevices
     setUserHeatingDevices([...userHeatingDevices, heater.id]);
+  };
+
+  // Modify deleteHeater
+  const deleteHeater = (heaterId, roomId) => {
+    setRooms((prevRooms) =>
+      prevRooms.map((room) => {
+        if (room.roomId === roomId) {
+          return {
+            ...room,
+            devices: room.devices.filter((device) => device.id !== heaterId),
+          };
+        } else {
+          return room;
+        }
+      })
+    );
+    setUserHeatingDevices(userHeatingDevices.filter((deviceId) => deviceId !== heaterId));
+    setActiveDevices((prevStatus) => {
+      const updatedStatus = { ...prevStatus };
+      delete updatedStatus[heaterId];
+      return updatedStatus;
+    });
   };
 
   const deleteRoom = (sensorId) => {
     const updatedRooms = rooms.filter((room) => room.sensorId !== sensorId);
     setRooms(updatedRooms);
-  };
-
-  const deleteHeater = (id) => {
-    const updatedHeaters = electricHeaters.filter((heater) => heater.id !== id);
-    setElectricHeaters(updatedHeaters);
-    setUserHeatingDevices(userHeatingDevices.filter(deviceId => deviceId !== id));
-    setActiveDevices((prevStatus) => {
-      const updatedStatus = { ...prevStatus };
-      delete updatedStatus[id];
-      return updatedStatus;
-    });
   };
 
   const toggleDeviceStatus = (id) => {
@@ -224,10 +238,10 @@ function App() {
   };
 
   // Function to handle when a device is clicked to show control signals
-  const handleDeviceClick = (device) => { // Updated to accept device object
-    console.log('Device clicked:', device); // Debugging: Log the device object
-    setSelectedDevice(device.id); // Extract and set the device ID as a string
-    const signals = generateControlSignals(); // Generate mock control signals
+  const handleDeviceClick = (device) => {
+    console.log('Device clicked:', device);
+    setSelectedDevice(device.id);
+    const signals = generateControlSignals();
     setControlSignals(signals);
     setIsControlPopupOpen(true);
   };
@@ -240,13 +254,12 @@ function App() {
           path="/"
           element={
             <div className="graph-container">
-              <h1>Processes Graph</h1>
+              <h1>Energy Flow Visualization</h1>
               <HomeEnergyFlowVisualization
-                processes={processes} // Ensure processes are passed
                 rooms={rooms}
-                activeDevices={activeDevices} // Pass activeDevices
-                onDeviceClick={handleDeviceClick} // Pass the device click handler
-                userHeatingDevices={userHeatingDevices} // Pass the user-defined heating devices
+                activeDevices={activeDevices}
+                onDeviceClick={handleDeviceClick}
+                userHeatingDevices={userHeatingDevices}
               />
               {/* Include the control signals popup component */}
               <ControlSignalsPopup
@@ -307,13 +320,12 @@ function App() {
           }
         />
 
-        {/* Other Routes */}
+        {/* Data Table Route */}
         <Route
           path="/device-cards"
           element={
             <div>
               <DataTable
-                electricHeaters={electricHeaters}
                 rooms={rooms}
                 homeAssistantSensors={homeAssistantSensors}
                 fetchedDevices={fetchedDevices}
@@ -323,15 +335,11 @@ function App() {
             </div>
           }
         />
-        <Route
-          path="/json-viewer"
-          element={<JsonViewer jsonContent={jsonContent} />}
-        />
+        <Route path="/json-viewer" element={<JsonViewer jsonContent={jsonContent} />} />
         <Route
           path="/electric-heaters"
           element={
             <DeviceCards
-              electricHeaters={electricHeaters}
               rooms={rooms}
               activeDevices={activeDevices}
               toggleDeviceStatus={toggleDeviceStatus}

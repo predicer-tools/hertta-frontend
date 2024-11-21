@@ -1,3 +1,5 @@
+// src/FormRoom.js
+
 import React, { useState } from 'react';
 import './DataForm.css'; // Import the updated CSS
 
@@ -10,6 +12,10 @@ function FormRoom({ addRoom, homeAssistantSensors }) {
   const [selectedSensor, setSelectedSensor] = useState(''); // State to store selected sensor
   const [selectedMaterial, setSelectedMaterial] = useState(''); // State to store selected material
 
+  // New State: Toggle between API sensor and Test sensor
+  const [useTestSensor, setUseTestSensor] = useState(false);
+  const [testSensorId, setTestSensorId] = useState(''); // State to store test sensor ID
+
   // Material data from the image (in kWh/m²K)
   const materials = [
     { name: 'Kevytrakenteinen', value: 40 / 1000 },
@@ -20,9 +26,24 @@ function FormRoom({ addRoom, homeAssistantSensors }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (roomId && roomWidth && roomLength && maxTemp && minTemp && selectedSensor && selectedMaterial) {
-      // Find the selected sensor data from homeAssistantSensors
-      const selectedSensorData = homeAssistantSensors.find(sensor => sensor.entity_id === selectedSensor);
+
+    // Validation: Ensure required fields are filled
+    if (
+      roomId &&
+      roomWidth &&
+      roomLength &&
+      maxTemp &&
+      minTemp &&
+      selectedMaterial &&
+      (selectedSensor || testSensorId)
+    ) {
+      // Determine which sensor to use
+      const sensorToUse = useTestSensor ? testSensorId : selectedSensor;
+
+      // Find the selected sensor data from homeAssistantSensors if not using test sensor
+      const selectedSensorData = !useTestSensor
+        ? homeAssistantSensors.find((sensor) => sensor.entity_id === selectedSensor)
+        : null;
 
       // Add room with sensor state information and selected material
       addRoom({
@@ -31,9 +52,17 @@ function FormRoom({ addRoom, homeAssistantSensors }) {
         roomLength: parseFloat(roomLength),
         maxTemp: parseFloat(maxTemp),
         minTemp: parseFloat(minTemp),
-        sensorId: selectedSensor, // Add the selected sensor ID to the room data
-        sensorState: selectedSensorData ? selectedSensorData.state : 'N/A', // Add the sensor's state
-        sensorUnit: selectedSensorData ? selectedSensorData.attributes.unit_of_measurement : '', // Add sensor unit
+        sensorId: sensorToUse, // Add the sensor ID (either selected or test)
+        sensorState: selectedSensorData
+          ? selectedSensorData.state
+          : useTestSensor
+          ? 'Test State'
+          : 'N/A', // Add the sensor's state
+        sensorUnit: selectedSensorData
+          ? selectedSensorData.attributes.unit_of_measurement
+          : useTestSensor
+          ? '°C'
+          : '', // Add sensor unit
         material: selectedMaterial, // Add selected material
       });
 
@@ -45,6 +74,11 @@ function FormRoom({ addRoom, homeAssistantSensors }) {
       setMinTemp(288.15);
       setSelectedSensor(''); // Reset sensor selection
       setSelectedMaterial(''); // Reset material selection
+      setUseTestSensor(false); // Reset toggle
+      setTestSensorId(''); // Reset test sensor input
+    } else {
+      // Optionally, handle form validation errors here
+      alert('Please fill in all required fields.');
     }
   };
 
@@ -56,6 +90,7 @@ function FormRoom({ addRoom, homeAssistantSensors }) {
           type="text"
           value={roomId}
           onChange={(e) => setRoomId(e.target.value)}
+          placeholder="Enter Room ID"
         />
       </div>
       <div className="input-group">
@@ -64,6 +99,7 @@ function FormRoom({ addRoom, homeAssistantSensors }) {
           type="number"
           value={roomWidth}
           onChange={(e) => setRoomWidth(e.target.value)}
+          placeholder="Enter Room Width in meters"
         />
       </div>
       <div className="input-group">
@@ -72,6 +108,7 @@ function FormRoom({ addRoom, homeAssistantSensors }) {
           type="number"
           value={roomLength}
           onChange={(e) => setRoomLength(e.target.value)}
+          placeholder="Enter Room Length in meters"
         />
       </div>
       <div className="input-group">
@@ -80,6 +117,7 @@ function FormRoom({ addRoom, homeAssistantSensors }) {
           type="number"
           value={maxTemp}
           onChange={(e) => setMaxTemp(e.target.value)}
+          placeholder="Enter Max Temperature in Kelvin"
         />
       </div>
       <div className="input-group">
@@ -88,32 +126,69 @@ function FormRoom({ addRoom, homeAssistantSensors }) {
           type="number"
           value={minTemp}
           onChange={(e) => setMinTemp(e.target.value)}
+          placeholder="Enter Min Temperature in Kelvin"
         />
       </div>
 
-      {/* Dropdown for Home Assistant Sensors */}
+      {/* Toggle Between API Sensor and Test Sensor */}
       <div className="input-group">
-        <label>Select Sensor:</label>
-        <select
-          value={selectedSensor}
-          onChange={(e) => setSelectedSensor(e.target.value)}
-        >
-          <option value="">Select a sensor</option>
-          {homeAssistantSensors.map((sensor) => (
-            <option key={sensor.entity_id} value={sensor.entity_id}>
-              {sensor.attributes.friendly_name || sensor.entity_id}
-            </option>
-          ))}
-        </select>
+        <label>Sensor Source:</label>
+        <div className="toggle-group">
+          <label>
+            <input
+              type="radio"
+              name="sensorSource"
+              value="api"
+              checked={!useTestSensor}
+              onChange={() => setUseTestSensor(false)}
+            />
+            API Sensor
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="sensorSource"
+              value="test"
+              checked={useTestSensor}
+              onChange={() => setUseTestSensor(true)}
+            />
+            Test Sensor
+          </label>
+        </div>
       </div>
+
+      {/* Dropdown for Home Assistant Sensors */}
+      {!useTestSensor && (
+        <div className="input-group">
+          <label>Select Sensor:</label>
+          <select value={selectedSensor} onChange={(e) => setSelectedSensor(e.target.value)}>
+            <option value="">Select a sensor</option>
+            {homeAssistantSensors.map((sensor) => (
+              <option key={sensor.entity_id} value={sensor.entity_id}>
+                {sensor.attributes.friendly_name || sensor.entity_id}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Input for Test Sensor */}
+      {useTestSensor && (
+        <div className="input-group">
+          <label>Enter Test Sensor ID:</label>
+          <input
+            type="text"
+            value={testSensorId}
+            onChange={(e) => setTestSensorId(e.target.value)}
+            placeholder="Enter Test Sensor ID"
+          />
+        </div>
+      )}
 
       {/* Dropdown for selecting material */}
       <div className="input-group">
         <label>Select Material Type:</label>
-        <select
-          value={selectedMaterial}
-          onChange={(e) => setSelectedMaterial(e.target.value)}
-        >
+        <select value={selectedMaterial} onChange={(e) => setSelectedMaterial(e.target.value)}>
           <option value="">Select material type</option>
           {materials.map((material, index) => (
             <option key={index} value={material.value}>
@@ -123,7 +198,9 @@ function FormRoom({ addRoom, homeAssistantSensors }) {
         </select>
       </div>
 
-      <button type="submit" onClick={handleSubmit}>Add Room</button>
+      <button type="submit" onClick={handleSubmit}>
+        Add Room
+      </button>
     </div>
   );
 }
