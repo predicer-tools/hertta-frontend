@@ -134,7 +134,7 @@ function App() {
       return;
     }
     try {
-      const response = await fetch('http://YOUR_HOME_ASSISTANT_IP:8123/api/states', {
+      const response = await fetch('http://http://192.168.41.27:8123/api/states', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
