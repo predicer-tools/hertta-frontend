@@ -1,17 +1,14 @@
-// src/ControlSignalsPopup.js
-
 import React from 'react';
 import PropTypes from 'prop-types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import './ControlSignalsPopup.css';
 
 function ControlSignalsPopup({ isOpen, onClose, deviceId, controlSignals }) {
-  if (!isOpen) return null;
+  // Render nothing if deviceId is not valid
+  if (!isOpen || !deviceId) return null;
 
-  // Debugging: Log the props to verify types
   console.log('ControlSignalsPopup Props:', { deviceId, controlSignals });
 
-  // Format data for Recharts
   const data = controlSignals.map(signal => ({
     time: signal.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     status: signal.status === 'on' ? 1 : 0, // Convert status to numerical value for the chart
@@ -20,9 +17,7 @@ function ControlSignalsPopup({ isOpen, onClose, deviceId, controlSignals }) {
   return (
     <div className="popup-overlay" onClick={onClose}>
       <div className="popup-content" onClick={(e) => e.stopPropagation()}>
-        {/* Single Close Button */}
         <button className="close-button" onClick={onClose}>&times;</button>
-        
         <h2>Control Signals for {deviceId}</h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data}>
@@ -49,7 +44,7 @@ function ControlSignalsPopup({ isOpen, onClose, deviceId, controlSignals }) {
 ControlSignalsPopup.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  deviceId: PropTypes.string.isRequired,
+  deviceId: PropTypes.string,
   controlSignals: PropTypes.arrayOf(
     PropTypes.shape({
       time: PropTypes.instanceOf(Date).isRequired,

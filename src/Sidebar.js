@@ -31,7 +31,7 @@ function Sidebar({ isOpen }) {
             </li>
             <li>
               <NavLink 
-                to="/device-cards" 
+                to="/data-table" // Ensure this path matches App.js
                 className={({ isActive }) => (isActive ? 'active-link' : '')}
               >
                 Data Table
@@ -51,6 +51,14 @@ function Sidebar({ isOpen }) {
                 className={({ isActive }) => (isActive ? 'active-link' : '')}
               >
                 Electric Heaters
+              </NavLink>
+            </li>
+            <li>
+              <NavLink 
+                to="/weather-forecast" 
+                className={({ isActive }) => (isActive ? 'active-link' : '')}
+              >
+                Weather Forecast
               </NavLink>
             </li>
           </ul>
