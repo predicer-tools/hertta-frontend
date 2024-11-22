@@ -5,13 +5,13 @@ import * as d3 from "d3";
 import "./HomeEnergyFlowVisualization.css"; // Import the CSS file
 import Popup from "./Popup"; // Import the Popup component
 import electricityPrices from "./utils/electricityPrices"; // Import test electricity price data
-import { getTestOutsideTemperature } from "./utils/outsideTemperature"; // Import the test temperature function
 
 function HomeEnergyFlowVisualization({
   rooms,
   activeDevices,
   onDeviceClick,
   userHeatingDevices,
+  outsideTemp, // Receive outsideTemp as a prop
 }) {
   const svgRef = useRef();
 
@@ -21,9 +21,6 @@ function HomeEnergyFlowVisualization({
 
   // State for Popup
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-
-  // State for Outside Temperature
-  const [outsideTemp] = useState(getTestOutsideTemperature());
 
   // State for Last Optimized Time
   const [lastOptimized, setLastOptimized] = useState(null);
@@ -416,8 +413,18 @@ function HomeEnergyFlowVisualization({
       .attr("stroke-width", 2);
 
     // Determine Text Color Based on Temperature
-    const tempColor =
-      outsideTemp < 0 ? "#0000FF" : outsideTemp > 25 ? "#FF0000" : "#000000";
+    let displayTemp = "N/A";
+    let tempColor = "#000000"; // Default to black
+
+    if (outsideTemp !== null && !isNaN(parseFloat(outsideTemp))) {
+      displayTemp = `${outsideTemp} °C`;
+      // Optional: Change color based on temperature thresholds
+      if (outsideTemp < 0) {
+        tempColor = "#0000FF"; // Blue for cold
+      } else if (outsideTemp > 25) {
+        tempColor = "#FF0000"; // Red for hot
+      }
+    }
 
     // Add Outside Temperature Display with Dynamic Color
     svg
@@ -429,9 +436,9 @@ function HomeEnergyFlowVisualization({
       .attr("fill", tempColor) // Dynamic color
       .attr(
         "aria-label",
-        `Outside Temperature is ${outsideTemp} degrees Celsius`
+        `Outside Temperature is ${displayTemp}`
       ) // Accessibility
-      .text(`Outside Temp: ${outsideTemp} °C`);
+      .text(`Outside Temp: ${displayTemp}`);
 
     // Add Background Rectangle for Last Optimized Display
     svg
@@ -468,11 +475,12 @@ function HomeEnergyFlowVisualization({
         `Last Optimized on ${formattedLastOptimized}`
       ) // Accessibility
       .text(`Last Optimized: ${formattedLastOptimized}`);
+
   }, [
     rooms,
     onDeviceClick,
     getTemperatureDisplay,
-    outsideTemp,
+    outsideTemp, // Include outsideTemp in dependencies
     lastOptimized,
     userHeatingDevices,
     getCurrentElectricityPrice,

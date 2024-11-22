@@ -1,7 +1,9 @@
 // src/homeAssistantWebSocket.js
 
 const connectWebSocket = (apiKey, onEntityUpdate) => {
-    const wsUrl = `ws://localhost:3000/api/websocket`; // Use the proxy URL
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const wsUrl = `${protocol}192.168.41.27:8123/api/websocket`; // Correct WebSocket URL
+  
     let ws;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 10;
@@ -88,7 +90,7 @@ const connectWebSocket = (apiKey, onEntityUpdate) => {
         ws.close();
       }
     };
-  };
+};
   
-  export default connectWebSocket;
+export default connectWebSocket;
   

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { fetchWeatherData } from './weatherApi';
 import './WeatherForecast.css'; // Optional: For styling
 
-function WeatherForecast({ place }) {
+function WeatherForecast({ place, updateOutsideTemp }) {
   const [startTime, setStartTime] = useState(''); // Local time in 'YYYY-MM-DDTHH:MM'
   const [endTime, setEndTime] = useState(''); // Local time in 'YYYY-MM-DDTHH:MM'
   const [weatherData, setWeatherData] = useState(null);
@@ -77,8 +77,29 @@ function WeatherForecast({ place }) {
     try {
       const data = await fetchWeatherData(formattedStartTime, formattedEndTime, place);
       setWeatherData(data);
+
+      // Extract the current hour's temperature
+      const now = new Date();
+
+      // Find the weather entry that matches the current hour
+      const currentHourEntry = data.weather_values.find((entry) => {
+        const entryDate = new Date(entry.time);
+        return (
+          entryDate.getFullYear() === now.getFullYear() &&
+          entryDate.getMonth() === now.getMonth() &&
+          entryDate.getDate() === now.getDate() &&
+          entryDate.getHours() === now.getHours()
+        );
+      });
+
+      if (currentHourEntry && currentHourEntry.value !== undefined && currentHourEntry.value !== null) {
+        updateOutsideTemp(currentHourEntry.value);
+      } else {
+        updateOutsideTemp(null); // No data available
+      }
     } catch (err) {
       setError(err.message || 'Failed to fetch weather data.');
+      updateOutsideTemp(null); // Reset outsideTemp on error
     } finally {
       setLoading(false);
     }
@@ -122,10 +143,12 @@ function WeatherForecast({ place }) {
   return (
     <div className="weather-forecast-container">
       <h2>Weather Forecast</h2>
-      
+
       {/* Display current place */}
-      <p>Fetching weather data for: <strong>{place || 'Not set'}</strong></p>
-      
+      <p>
+        Fetching weather data for: <strong>{place || 'Not set'}</strong>
+      </p>
+
       {/* Display start and end times */}
       <div className="input-group">
         <label htmlFor="start-time">Start Time:</label>
@@ -147,7 +170,7 @@ function WeatherForecast({ place }) {
           disabled={true} // Disable manual editing of automatic end time
         />
       </div>
-      
+
       {/* Manual Fetch Button */}
       <button onClick={() => handleFetchWeather(startTime, endTime)} disabled={loading || !place}>
         {loading ? 'Fetching...' : 'Get Weather'}

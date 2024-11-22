@@ -33,6 +33,9 @@ function App() {
   const [savedCountry, setSavedCountry] = useState('');
   const [savedLocation, setSavedLocation] = useState('');
 
+  // New State: Outside Temperature
+  const [outsideTemp, setOutsideTemp] = useState(null); // Initialize as null
+
   // State for the control signals popup
   const [isControlPopupOpen, setIsControlPopupOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
@@ -139,7 +142,7 @@ function App() {
       return;
     }
     try {
-      const response = await fetch('/api/states', { // Relative path uses proxy
+      const response = await fetch('http://192.168.41.27:8123/api/states', { // Updated URL
         method: 'GET',
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -147,7 +150,7 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -218,6 +221,11 @@ function App() {
       setSavedLocation(storedLocation);
     }
   }, []);
+
+  // Function to update outsideTemp from WeatherForecast
+  const updateOutsideTemp = (temp) => {
+    setOutsideTemp(temp);
+  };
 
   // Modify addRoom
   const addRoom = (room) => {
@@ -302,7 +310,7 @@ function App() {
   return (
     <Layout>
       <Routes>
-        {/* Processes Graph as Home Page */}
+        {/* Energy Flow Visualization as Home Page */}
         <Route
           path="/"
           element={
@@ -313,6 +321,7 @@ function App() {
                 activeDevices={activeDevices}
                 onDeviceClick={handleDeviceClick}
                 userHeatingDevices={userHeatingDevices}
+                outsideTemp={outsideTemp} // Pass outsideTemp as prop
               />
               {/* Include the control signals popup component */}
               <ControlSignalsPopup
@@ -428,7 +437,6 @@ function App() {
                 fetchedDevices={fetchedDevices}
                 deleteHeater={deleteHeater}
                 deleteRoom={deleteRoom}
-                // Removed weather-related props
               />
             </div>
           }
@@ -456,7 +464,7 @@ function App() {
         {/* Weather Forecast Route */}
         <Route
           path="/weather-forecast"
-          element={<WeatherForecast place={savedLocation} />} // Pass 'place' as prop
+          element={<WeatherForecast place={savedLocation} updateOutsideTemp={updateOutsideTemp} />} // Pass 'place' and 'updateOutsideTemp' as props
         />
       </Routes>
     </Layout>
