@@ -27,6 +27,12 @@ function App() {
   const [error, setError] = useState(null);
   const [message] = useState('');
 
+  // New States: Country and Location Inputs
+  const [country, setCountry] = useState('');
+  const [location, setLocation] = useState('');
+  const [savedCountry, setSavedCountry] = useState('');
+  const [savedLocation, setSavedLocation] = useState('');
+
   // State for the control signals popup
   const [isControlPopupOpen, setIsControlPopupOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
@@ -37,9 +43,6 @@ function App() {
 
   // State to store the disconnect function for WebSocket
   const [webSocketDisconnect, setWebSocketDisconnect] = useState(null);
-
-  // Remove Weather Data States and Functions from App.js
-  // They will be handled within WeatherForecast.js
 
   // Generate the JSON content whenever relevant states change
   useEffect(() => {
@@ -188,6 +191,34 @@ function App() {
     alert('API Key saved!');
   };
 
+  // New Function: Handle Saving Country and Location
+  const handleSaveLocation = () => {
+    if (!country.trim() || !location.trim()) {
+      setError('Please enter both Country and Location.');
+      return;
+    }
+    setSavedCountry(country.trim());
+    setSavedLocation(location.trim());
+    localStorage.setItem('country', country.trim());
+    localStorage.setItem('location', location.trim());
+    alert('Country and Location saved!');
+    setError(null);
+  };
+
+  // Load saved Country and Location from localStorage on mount
+  useEffect(() => {
+    const storedCountry = localStorage.getItem('country');
+    const storedLocation = localStorage.getItem('location');
+    if (storedCountry) {
+      setCountry(storedCountry);
+      setSavedCountry(storedCountry);
+    }
+    if (storedLocation) {
+      setLocation(storedLocation);
+      setSavedLocation(storedLocation);
+    }
+  }, []);
+
   // Modify addRoom
   const addRoom = (room) => {
     // Initialize devices array
@@ -319,7 +350,15 @@ function App() {
                   </div>
                   <div className="button-group">
                     <button onClick={handleSaveApiKey}>Save API Key</button>
-                    <button onClick={fetchAllDevicesAndSensors}>
+                    <button
+                      onClick={fetchAllDevicesAndSensors}
+                      disabled={!savedCountry || !savedLocation}
+                      title={
+                        !savedCountry || !savedLocation
+                          ? 'Please save Country and Location first.'
+                          : 'Fetch Sensors and Devices'
+                      }
+                    >
                       Fetch Sensors and Devices
                     </button>
                   </div>
@@ -328,6 +367,34 @@ function App() {
                       <strong>Error:</strong> {error}
                     </p>
                   )}
+                </div>
+
+                {/* New Input Fields for Country and Location */}
+                <div className="device-form">
+                  <h3>Enter Country and Location</h3>
+                  <div className="input-group">
+                    <label htmlFor="country">Country</label>
+                    <input
+                      type="text"
+                      id="country"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      placeholder="e.g., Finland"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="location">Location</label>
+                    <input
+                      type="text"
+                      id="location"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="e.g., Helsinki"
+                    />
+                  </div>
+                  <div className="button-group">
+                    <button onClick={handleSaveLocation}>Save Location</button>
+                  </div>
                 </div>
 
                 {/* Forms for Room and Electric Heater */}
@@ -389,7 +456,7 @@ function App() {
         {/* Weather Forecast Route */}
         <Route
           path="/weather-forecast"
-          element={<WeatherForecast />} // Render the WeatherForecast component
+          element={<WeatherForecast place={savedLocation} />} // Pass 'place' as prop
         />
       </Routes>
     </Layout>

@@ -1,27 +1,74 @@
 // src/WeatherForecast.js
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { fetchWeatherData } from './weatherApi';
 import './WeatherForecast.css'; // Optional: For styling
 
-function WeatherForecast() {
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [place, setPlace] = useState('');
+function WeatherForecast({ place }) {
+  const [startTime, setStartTime] = useState(''); // Local time in 'YYYY-MM-DDTHH:MM'
+  const [endTime, setEndTime] = useState(''); // Local time in 'YYYY-MM-DDTHH:MM'
   const [weatherData, setWeatherData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleFetchWeather = async () => {
+  const intervalRef = useRef(null);
+
+  // Function to get current time rounded up to the next hour
+  const getNextHour = () => {
+    const now = new Date();
+    now.setMinutes(0, 0, 0); // Zero out minutes, seconds, milliseconds
+    now.setHours(now.getHours() + 1); // Move to the next hour
+    return now;
+  };
+
+  // Function to get start and end times for next 12 hours
+  const getStartAndEndTimes = () => {
+    const start = getNextHour();
+    const end = new Date(start.getTime() + 12 * 60 * 60 * 1000); // 12 hours later
+    return { start, end };
+  };
+
+  // Function to format Date object to 'YYYY-MM-DDTHH:MM' for datetime-local input
+  const formatDateForInput = (date) => {
+    const year = date.getFullYear();
+    const month = (`0${date.getMonth() + 1}`).slice(-2); // Months are zero-indexed
+    const day = (`0${date.getDate()}`).slice(-2);
+    const hours = (`0${date.getHours()}`).slice(-2);
+    const minutes = (`0${date.getMinutes()}`).slice(-2);
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Function to convert 'YYYY-MM-DDTHH:MM' local time to ISO string in UTC
+  const convertToISOString = (localDateTime) => {
+    const localDate = new Date(localDateTime);
+    return new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
+  };
+
+  // Function to handle fetching weather data
+  const handleFetchWeather = async (customStartTime, customEndTime) => {
     // Input validation
-    if (!startTime || !endTime || !place) {
-      setError('Please fill in all fields.');
+    if (!place) {
+      setError('Place is not set. Please set it in the Input Data tab.');
       return;
     }
 
-    // Convert to ISO format with 'Z' to indicate UTC time
-    const formattedStartTime = new Date(startTime).toISOString();
-    const formattedEndTime = new Date(endTime).toISOString();
+    // Determine the times to use for fetching
+    let formattedStartTime = startTime;
+    let formattedEndTime = endTime;
+
+    if (customStartTime && customEndTime) {
+      // If custom times are provided (manual fetch), use them
+      formattedStartTime = convertToISOString(customStartTime);
+      formattedEndTime = convertToISOString(customEndTime);
+    } else {
+      // Automatic fetch uses the state-managed times
+      if (!startTime || !endTime) {
+        setError('Start Time and End Time are not set.');
+        return;
+      }
+      formattedStartTime = convertToISOString(startTime);
+      formattedEndTime = convertToISOString(endTime);
+    }
 
     setLoading(true);
     setError(null);
@@ -37,9 +84,49 @@ function WeatherForecast() {
     }
   };
 
+  useEffect(() => {
+    if (!place) {
+      // If 'place' is not set, do not fetch automatically
+      return;
+    }
+
+    // Automatic fetch on component mount or when 'place' changes
+    const { start, end } = getStartAndEndTimes();
+    const formattedStart = formatDateForInput(start);
+    const formattedEnd = formatDateForInput(end);
+    setStartTime(formattedStart);
+    setEndTime(formattedEnd);
+
+    // Perform the initial automatic fetch
+    handleFetchWeather(formattedStart, formattedEnd);
+
+    // Set up interval to fetch every hour
+    intervalRef.current = setInterval(() => {
+      const { start, end } = getStartAndEndTimes();
+      const formattedStart = formatDateForInput(start);
+      const formattedEnd = formatDateForInput(end);
+      setStartTime(formattedStart);
+      setEndTime(formattedEnd);
+      handleFetchWeather(formattedStart, formattedEnd);
+    }, 60 * 60 * 1000); // 1 hour in milliseconds
+
+    // Cleanup interval on component unmount or when 'place' changes
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [place]); // Re-run effect if 'place' changes
+
   return (
     <div className="weather-forecast-container">
       <h2>Weather Forecast</h2>
+      
+      {/* Display current place */}
+      <p>Fetching weather data for: <strong>{place || 'Not set'}</strong></p>
+      
+      {/* Display start and end times */}
       <div className="input-group">
         <label htmlFor="start-time">Start Time:</label>
         <input
@@ -47,6 +134,7 @@ function WeatherForecast() {
           id="start-time"
           value={startTime}
           onChange={(e) => setStartTime(e.target.value)}
+          disabled={true} // Disable manual editing of automatic start time
         />
       </div>
       <div className="input-group">
@@ -56,24 +144,19 @@ function WeatherForecast() {
           id="end-time"
           value={endTime}
           onChange={(e) => setEndTime(e.target.value)}
+          disabled={true} // Disable manual editing of automatic end time
         />
       </div>
-      <div className="input-group">
-        <label htmlFor="place">Place:</label>
-        <input
-          type="text"
-          id="place"
-          value={place}
-          onChange={(e) => setPlace(e.target.value)}
-          placeholder="e.g., Helsinki"
-        />
-      </div>
-      <button onClick={handleFetchWeather} disabled={loading}>
+      
+      {/* Manual Fetch Button */}
+      <button onClick={() => handleFetchWeather(startTime, endTime)} disabled={loading || !place}>
         {loading ? 'Fetching...' : 'Get Weather'}
       </button>
 
+      {/* Error Message */}
       {error && <p className="error-message">Error: {error}</p>}
 
+      {/* Weather Data Display */}
       {weatherData && (
         <div className="weather-data">
           <h3>Weather Forecast for {weatherData.place}</h3>
