@@ -13,17 +13,16 @@ function WeatherForecast({ place, updateOutsideTemp }) {
 
   const intervalRef = useRef(null);
 
-  // Function to get current time rounded up to the next hour
-  const getNextHour = () => {
+  // Function to get current time floored to the ongoing hour
+  const getCurrentHour = () => {
     const now = new Date();
     now.setMinutes(0, 0, 0); // Zero out minutes, seconds, milliseconds
-    now.setHours(now.getHours() + 1); // Move to the next hour
     return now;
   };
 
   // Function to get start and end times for next 12 hours
   const getStartAndEndTimes = () => {
-    const start = getNextHour();
+    const start = getCurrentHour();
     const end = new Date(start.getTime() + 12 * 60 * 60 * 1000); // 12 hours later
     return { start, end };
   };
@@ -78,6 +77,9 @@ function WeatherForecast({ place, updateOutsideTemp }) {
       const data = await fetchWeatherData(formattedStartTime, formattedEndTime, place);
       setWeatherData(data);
 
+      // Save weather data to Local Storage
+      localStorage.setItem('weatherData', JSON.stringify(data));
+
       // Extract the current hour's temperature
       const now = new Date();
 
@@ -111,25 +113,70 @@ function WeatherForecast({ place, updateOutsideTemp }) {
       return;
     }
 
-    // Automatic fetch on component mount or when 'place' changes
-    const { start, end } = getStartAndEndTimes();
-    const formattedStart = formatDateForInput(start);
-    const formattedEnd = formatDateForInput(end);
-    setStartTime(formattedStart);
-    setEndTime(formattedEnd);
+    // Check if weather data is already present in Local Storage
+    const storedWeatherData = localStorage.getItem('weatherData');
+    if (storedWeatherData) {
+      try {
+        const parsedData = JSON.parse(storedWeatherData);
+        setWeatherData(parsedData);
 
-    // Perform the initial automatic fetch
-    handleFetchWeather(formattedStart, formattedEnd);
+        // Extract the current hour's temperature
+        const now = new Date();
 
-    // Set up interval to fetch every hour
-    intervalRef.current = setInterval(() => {
+        // Find the weather entry that matches the current hour
+        const currentHourEntry = parsedData.weather_values.find((entry) => {
+          const entryDate = new Date(entry.time);
+          return (
+            entryDate.getFullYear() === now.getFullYear() &&
+            entryDate.getMonth() === now.getMonth() &&
+            entryDate.getDate() === now.getDate() &&
+            entryDate.getHours() === now.getHours()
+          );
+        });
+
+        if (currentHourEntry && currentHourEntry.value !== undefined && currentHourEntry.value !== null) {
+          updateOutsideTemp(currentHourEntry.value);
+        } else {
+          updateOutsideTemp(null); // No data available
+        }
+
+        // Set start and end times based on stored data
+        const { start, end } = getStartAndEndTimes();
+        const formattedStart = formatDateForInput(start);
+        const formattedEnd = formatDateForInput(end);
+        setStartTime(formattedStart);
+        setEndTime(formattedEnd);
+      } catch (e) {
+        console.error('Failed to parse weatherData from localStorage', e);
+        // Proceed to fetch if parsing fails
+        const { start, end } = getStartAndEndTimes();
+        const formattedStart = formatDateForInput(start);
+        const formattedEnd = formatDateForInput(end);
+        setStartTime(formattedStart);
+        setEndTime(formattedEnd);
+        handleFetchWeather(formattedStart, formattedEnd);
+      }
+    } else {
+      // Automatic fetch on component mount or when 'place' changes
       const { start, end } = getStartAndEndTimes();
       const formattedStart = formatDateForInput(start);
       const formattedEnd = formatDateForInput(end);
       setStartTime(formattedStart);
       setEndTime(formattedEnd);
+
+      // Perform the initial automatic fetch
       handleFetchWeather(formattedStart, formattedEnd);
-    }, 60 * 60 * 1000); // 1 hour in milliseconds
+
+      // Set up interval to fetch every hour
+      intervalRef.current = setInterval(() => {
+        const { start, end } = getStartAndEndTimes();
+        const formattedStart = formatDateForInput(start);
+        const formattedEnd = formatDateForInput(end);
+        setStartTime(formattedStart);
+        setEndTime(formattedEnd);
+        handleFetchWeather(formattedStart, formattedEnd);
+      }, 60 * 60 * 1000); // 1 hour in milliseconds
+    }
 
     // Cleanup interval on component unmount or when 'place' changes
     return () => {
