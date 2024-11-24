@@ -1,62 +1,32 @@
-// src/pages/Dashboard.js
-
-import React, { useEffect, useRef, useCallback, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as d3 from "d3";
 import styles from "./Dashboard.module.css"; // Import the CSS Module
-import Modal from '../components/modals/Modal';
+import Modal from "../components/modals/Modal";
 
-
-function Dashboard({
-  rooms,
-  activeDevices,
-  onDeviceClick,
-  userHeatingDevices,
-  outsideTemp,
-}) {
+function Dashboard() {
   const svgRef = useRef();
 
-  // State for Optimize Button and Control Signals
+  // States for rooms and heating devices
+  const [rooms, setRooms] = useState([]);
+  const [heatingDevices, setHeatingDevices] = useState([]);
   const [controlSignalsData, setControlSignalsData] = useState(null);
-  const [isOptimizing, setIsOptimizing] = useState(false);
-
-  // State for Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // State for Last Optimized Time
-  const [lastOptimized, setLastOptimized] = useState(null);
-
-  // Function to convert temperature based on unit
-  const convertTemperature = useCallback((temperature, unit) => {
-    if (isNaN(parseFloat(temperature))) return "N/A";
-    let temp = parseFloat(temperature);
-
-    switch (unit) {
-      case "°F":
-        temp = (temp * 9) / 5 + 32;
-        return `${temp.toFixed(2)} °F`;
-      case "°C":
-        return `${temp.toFixed(2)} °C`;
-      case "K":
-      case "°K":
-        temp = temp - 273.15;
-        return `${temp.toFixed(2)} °C`;
-      default:
-        return `${temp.toFixed(2)} °C`;
-    }
+  // Load rooms and heating devices from localStorage
+  useEffect(() => {
+    const storedRooms = JSON.parse(localStorage.getItem("rooms")) || [];
+    const storedDevices = JSON.parse(localStorage.getItem("heaters")) || [];
+    setRooms(storedRooms);
+    setHeatingDevices(storedDevices);
   }, []);
 
-  // Function to get temperature display for room
-  const getTemperatureDisplay = useCallback(
-    (room) => {
-      if (room.sensorState === undefined || room.sensorState === null)
-        return "N/A";
-      const unit = room.sensorUnit || "°C";
-      return convertTemperature(room.sensorState, unit);
-    },
-    [convertTemperature]
+  // Function to get devices associated with a room
+  const getDevicesInRoom = useCallback(
+    (roomId) => heatingDevices.filter((device) => device.roomId === roomId),
+    [heatingDevices]
   );
 
-  // Function to generate control signals
+  // Function to generate control signals for heating devices
   const generateControlSignals = useCallback(() => {
     const generateDummySignals = (deviceId) => {
       const signals = [];
@@ -72,25 +42,22 @@ function Dashboard({
       return signals;
     };
 
-    const signals = userHeatingDevices.reduce((acc, deviceId) => {
-      acc[deviceId] = generateDummySignals(deviceId);
+    const signals = heatingDevices.reduce((acc, device) => {
+      acc[device.id] = generateDummySignals(device.id);
       return acc;
     }, {});
 
     setControlSignalsData(signals);
-    setIsOptimizing(false);
+  }, [heatingDevices]);
 
-    setLastOptimized(new Date());
-  }, [userHeatingDevices]);
-
-  // Render Visualization
+  // Render visualization for rooms and devices
   const renderVisualization = useCallback(() => {
     if (!svgRef.current) return;
 
     const svg = d3.select(svgRef.current).select("g");
     svg.selectAll("*").remove();
 
-    if (rooms.length === 0 || userHeatingDevices.length === 0) return;
+    if (rooms.length === 0 || heatingDevices.length === 0) return;
 
     const containerWidth = svgRef.current.parentElement.offsetWidth;
     const containerHeight = containerWidth * 0.8;
@@ -105,17 +72,19 @@ function Dashboard({
     const roomData = rooms.map((room, index) => {
       const col = index % numCols;
       const row = Math.floor(index / numCols);
+      const devices = getDevicesInRoom(room.roomId);
       return {
         ...room,
         x: (col + 1) * (containerWidth / (numCols + 1)),
         y: (row + 1) * (containerHeight / (numRows + 1)),
+        devices,
       };
     });
 
     const color = d3
       .scaleOrdinal()
-      .domain(["room", "device-on", "device-off", "electricityGrid"])
-      .range(["#ffcc00", "#4CAF50", "#F44336", "#2196F3"]);
+      .domain(["room", "device-on", "device-off"])
+      .range(["#ffcc00", "#4CAF50", "#F44336"]);
 
     const roomGroups = svg
       .selectAll(".room")
@@ -145,14 +114,14 @@ function Dashboard({
 
     roomGroups
       .append("text")
-      .text((d) => `Temp: ${getTemperatureDisplay(d)}`)
+      .text((d) => `Devices: ${d.devices.length}`)
       .attr("text-anchor", "middle")
       .attr("dy", 0)
       .attr("dominant-baseline", "middle")
-      .attr("class", styles.roomTemperatureLabel)
+      .attr("class", styles.deviceCountLabel)
       .attr("font-size", "18px")
       .attr("fill", "#000");
-  }, [rooms, userHeatingDevices, getTemperatureDisplay]);
+  }, [rooms, heatingDevices, getDevicesInRoom]);
 
   // Effect to render visualization
   useEffect(() => {
@@ -161,6 +130,12 @@ function Dashboard({
 
   return (
     <div className={styles.dashboardContainer}>
+      <div className={styles.visualizationContainer}>
+        <svg ref={svgRef} width="100%" height="500">
+          <g />
+        </svg>
+      </div>
+
       <div className={styles.controlSignalsSection}>
         <h2>Control Signals</h2>
         {controlSignalsData ? (
@@ -189,6 +164,13 @@ function Dashboard({
           <p>No control signals available.</p>
         )}
       </div>
+
+      <button
+        className={styles.generateSignalsButton}
+        onClick={generateControlSignals}
+      >
+        Generate Control Signals
+      </button>
 
       <button
         className={styles.optimizeButton}

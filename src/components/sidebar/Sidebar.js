@@ -23,8 +23,8 @@ function Sidebar({ isOpen }) {
           </NavLink>
         </li>
         <li>
-          <NavLink to="/data-table" className={({ isActive }) => (isActive ? styles['active-link'] : '')}>
-            Data Table
+          <NavLink to="/dashboard" className={({ isActive }) => (isActive ? styles['active-link'] : '')}>
+            Dashboard
           </NavLink>
         </li>
       </ul>

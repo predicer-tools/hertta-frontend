@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styles from './DataTable.module.css'; // Import CSS Module
 
-function DataTable({ rooms, deleteHeater, deleteRoom }) {
+function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   const [sensors, setSensors] = useState([]);
   const [devices, setDevices] = useState([]);
 
@@ -80,37 +80,35 @@ function DataTable({ rooms, deleteHeater, deleteRoom }) {
         </table>
       </div>
 
-      {/* Electric Heaters */}
-      <h3>Electric Heaters</h3>
+      {/* Heating Devices */}
+      <h3>Heating Devices</h3>
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
             <tr>
               <th>ID</th>
-              <th>Capacity</th>
+              <th>Capacity (kW)</th>
               <th>Room ID</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            {rooms.length > 0 ? (
-              rooms.flatMap((room) =>
-                room.devices.map((heater) => (
-                  <tr key={heater.id}>
-                    <td>{heater.id}</td>
-                    <td>{heater.capacity}</td>
-                    <td>{room.roomId}</td>
-                    <td>
-                      <button className={styles.deleteButton} onClick={() => deleteHeater(heater.id, room.roomId)}>
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )
+            {heaters.length > 0 ? (
+              heaters.map((heater, index) => (
+                <tr key={index}>
+                  <td>{heater.id}</td>
+                  <td>{heater.capacity}</td>
+                  <td>{heater.roomId}</td>
+                  <td>
+                    <button className={styles.deleteButton} onClick={() => deleteHeater(heater.id)}>
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
             ) : (
               <tr>
-                <td colSpan="4">No electric heaters available</td>
+                <td colSpan="4">No heating devices available</td>
               </tr>
             )}
           </tbody>
@@ -147,7 +145,7 @@ function DataTable({ rooms, deleteHeater, deleteRoom }) {
                     {room.sensorState} {room.sensorUnit}
                   </td>
                   <td>
-                    <button className={styles.deleteButton} onClick={() => deleteRoom(room.sensorId)}>
+                    <button className={styles.deleteButton} onClick={() => deleteRoom(room.roomId)}>
                       Delete
                     </button>
                   </td>
