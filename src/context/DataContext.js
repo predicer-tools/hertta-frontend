@@ -1,6 +1,7 @@
 // src/context/DataContext.js
 
 import React, { createContext, useState, useEffect } from 'react';
+import { fetchElectricityPricesFi } from '../api/elering'; // Import the new API utility
 
 // Create the DataContext
 const DataContext = createContext();
@@ -21,65 +22,65 @@ export const DataProvider = ({ children }) => {
     return JSON.parse(localStorage.getItem('heaters')) || [];
   });
 
-  // State for Electricity Prices
+  // State for Electricity Prices (Existing - Preserved)
   const [electricityPrices, setElectricityPrices] = useState(() => {
     return JSON.parse(localStorage.getItem('electricityPrices')) || [];
   });
 
   // =====================
-  // Loading and Error States for Electricity Prices
+  // New State for FI Electricity Prices
   // =====================
 
-  const [loadingElectricityPrices, setLoadingElectricityPrices] = useState(true);
-  const [errorElectricityPrices, setErrorElectricityPrices] = useState(null);
+  const [fiElectricityPrices, setFiElectricityPrices] = useState(() => {
+    return JSON.parse(localStorage.getItem('fiElectricityPrices')) || [];
+  });
 
   // =====================
-  // Fetch Electricity Prices from Backend
+  // Loading and Error States for FI Electricity Prices
+  // =====================
+
+  const [loadingFiPrices, setLoadingFiPrices] = useState(true);
+  const [errorFiPrices, setErrorFiPrices] = useState(null);
+
+  // =====================
+  // Fetch FI Electricity Prices from Elering API
   // =====================
 
   useEffect(() => {
-    const fetchElectricityPrices = async () => {
-      setLoadingElectricityPrices(true);
+    const fetchFiPrices = async () => {
+      setLoadingFiPrices(true);
       try {
-        const response = await fetch('http://localhost:5000/api/electricity-prices');
-        const result = await response.json();
+        // Define the start and end times
+        const start = '2024-11-26T09:00:00.000Z';
+        const end = '2024-11-26T18:00:00.000Z';
 
-        // Debugging: Log the API response
-        console.log('Electricity Prices API Response:', result);
-
-        if (result.success) {
-          setElectricityPrices(result.data);
-          localStorage.setItem('electricityPrices', JSON.stringify(result.data));
-          setErrorElectricityPrices(null);
-        } else {
-          console.error('Error fetching electricity prices:', result.error);
-          setErrorElectricityPrices(result.error);
-        }
+        const fiPrices = await fetchElectricityPricesFi(start, end);
+        setFiElectricityPrices(fiPrices);
+        localStorage.setItem('fiElectricityPrices', JSON.stringify(fiPrices));
+        setErrorFiPrices(null);
       } catch (error) {
-        console.error('Error fetching electricity prices:', error);
-        setErrorElectricityPrices('An unexpected error occurred while fetching electricity prices.');
+        setErrorFiPrices(error.message);
       } finally {
-        setLoadingElectricityPrices(false);
+        setLoadingFiPrices(false);
       }
     };
 
-    fetchElectricityPrices();
-  }, []);
+    fetchFiPrices();
+  }, []); // Empty dependency array ensures this runs once on mount
 
   // =====================
-  // Load Electricity Prices from LocalStorage on Mount
+  // Load Electricity Prices from LocalStorage on Mount (Existing - Preserved)
   // =====================
 
   useEffect(() => {
     const storedPrices = JSON.parse(localStorage.getItem('electricityPrices'));
     if (storedPrices) {
       setElectricityPrices(storedPrices);
-      setLoadingElectricityPrices(false);
     }
   }, []);
 
   // =====================
-  // Load Rooms Data from LocalStorage on Mount
+  // Load Rooms Data from LocalStorage on Mount (Existing - Preserved)
   // =====================
 
   useEffect(() => {
@@ -88,7 +89,7 @@ export const DataProvider = ({ children }) => {
   }, []);
 
   // =====================
-  // Load Heaters Data from LocalStorage on Mount
+  // Load Heaters Data from LocalStorage on Mount (Existing - Preserved)
   // =====================
 
   useEffect(() => {
@@ -97,7 +98,7 @@ export const DataProvider = ({ children }) => {
   }, []);
 
   // =====================
-  // Persist Rooms Data to LocalStorage on Change
+  // Persist Rooms Data to LocalStorage on Change (Existing - Preserved)
   // =====================
 
   useEffect(() => {
@@ -105,7 +106,7 @@ export const DataProvider = ({ children }) => {
   }, [rooms]);
 
   // =====================
-  // Persist Heaters Data to LocalStorage on Change
+  // Persist Heaters Data to LocalStorage on Change (Existing - Preserved)
   // =====================
 
   useEffect(() => {
@@ -113,7 +114,15 @@ export const DataProvider = ({ children }) => {
   }, [heaters]);
 
   // =====================
-  // Functions to Manipulate Rooms
+  // Persist FI Electricity Prices to LocalStorage on Change (New)
+  // =====================
+
+  useEffect(() => {
+    localStorage.setItem('fiElectricityPrices', JSON.stringify(fiElectricityPrices));
+  }, [fiElectricityPrices]);
+
+  // =====================
+  // Functions to Manipulate Rooms (Existing - Preserved)
   // =====================
 
   /**
@@ -136,7 +145,7 @@ export const DataProvider = ({ children }) => {
   };
 
   // =====================
-  // Functions to Manipulate Heaters
+  // Functions to Manipulate Heaters (Existing - Preserved)
   // =====================
 
   /**
@@ -174,11 +183,15 @@ export const DataProvider = ({ children }) => {
         addElectricHeater,
         deleteHeater,
 
-        // Electricity Prices State and Functions
+        // Existing Electricity Prices State and Functions
         electricityPrices,
         setElectricityPrices,
-        loadingElectricityPrices,
-        errorElectricityPrices,
+
+        // New FI Electricity Prices State and Functions
+        fiElectricityPrices,
+        setFiElectricityPrices,
+        loadingFiPrices,
+        errorFiPrices,
 
         // ... Add any other states and setters you have
       }}

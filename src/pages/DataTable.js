@@ -12,8 +12,8 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   // Consume WeatherContext
   const { weatherData } = useContext(WeatherContext);
 
-  // Consume DataContext for Electricity Prices
-  const { electricityPrices } = useContext(DataContext);
+  // Consume DataContext for FI Electricity Prices
+  const { fiElectricityPrices, loadingFiPrices, errorFiPrices } = useContext(DataContext);
 
   // Load sensors and devices from localStorage
   useEffect(() => {
@@ -215,31 +215,33 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
         </table>
       </div>
 
-      {/* Display Electricity Prices */}
+      {/* Display FI Electricity Prices */}
       <h3>Electricity Prices (FI)</h3>
       <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Price (€/MWh)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {electricityPrices && Array.isArray(electricityPrices) && electricityPrices.length > 0 ? (
-              electricityPrices.map((entry, index) => (
+        {loadingFiPrices ? (
+          <p>Loading FI electricity prices...</p>
+        ) : errorFiPrices ? (
+          <p className={styles.error}>{errorFiPrices}</p>
+        ) : fiElectricityPrices.length > 0 ? (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Price (€/MWh)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fiElectricityPrices.map((entry, index) => (
                 <tr key={index}>
-                  <td>{new Date(entry.time).toLocaleString()}</td>
+                  <td>{new Date(entry.timestamp * 1000).toLocaleString()}</td> {/* Convert Unix timestamp to JS Date */}
                   <td>{formatPrice(entry.price)}</td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="2">No electricity price data available</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p>No FI electricity price data available.</p>
+        )}
       </div>
     </div>
   );
