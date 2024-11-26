@@ -22,13 +22,13 @@ export const DataProvider = ({ children }) => {
     return JSON.parse(localStorage.getItem('heaters')) || [];
   });
 
-  // State for Electricity Prices (Existing - Preserved)
+  // State for Electricity Prices (Converted to snt/kWh)
   const [electricityPrices, setElectricityPrices] = useState(() => {
     return JSON.parse(localStorage.getItem('electricityPrices')) || [];
   });
 
   // =====================
-  // New State for FI Electricity Prices
+  // New State for FI Electricity Prices (Converted to snt/kWh)
   // =====================
 
   const [fiElectricityPrices, setFiElectricityPrices] = useState(() => {
@@ -43,7 +43,23 @@ export const DataProvider = ({ children }) => {
   const [errorFiPrices, setErrorFiPrices] = useState(null);
 
   // =====================
-  // Fetch FI Electricity Prices from Elering API
+  // Helper Function for Conversion
+  // =====================
+
+  /**
+   * Converts electricity prices from €/MWh to snt/kWh.
+   * @param {Array} prices - Array of price objects with { timestamp, price }.
+   * @returns {Array} - Converted array with prices in snt/kWh.
+   */
+  const convertEuromWhToSntKWh = (prices) => {
+    return prices.map((entry) => ({
+      ...entry,
+      price: parseFloat(entry.price) * 0.1, // Convert to snt/kWh
+    }));
+  };
+
+  // =====================
+  // Fetch FI Electricity Prices from Elering API (Converted to snt/kWh)
   // =====================
 
   useEffect(() => {
@@ -55,8 +71,9 @@ export const DataProvider = ({ children }) => {
         const end = '2024-11-26T18:00:00.000Z';
 
         const fiPrices = await fetchElectricityPricesFi(start, end);
-        setFiElectricityPrices(fiPrices);
-        localStorage.setItem('fiElectricityPrices', JSON.stringify(fiPrices));
+        const convertedFiPrices = convertEuromWhToSntKWh(fiPrices); // Convert prices
+        setFiElectricityPrices(convertedFiPrices);
+        localStorage.setItem('fiElectricityPrices', JSON.stringify(convertedFiPrices));
         setErrorFiPrices(null);
       } catch (error) {
         setErrorFiPrices(error.message);
@@ -69,13 +86,51 @@ export const DataProvider = ({ children }) => {
   }, []); // Empty dependency array ensures this runs once on mount
 
   // =====================
-  // Load Electricity Prices from LocalStorage on Mount (Existing - Preserved)
+  // Fetch Electricity Prices from Backend (Converted to snt/kWh)
+  // =====================
+
+  const [loadingElectricityPrices, setLoadingElectricityPrices] = useState(true);
+  const [errorElectricityPrices, setErrorElectricityPrices] = useState(null);
+
+  useEffect(() => {
+    const fetchElectricityPrices = async () => {
+      setLoadingElectricityPrices(true);
+      try {
+        const response = await fetch('http://localhost:5000/api/electricity-prices');
+        const result = await response.json();
+
+        // Debugging: Log the API response
+        console.log('Electricity Prices API Response:', result);
+
+        if (result.success) {
+          const convertedPrices = convertEuromWhToSntKWh(result.data); // Convert prices
+          setElectricityPrices(convertedPrices);
+          localStorage.setItem('electricityPrices', JSON.stringify(convertedPrices));
+          setErrorElectricityPrices(null);
+        } else {
+          console.error('Error fetching electricity prices:', result.error);
+          setErrorElectricityPrices(result.error);
+        }
+      } catch (error) {
+        console.error('Error fetching electricity prices:', error);
+        setErrorElectricityPrices('An unexpected error occurred while fetching electricity prices.');
+      } finally {
+        setLoadingElectricityPrices(false);
+      }
+    };
+
+    fetchElectricityPrices();
+  }, []); // Empty dependency array ensures this runs once on mount
+
+  // =====================
+  // Load Existing Electricity Prices from LocalStorage on Mount (Preserved)
   // =====================
 
   useEffect(() => {
     const storedPrices = JSON.parse(localStorage.getItem('electricityPrices'));
     if (storedPrices) {
       setElectricityPrices(storedPrices);
+      setLoadingElectricityPrices(false);
     }
   }, []);
 
@@ -114,7 +169,7 @@ export const DataProvider = ({ children }) => {
   }, [heaters]);
 
   // =====================
-  // Persist FI Electricity Prices to LocalStorage on Change (New)
+  // Persist FI Electricity Prices to LocalStorage on Change (Converted)
   // =====================
 
   useEffect(() => {
@@ -183,11 +238,11 @@ export const DataProvider = ({ children }) => {
         addElectricHeater,
         deleteHeater,
 
-        // Existing Electricity Prices State and Functions
+        // Existing Electricity Prices State and Functions (snt/kWh)
         electricityPrices,
         setElectricityPrices,
 
-        // New FI Electricity Prices State and Functions
+        // New FI Electricity Prices State and Functions (snt/kWh)
         fiElectricityPrices,
         setFiElectricityPrices,
         loadingFiPrices,
