@@ -12,25 +12,31 @@ export const DataProvider = ({ children }) => {
   // =====================
 
   // State for Rooms
-  const [rooms, setRooms] = useState([]);
+  const [rooms, setRooms] = useState(() => {
+    return JSON.parse(localStorage.getItem('rooms')) || [];
+  });
 
   // State for Heaters
-  const [heaters, setHeaters] = useState([]);
+  const [heaters, setHeaters] = useState(() => {
+    return JSON.parse(localStorage.getItem('heaters')) || [];
+  });
 
   // State for Electricity Prices
-  const [electricityPrices, setElectricityPrices] = useState([]);
+  const [electricityPrices, setElectricityPrices] = useState(() => {
+    return JSON.parse(localStorage.getItem('electricityPrices')) || [];
+  });
 
   // =====================
   // Loading and Error States for Electricity Prices
   // =====================
-  
+
   const [loadingElectricityPrices, setLoadingElectricityPrices] = useState(true);
   const [errorElectricityPrices, setErrorElectricityPrices] = useState(null);
 
   // =====================
   // Fetch Electricity Prices from Backend
   // =====================
-  
+
   useEffect(() => {
     const fetchElectricityPrices = async () => {
       setLoadingElectricityPrices(true);
@@ -63,7 +69,7 @@ export const DataProvider = ({ children }) => {
   // =====================
   // Load Electricity Prices from LocalStorage on Mount
   // =====================
-  
+
   useEffect(() => {
     const storedPrices = JSON.parse(localStorage.getItem('electricityPrices'));
     if (storedPrices) {
@@ -75,7 +81,7 @@ export const DataProvider = ({ children }) => {
   // =====================
   // Load Rooms Data from LocalStorage on Mount
   // =====================
-  
+
   useEffect(() => {
     const storedRooms = JSON.parse(localStorage.getItem('rooms')) || [];
     setRooms(storedRooms);
@@ -84,7 +90,7 @@ export const DataProvider = ({ children }) => {
   // =====================
   // Load Heaters Data from LocalStorage on Mount
   // =====================
-  
+
   useEffect(() => {
     const storedHeaters = JSON.parse(localStorage.getItem('heaters')) || [];
     setHeaters(storedHeaters);
@@ -93,7 +99,7 @@ export const DataProvider = ({ children }) => {
   // =====================
   // Persist Rooms Data to LocalStorage on Change
   // =====================
-  
+
   useEffect(() => {
     localStorage.setItem('rooms', JSON.stringify(rooms));
   }, [rooms]);
@@ -101,7 +107,7 @@ export const DataProvider = ({ children }) => {
   // =====================
   // Persist Heaters Data to LocalStorage on Change
   // =====================
-  
+
   useEffect(() => {
     localStorage.setItem('heaters', JSON.stringify(heaters));
   }, [heaters]);
@@ -120,10 +126,13 @@ export const DataProvider = ({ children }) => {
 
   /**
    * Deletes a room from the rooms state based on roomId.
+   * Also deletes associated heaters.
    * @param {string} roomId - The ID of the room to delete.
    */
   const deleteRoom = (roomId) => {
     setRooms((prevRooms) => prevRooms.filter((room) => room.roomId !== roomId));
+    // Also delete heaters associated with this room
+    setHeaters((prevHeaters) => prevHeaters.filter((heater) => heater.roomId !== roomId));
   };
 
   // =====================
@@ -149,7 +158,7 @@ export const DataProvider = ({ children }) => {
   // =====================
   // Provider's Value
   // =====================
-  
+
   return (
     <DataContext.Provider
       value={{
