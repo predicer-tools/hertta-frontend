@@ -12,7 +12,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
   const svgRef = useRef();
 
   // Access rooms and heaters from DataContext
-  const { rooms, heaters, fiElectricityPrices } = useContext(DataContext);
+  const { rooms, heaters, fiElectricityPrices, controlSignals } = useContext(DataContext);
 
   // Access sensors and devices from ConfigContext
   const { sensors, devices } = useContext(ConfigContext);
@@ -69,6 +69,17 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     const latestPrice = sortedPrices[0].price;
     return `${latestPrice.toFixed(2)} snt/kWh`;
   }, [fiElectricityPrices]);
+
+  // Function to get the current control signal for a heater
+  const getCurrentControlSignal = useCallback(
+    (heaterId) => {
+      if (!controlSignals || !controlSignals[heaterId] || controlSignals[heaterId].length === 0) {
+        return "N/A";
+      }
+      return controlSignals[heaterId][0]; // Assuming the first entry is the current hour
+    },
+    [controlSignals]
+  );
 
   // Render Visualization
   const renderVisualization = useCallback(() => {
@@ -200,6 +211,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         .attr("stroke", "#000")
         .attr("stroke-width", 1.5);
 
+      // Add Heater ID Label
       heaterGroup
         .append("text")
         .text((d) => d.id)
@@ -207,6 +219,19 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         .attr("dy", 5)
         .attr("font-size", "12px")
         .attr("fill", "#fff");
+
+      // Add Current Control Signal
+      heaterGroup
+        .append("text")
+        .text((d) => {
+          const currentSignal = getCurrentControlSignal(d.id);
+          return `Status: ${currentSignal}`;
+        })
+        .attr("text-anchor", "middle")
+        .attr("dy", heaterSize / 2 + 15) // Position below the heater rectangle
+        .attr("class", currentSignalClass => currentSignalClass === "ON" ? styles.on : styles.off)
+        .attr("font-size", "12px")
+        .attr("fill", (d) => (getCurrentControlSignal(d.id) === "ON" ? "#4CAF50" : "#F44336"));
     });
 
     // Add Electricity Grid Square
@@ -255,7 +280,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
 
     // Call the function to add the Electricity Grid square
     addElectricityGridSquare();
-  }, [rooms, heaters, getTemperatureDisplay, onDeviceClick, fiElectricityPrices, getCurrentElectricityPrice]);
+  }, [rooms, heaters, getTemperatureDisplay, onDeviceClick, fiElectricityPrices, getCurrentElectricityPrice, controlSignals, getCurrentControlSignal]);
 
   // Effect to render visualization
   useEffect(() => {

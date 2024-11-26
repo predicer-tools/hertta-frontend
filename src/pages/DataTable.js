@@ -42,6 +42,15 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
     return controlSignals[heaterId];
   };
 
+  // Function to get corresponding timestamps for control signals
+  const getControlSignalTimestamps = () => {
+    if (!fiElectricityPrices || fiElectricityPrices.length === 0) return Array(12).fill('N/A');
+    // Assuming fiElectricityPrices is sorted by timestamp ascending
+    return fiElectricityPrices.slice(0, 12).map(entry => new Date(entry.timestamp * 1000).toLocaleString());
+  };
+
+  const controlSignalTimestamps = getControlSignalTimestamps();
+
   return (
     <div className={styles.container}>
       <h2>Data Table</h2>
@@ -132,7 +141,7 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
                     <ul className={styles.controlSignalsList}>
                       {getControlSignals(heater.id).map((signal, sigIndex) => (
                         <li key={sigIndex} className={signal === 'ON' ? styles.on : styles.off}>
-                          Hour {sigIndex + 1}: {signal}
+                          {controlSignalTimestamps[sigIndex] !== 'N/A' ? `${controlSignalTimestamps[sigIndex]}: ${signal}` : 'N/A'}
                         </li>
                       ))}
                     </ul>
