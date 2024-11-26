@@ -3,13 +3,17 @@
 import React, { useEffect, useState, useContext } from 'react';
 import styles from './DataTable.module.css'; // Import CSS Module
 import WeatherContext from '../context/WeatherContext'; // Import WeatherContext
+import DataContext from '../context/DataContext'; // Import DataContext
 
 function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   const [sensors, setSensors] = useState([]);
   const [devices, setDevices] = useState([]);
-  
+
   // Consume WeatherContext
   const { weatherData } = useContext(WeatherContext);
+
+  // Consume DataContext for Electricity Prices
+  const { electricityPrices } = useContext(DataContext);
 
   // Load sensors and devices from localStorage
   useEffect(() => {
@@ -24,6 +28,12 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   const formatTemperature = (temp) => {
     if (temp === null || temp === undefined) return 'N/A';
     return `${temp.toFixed(2)} °C`;
+  };
+
+  // Function to format Electricity Prices
+  const formatPrice = (price) => {
+    if (price === 'N/A' || price === null || price === undefined) return 'N/A';
+    return `${price.toFixed(2)} €/MWh`;
   };
 
   return (
@@ -199,6 +209,33 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
             ) : (
               <tr>
                 <td colSpan="2">No weather data available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Display Electricity Prices */}
+      <h3>Electricity Prices (FI)</h3>
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Price (€/MWh)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {electricityPrices && Array.isArray(electricityPrices) && electricityPrices.length > 0 ? (
+              electricityPrices.map((entry, index) => (
+                <tr key={index}>
+                  <td>{new Date(entry.time).toLocaleString()}</td>
+                  <td>{formatPrice(entry.price)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="2">No electricity price data available</td>
               </tr>
             )}
           </tbody>

@@ -24,8 +24,16 @@ export const WeatherProvider = ({ children }) => {
 
     try {
       const data = await fetchWeatherData(startTimeISO, endTimeISO, config.location);
-      setWeatherData(data);
-      localStorage.setItem('weatherData', JSON.stringify(data));
+      
+      // Assuming fetchWeatherData returns an object with weather_values and currentTemp
+      setWeatherData({
+        ...data,
+        currentTemp: data.currentTemp, // Adjust based on your API response
+      });
+      localStorage.setItem('weatherData', JSON.stringify({
+        ...data,
+        currentTemp: data.currentTemp, // Adjust based on your API response
+      }));
     } catch (error) {
       console.error('Failed to fetch weather data:', error);
     }

@@ -1,12 +1,14 @@
 // src/pages/Dashboard.js
+
 import React, { useEffect, useRef, useCallback, useState, useContext } from "react";
 import * as d3 from "d3";
 import styles from "./Dashboard.module.css"; // Import the CSS Module
 import Modal from "../components/Modals/Modal";
 import DataContext from '../context/DataContext'; // Import DataContext
 import ConfigContext from '../context/ConfigContext'; // Import ConfigContext
+import WeatherContext from '../context/WeatherContext'; // Import WeatherContext
 
-function Dashboard({ activeDevices, onDeviceClick, outsideTemp }) {
+function Dashboard({ activeDevices, onDeviceClick }) {
   const svgRef = useRef();
 
   // Access rooms and heaters from DataContext
@@ -14,6 +16,9 @@ function Dashboard({ activeDevices, onDeviceClick, outsideTemp }) {
 
   // Access sensors from ConfigContext
   const { sensors } = useContext(ConfigContext);
+
+  // Access weatherData from WeatherContext
+  const { weatherData } = useContext(WeatherContext);
 
   // State for Optimize Button and Control Signals
   const [controlSignalsData, setControlSignalsData] = useState(null);
@@ -63,22 +68,35 @@ function Dashboard({ activeDevices, onDeviceClick, outsideTemp }) {
     svg.selectAll("*").remove();
 
     const containerWidth = svgRef.current.parentElement.offsetWidth;
-    const containerHeight = containerWidth * 0.8;
+    const containerHeight = containerWidth * 0.8; // Maintain aspect ratio
 
+    // Define total visualization area
+    const totalArea = containerWidth * containerHeight;
+
+    // Each room should be 1/5 of the total area
+    const roomArea = totalArea / 5;
+    const roomSize = Math.sqrt(roomArea); // Assuming square rooms
+
+    // Each device should be 1/9 of the room area
+    const deviceArea = roomArea / 9;
+    const deviceSize = Math.sqrt(deviceArea); // Assuming square devices
+
+    // Determine grid layout
     const numRooms = rooms.length;
     const numCols = Math.ceil(Math.sqrt(numRooms));
     const numRows = Math.ceil(numRooms / numCols);
-    const roomWidth = containerWidth / (numCols + 1);
-    const roomHeight = containerHeight / (numRows + 1);
-    const roomSize = Math.min(roomWidth, roomHeight) * 2.4; // 3x larger rooms
+
+    // Calculate spacing
+    const horizontalSpacing = containerWidth / (numCols + 1);
+    const verticalSpacing = containerHeight / (numRows + 1);
 
     const roomData = rooms.map((room, index) => {
       const col = index % numCols;
       const row = Math.floor(index / numCols);
       return {
         ...room,
-        x: (col + 1) * (containerWidth / (numCols + 1)),
-        y: (row + 1) * (containerHeight / (numRows + 1)),
+        x: (col + 1) * horizontalSpacing,
+        y: (row + 1) * verticalSpacing,
       };
     });
 
@@ -95,6 +113,7 @@ function Dashboard({ activeDevices, onDeviceClick, outsideTemp }) {
       .attr("class", "room")
       .attr("transform", (d) => `translate(${d.x}, ${d.y})`);
 
+    // Draw Rooms
     roomGroups
       .append("rect")
       .attr("width", roomSize)
@@ -105,6 +124,7 @@ function Dashboard({ activeDevices, onDeviceClick, outsideTemp }) {
       .attr("stroke", "#000")
       .attr("stroke-width", 2);
 
+    // Room Labels
     roomGroups
       .append("text")
       .text((d) => d.roomId)
@@ -113,6 +133,7 @@ function Dashboard({ activeDevices, onDeviceClick, outsideTemp }) {
       .attr("class", styles.roomLabel)
       .attr("font-size", "22px");
 
+    // Room Temperature Labels
     roomGroups
       .append("text")
       .text((d) => `Temp: ${getTemperatureDisplay(d)}`)
@@ -123,7 +144,7 @@ function Dashboard({ activeDevices, onDeviceClick, outsideTemp }) {
       .attr("font-size", "18px")
       .attr("fill", "#000");
 
-    // Add heaters inside rooms
+    // Add Heaters inside Rooms
     roomGroups.each(function (room) {
       const roomHeaters = heaters.filter((heater) => heater.roomId === room.roomId);
 
@@ -137,10 +158,10 @@ function Dashboard({ activeDevices, onDeviceClick, outsideTemp }) {
 
       heaterGroup
         .append("rect")
-        .attr("width", roomSize / 3) // Heaters are smaller than rooms
-        .attr("height", roomSize / 3)
-        .attr("x", -roomSize / 6)
-        .attr("y", -roomSize / 6)
+        .attr("width", deviceSize)
+        .attr("height", deviceSize)
+        .attr("x", -deviceSize / 2)
+        .attr("y", -deviceSize / 2)
         .attr("fill", color("heater"))
         .attr("stroke", "#000")
         .attr("stroke-width", 1.5);
@@ -163,6 +184,14 @@ function Dashboard({ activeDevices, onDeviceClick, outsideTemp }) {
 
   return (
     <div className={styles.dashboardContainer}>
+      {/* Outside Temperature Display */}
+      <div className={styles.outsideTempDisplay}>
+        Current Outside Temperature:{" "}
+        {weatherData && weatherData.currentTemp !== undefined && weatherData.currentTemp !== null
+          ? `${weatherData.currentTemp.toFixed(2)} °C`
+          : "Loading..."}
+      </div>
+
       <div className={styles.svgContainer}>
         <svg ref={svgRef}>
           <g></g>
