@@ -1,9 +1,15 @@
-import React, { useEffect, useState } from 'react';
+// src/pages/DataTable.js
+
+import React, { useEffect, useState, useContext } from 'react';
 import styles from './DataTable.module.css'; // Import CSS Module
+import WeatherContext from '../context/WeatherContext'; // Import WeatherContext
 
 function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   const [sensors, setSensors] = useState([]);
   const [devices, setDevices] = useState([]);
+  
+  // Consume WeatherContext
+  const { weatherData } = useContext(WeatherContext);
 
   // Load sensors and devices from localStorage
   useEffect(() => {
@@ -13,6 +19,12 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
     setSensors(storedSensors);
     setDevices(storedDevices);
   }, []);
+
+  // Function to format temperature (assuming weatherData.value is in Celsius)
+  const formatTemperature = (temp) => {
+    if (temp === null || temp === undefined) return 'N/A';
+    return `${temp.toFixed(2)} °C`;
+  };
 
   return (
     <div className={styles.container}>
@@ -100,7 +112,10 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
                   <td>{heater.capacity}</td>
                   <td>{heater.roomId}</td>
                   <td>
-                    <button className={styles.deleteButton} onClick={() => deleteHeater(heater.id)}>
+                    <button
+                      className={styles.deleteButton}
+                      onClick={() => deleteHeater(heater.id)}
+                    >
                       Delete
                     </button>
                   </td>
@@ -145,7 +160,10 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
                     {room.sensorState} {room.sensorUnit}
                   </td>
                   <td>
-                    <button className={styles.deleteButton} onClick={() => deleteRoom(room.roomId)}>
+                    <button
+                      className={styles.deleteButton}
+                      onClick={() => deleteRoom(room.roomId)}
+                    >
                       Delete
                     </button>
                   </td>
@@ -154,6 +172,33 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
             ) : (
               <tr>
                 <td colSpan="8">No rooms available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Display Weather Data */}
+      <h3>Outside Temperature</h3>
+      <div className={styles.tableWrapper}>
+        <table className={`${styles.table} ${styles.weatherTable}`}>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Temperature (°C)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {weatherData && Array.isArray(weatherData.weather_values) && weatherData.weather_values.length > 0 ? (
+              weatherData.weather_values.map((entry, index) => (
+                <tr key={index}>
+                  <td>{new Date(entry.time).toLocaleString()}</td>
+                  <td>{formatTemperature(entry.value)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="2">No weather data available</td>
               </tr>
             )}
           </tbody>

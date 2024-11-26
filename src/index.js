@@ -1,4 +1,5 @@
 // src/index.js
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router } from 'react-router-dom'; // Import BrowserRouter
@@ -8,6 +9,7 @@ import reportWebVitals from './reportWebVitals';
 import 'normalize.css';
 import { ConfigProvider } from './context/ConfigContext'; // Import ConfigProvider
 import { DataProvider } from './context/DataContext'; // Import DataProvider
+import { WeatherProvider } from './context/WeatherContext'; // Import WeatherProvider
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -15,7 +17,9 @@ root.render(
     <Router>
       <ConfigProvider>
         <DataProvider>
-          <App />
+          <WeatherProvider>
+            <App />
+          </WeatherProvider>
         </DataProvider>
       </ConfigProvider>
     </Router>

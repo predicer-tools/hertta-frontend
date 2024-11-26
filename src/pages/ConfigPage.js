@@ -1,9 +1,11 @@
 // src/pages/ConfigPage.js
+
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import finlandLocations from '../utils/finlandLocations';
 import styles from './ConfigPage.module.css';
 import ConfigContext from '../context/ConfigContext';
+import WeatherContext from '../context/WeatherContext'; // Import WeatherContext
 
 function ConfigPage() {
   const [country, setCountry] = useState('');
@@ -14,6 +16,7 @@ function ConfigPage() {
 
   const navigate = useNavigate();
   const { updateConfig, updateSensors, updateDevices } = useContext(ConfigContext);
+  const { getWeatherData } = useContext(WeatherContext); // Consume WeatherContext
 
   const fetchHomeAssistantData = async () => {
     try {
@@ -69,6 +72,9 @@ function ConfigPage() {
 
         // Fetch sensors and devices
         await fetchHomeAssistantData();
+
+        // Trigger an immediate weather data fetch
+        await getWeatherData();
 
         // Redirect to Dashboard
         navigate('/');

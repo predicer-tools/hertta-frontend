@@ -1,76 +1,87 @@
+/* src/pages/DataTable.module.css */
+
+/* Container for the entire DataTable component */
 .container {
-    width: 100%;
-    margin: 1rem 0;
-  }
-  
-  .tableWrapper {
-    overflow-x: auto; /* Allow horizontal scrolling for smaller screens */
-    margin-bottom: 1rem;
-  }
-  
-  .table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 1rem;
-  }
-  
+  width: 100%;
+  margin: 1rem 0;
+}
+
+/* Wrapper to enable horizontal scrolling on smaller screens */
+.tableWrapper {
+  overflow-x: auto; /* Allow horizontal scrolling */
+  margin-bottom: 2rem; /* Space below each table */
+}
+
+/* General table styles */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem; /* Base font size */
+}
+
+/* Table headers and data cells */
+.table th,
+.table td {
+  border: 1px solid #ddd;
+  padding: 0.75rem; /* Padding inside cells */
+  text-align: left;
+}
+
+/* Table header styles */
+.table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+/* Zebra striping for table rows */
+.table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Hover effect for table rows */
+.table tr:hover {
+  background-color: #f1f1f1;
+}
+
+/* Delete button styles */
+.deleteButton {
+  background-color: #e74c3c; /* Darker red for consistency */
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+/* Hover effect for delete buttons */
+.deleteButton:hover {
+  background-color: #c0392b; /* Even darker red on hover */
+}
+
+/* Responsive adjustments for medium screens */
+@media (max-width: 768px) {
   .table th,
   .table td {
-    border: 1px solid #ddd;
-    padding: 0.75rem;
-    text-align: left;
+    padding: 0.5rem;
+    font-size: 0.875rem;
   }
-  
-  .table th {
-    background-color: #f2f2f2;
-    font-weight: bold;
+}
+
+/* Responsive adjustments for small screens */
+@media (max-width: 480px) {
+  .table th,
+  .table td {
+    padding: 0.25rem;
+    font-size: 0.75rem;
   }
-  
-  .table tr:nth-child(even) {
-    background-color: #f9f9f9;
-  }
-  
-  .table tr:hover {
-    background-color: #f1f1f1;
-  }
-  
-  .deleteButton {
-    background-color: #f44336;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    border-radius: 0.25rem;
-    transition: background-color 0.3s ease;
-  }
-  
-  .deleteButton:hover {
-    background-color: #d32f2f;
-  }
-  
-  @media (max-width: 768px) {
-    .table th,
-    .table td {
-      padding: 0.5rem;
-      font-size: 0.875rem;
-    }
-  
-    .deleteButton {
-      padding: 0.375rem 0.75rem;
-      font-size: 0.875rem;
-    }
-  }
-  
-  @media (max-width: 480px) {
-    .table th,
-    .table td {
-      padding: 0.25rem;
-      font-size: 0.75rem;
-    }
-  
-    .deleteButton {
-      padding: 0.25rem 0.5rem;
-      font-size: 0.75rem;
-    }
-  }
-  
+}
+
+/* Optional: Specific styles for weather table (if needed) */
+.weatherTable th {
+  background-color: #dff0d8; /* Light green for weather table headers */
+}
+
+.weatherTable td {
+  background-color: #fcf8e3; /* Light yellow for weather table cells */
+}
