@@ -1,33 +1,46 @@
+// src/components/Sidebar/Sidebar.js
+
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import styles from './Sidebar.module.css'; // Import CSS Module
+import LogoutButton from '../Button/LogoutButton'; // Adjust the import path as per your project structure
 
 function Sidebar({ isOpen }) {
   return (
     <div className={`${styles.sidebar} ${isOpen ? styles.open : styles.closed}`}>
-      <h2>Hertta Add-on</h2>
-      <ul>
-        <li>
-          <NavLink to="/" end className={({ isActive }) => (isActive ? styles['active-link'] : '')}>
-            Dashboard
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/config" className={({ isActive }) => (isActive ? styles['active-link'] : '')}>
-            Configuration
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/input-data" className={({ isActive }) => (isActive ? styles['active-link'] : '')}>
-            Input Data
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/dashboard" className={({ isActive }) => (isActive ? styles['active-link'] : '')}>
-            Dashboard
-          </NavLink>
-        </li>
-      </ul>
+      <h2 className={styles.title}>Hertta Add-on</h2>
+      <nav className={styles.nav}>
+        <ul className={styles.navList}>
+          <li className={styles.navItem}>
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+            >
+              Home Energy
+            </NavLink>
+          </li>
+          <li className={styles.navItem}>
+            <NavLink
+              to="/config"
+              className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+            >
+              Configuration
+            </NavLink>
+          </li>
+          <li className={styles.navItem}>
+            <NavLink
+              to="/input-data"
+              className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+            >
+              Input Data
+            </NavLink>
+          </li>
+          {/* Add more navigation links as needed */}
+        </ul>
+      </nav>
+      <div className={styles.logoutContainer}>
+        <LogoutButton className={styles.logoutButton} />
+      </div>
     </div>
   );
 }

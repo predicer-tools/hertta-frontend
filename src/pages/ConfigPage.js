@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+// src/pages/ConfigPage.js
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import finlandLocations from '../utils/finlandLocations';
 import styles from './ConfigPage.module.css';
+import ConfigContext from '../context/ConfigContext';
 
 function ConfigPage() {
   const [country, setCountry] = useState('');
@@ -11,6 +13,7 @@ function ConfigPage() {
   const [error, setError] = useState(null);
 
   const navigate = useNavigate();
+  const { updateConfig, updateSensors, updateDevices } = useContext(ConfigContext);
 
   const fetchHomeAssistantData = async () => {
     try {
@@ -24,11 +27,12 @@ function ConfigPage() {
       const sensors = await sensorsResponse.json();
       const devices = await devicesResponse.json();
 
-      // Store data in localStorage
-      localStorage.setItem('homeAssistantSensors', JSON.stringify(sensors));
-      localStorage.setItem('fetchedDevices', JSON.stringify(devices));
+      // Update ConfigContext with sensors and devices
+      updateSensors(sensors);
+      updateDevices(devices);
     } catch (err) {
       console.error('Error fetching Home Assistant data:', err);
+      throw err; // Re-throw to handle in handleSubmit
     }
   };
 
@@ -55,11 +59,13 @@ function ConfigPage() {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        // Save configuration to localStorage
-        localStorage.setItem('isConfigured', 'true');
-        localStorage.setItem('country', country.trim());
-        localStorage.setItem('location', location.trim());
-        localStorage.setItem('apiKey', apiKey.trim());
+        // Update configuration state
+        updateConfig({
+          isConfigured: true,
+          country: country.trim(),
+          location: location.trim(),
+          apiKey: apiKey.trim(),
+        });
 
         // Fetch sensors and devices
         await fetchHomeAssistantData();

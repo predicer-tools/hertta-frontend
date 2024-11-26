@@ -1,63 +1,66 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+// src/pages/Dashboard.js
+import React, { useEffect, useRef, useCallback, useState, useContext } from "react";
 import * as d3 from "d3";
 import styles from "./Dashboard.module.css"; // Import the CSS Module
-import Modal from "../components/modals/Modal";
+import Modal from "../components/Modals/Modal";
+import DataContext from '../context/DataContext'; // Import DataContext
+import ConfigContext from '../context/ConfigContext'; // Import ConfigContext
 
-function Dashboard() {
+function Dashboard({ activeDevices, onDeviceClick, outsideTemp }) {
   const svgRef = useRef();
 
-  // States for rooms and heating devices
-  const [rooms, setRooms] = useState([]);
-  const [heatingDevices, setHeatingDevices] = useState([]);
+  // Access rooms and heaters from DataContext
+  const { rooms, heaters } = useContext(DataContext);
+
+  // Access sensors from ConfigContext
+  const { sensors } = useContext(ConfigContext);
+
+  // State for Optimize Button and Control Signals
   const [controlSignalsData, setControlSignalsData] = useState(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+
+  // State for Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Load rooms and heating devices from localStorage
-  useEffect(() => {
-    const storedRooms = JSON.parse(localStorage.getItem("rooms")) || [];
-    const storedDevices = JSON.parse(localStorage.getItem("heaters")) || [];
-    setRooms(storedRooms);
-    setHeatingDevices(storedDevices);
+  // State for Last Optimized Time
+  const [lastOptimized, setLastOptimized] = useState(null);
+
+  // Function to convert temperature based on unit
+  const convertTemperature = useCallback((temperature, unit) => {
+    if (isNaN(parseFloat(temperature))) return "N/A";
+    let temp = parseFloat(temperature);
+
+    switch (unit) {
+      case "°F":
+        temp = (temp * 9) / 5 + 32;
+        return `${temp.toFixed(2)} °F`;
+      case "°C":
+        return `${temp.toFixed(2)} °C`;
+      case "K":
+      case "°K":
+        temp = temp - 273.15;
+        return `${temp.toFixed(2)} °C`;
+      default:
+        return `${temp.toFixed(2)} °C`;
+    }
   }, []);
 
-  // Function to get devices associated with a room
-  const getDevicesInRoom = useCallback(
-    (roomId) => heatingDevices.filter((device) => device.roomId === roomId),
-    [heatingDevices]
+  // Function to get temperature display for room
+  const getTemperatureDisplay = useCallback(
+    (room) => {
+      if (room.sensorState === undefined || room.sensorState === null) return "N/A";
+      const unit = room.sensorUnit || "°C";
+      return convertTemperature(room.sensorState, unit);
+    },
+    [convertTemperature]
   );
 
-  // Function to generate control signals for heating devices
-  const generateControlSignals = useCallback(() => {
-    const generateDummySignals = (deviceId) => {
-      const signals = [];
-      const now = new Date();
-      for (let i = 0; i < 24; i++) {
-        const time = new Date(now.getTime() + i * 15 * 60000);
-        const status = Math.random() > 0.5 ? "on" : "off";
-        signals.push({
-          time: time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          status,
-        });
-      }
-      return signals;
-    };
-
-    const signals = heatingDevices.reduce((acc, device) => {
-      acc[device.id] = generateDummySignals(device.id);
-      return acc;
-    }, {});
-
-    setControlSignalsData(signals);
-  }, [heatingDevices]);
-
-  // Render visualization for rooms and devices
+  // Render Visualization
   const renderVisualization = useCallback(() => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || rooms.length === 0) return;
 
     const svg = d3.select(svgRef.current).select("g");
     svg.selectAll("*").remove();
-
-    if (rooms.length === 0 || heatingDevices.length === 0) return;
 
     const containerWidth = svgRef.current.parentElement.offsetWidth;
     const containerHeight = containerWidth * 0.8;
@@ -67,24 +70,22 @@ function Dashboard() {
     const numRows = Math.ceil(numRooms / numCols);
     const roomWidth = containerWidth / (numCols + 1);
     const roomHeight = containerHeight / (numRows + 1);
-    const roomSize = Math.min(roomWidth, roomHeight) * 0.8;
+    const roomSize = Math.min(roomWidth, roomHeight) * 2.4; // 3x larger rooms
 
     const roomData = rooms.map((room, index) => {
       const col = index % numCols;
       const row = Math.floor(index / numCols);
-      const devices = getDevicesInRoom(room.roomId);
       return {
         ...room,
         x: (col + 1) * (containerWidth / (numCols + 1)),
         y: (row + 1) * (containerHeight / (numRows + 1)),
-        devices,
       };
     });
 
     const color = d3
       .scaleOrdinal()
-      .domain(["room", "device-on", "device-off"])
-      .range(["#ffcc00", "#4CAF50", "#F44336"]);
+      .domain(["room", "heater"])
+      .range(["#ffcc00", "#4CAF50"]); // Yellow for rooms, Green for heaters
 
     const roomGroups = svg
       .selectAll(".room")
@@ -114,14 +115,46 @@ function Dashboard() {
 
     roomGroups
       .append("text")
-      .text((d) => `Devices: ${d.devices.length}`)
+      .text((d) => `Temp: ${getTemperatureDisplay(d)}`)
       .attr("text-anchor", "middle")
       .attr("dy", 0)
       .attr("dominant-baseline", "middle")
-      .attr("class", styles.deviceCountLabel)
+      .attr("class", styles.roomTemperatureLabel)
       .attr("font-size", "18px")
       .attr("fill", "#000");
-  }, [rooms, heatingDevices, getDevicesInRoom]);
+
+    // Add heaters inside rooms
+    roomGroups.each(function (room) {
+      const roomHeaters = heaters.filter((heater) => heater.roomId === room.roomId);
+
+      const heaterGroup = d3
+        .select(this)
+        .selectAll(".heater")
+        .data(roomHeaters)
+        .enter()
+        .append("g")
+        .attr("class", "heater");
+
+      heaterGroup
+        .append("rect")
+        .attr("width", roomSize / 3) // Heaters are smaller than rooms
+        .attr("height", roomSize / 3)
+        .attr("x", -roomSize / 6)
+        .attr("y", -roomSize / 6)
+        .attr("fill", color("heater"))
+        .attr("stroke", "#000")
+        .attr("stroke-width", 1.5);
+
+      heaterGroup
+        .append("text")
+        .text((d) => d.id)
+        .attr("text-anchor", "middle")
+        .attr("dy", 0)
+        .attr("dominant-baseline", "middle")
+        .attr("font-size", "14px")
+        .attr("fill", "#fff");
+    });
+  }, [rooms, heaters, getTemperatureDisplay]);
 
   // Effect to render visualization
   useEffect(() => {
@@ -130,60 +163,11 @@ function Dashboard() {
 
   return (
     <div className={styles.dashboardContainer}>
-      <div className={styles.visualizationContainer}>
-        <svg ref={svgRef} width="100%" height="500">
-          <g />
+      <div className={styles.svgContainer}>
+        <svg ref={svgRef}>
+          <g></g>
         </svg>
       </div>
-
-      <div className={styles.controlSignalsSection}>
-        <h2>Control Signals</h2>
-        {controlSignalsData ? (
-          Object.entries(controlSignalsData).map(([deviceId, signals]) => (
-            <div key={deviceId} className={styles.controlSignalsDevice}>
-              <h3>{deviceId}</h3>
-              <table className={styles.controlSignalsTable}>
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {signals.map((signal, index) => (
-                    <tr key={index}>
-                      <td>{signal.time}</td>
-                      <td>{signal.status.toUpperCase()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))
-        ) : (
-          <p>No control signals available.</p>
-        )}
-      </div>
-
-      <button
-        className={styles.generateSignalsButton}
-        onClick={generateControlSignals}
-      >
-        Generate Control Signals
-      </button>
-
-      <button
-        className={styles.optimizeButton}
-        onClick={() => setIsModalOpen(true)}
-      >
-        Show Modal
-      </button>
-
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <h2>Modal Content</h2>
-        <p>Some information goes here!</p>
-        <button onClick={() => setIsModalOpen(false)}>Close</button>
-      </Modal>
     </div>
   );
 }

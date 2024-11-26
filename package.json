@@ -13,6 +13,8 @@
     "axios": "^1.7.7",
     "babel-loader": "^9.2.0",
     "d3": "^7.9.0",
+    "debug": "^4.3.7",
+    "detect-port-alt": "^1.1.6",
     "http-proxy-middleware": "^3.0.3",
     "js-yaml": "^4.1.0",
     "normalize.css": "^8.0.1",
@@ -29,7 +31,7 @@
   "scripts": {
     "start": "concurrently \"npm run start-react\" \"npm run start-python\"",
     "start-react": "react-scripts start --stats-children",
-    "start-python": "cd ../mock-home-assistant && python app.py",
+    "start-python": "cd ../mock-backend && python run.py",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

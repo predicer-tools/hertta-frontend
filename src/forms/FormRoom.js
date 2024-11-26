@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+// src/forms/FormRoom.js
+import React, { useState, useContext } from 'react';
 import './DataForm.css'; // Import the updated CSS
+import DataContext from '../context/DataContext'; // Import DataContext
 
-function FormRoom({ addRoom, homeAssistantSensors }) {
+function FormRoom({ homeAssistantSensors }) {
+  const { addRoom } = useContext(DataContext); // Access addRoom from DataContext
+
   const [roomId, setRoomId] = useState('');
   const [roomWidth, setRoomWidth] = useState('');
   const [roomLength, setRoomLength] = useState('');
