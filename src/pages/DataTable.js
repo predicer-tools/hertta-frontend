@@ -12,8 +12,8 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   // Consume WeatherContext
   const { weatherData } = useContext(WeatherContext);
 
-  // Consume DataContext for FI Electricity Prices
-  const { fiElectricityPrices, loadingFiPrices, errorFiPrices } = useContext(DataContext);
+  // Consume DataContext for FI Electricity Prices and Control Signals
+  const { fiElectricityPrices, loadingFiPrices, errorFiPrices, controlSignals } = useContext(DataContext);
 
   // Load sensors and devices from localStorage
   useEffect(() => {
@@ -33,7 +33,13 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   // Function to format Electricity Prices
   const formatPrice = (price) => {
     if (price === 'N/A' || price === null || price === undefined) return 'N/A';
-    return `${price.toFixed(2)} €/MWh`;
+    return `${price.toFixed(2)} snt/kWh`;
+  };
+
+  // Function to get control signals for a heater
+  const getControlSignals = (heaterId) => {
+    if (!controlSignals || !controlSignals[heaterId]) return Array(12).fill('N/A');
+    return controlSignals[heaterId];
   };
 
   return (
@@ -111,6 +117,7 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
               <th>ID</th>
               <th>Capacity (kW)</th>
               <th>Room ID</th>
+              <th>Control Signals (Next 12 Hours)</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -121,6 +128,15 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
                   <td>{heater.id}</td>
                   <td>{heater.capacity}</td>
                   <td>{heater.roomId}</td>
+                  <td>
+                    <ul className={styles.controlSignalsList}>
+                      {getControlSignals(heater.id).map((signal, sigIndex) => (
+                        <li key={sigIndex} className={signal === 'ON' ? styles.on : styles.off}>
+                          Hour {sigIndex + 1}: {signal}
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
                   <td>
                     <button
                       className={styles.deleteButton}
@@ -133,7 +149,7 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
               ))
             ) : (
               <tr>
-                <td colSpan="4">No heating devices available</td>
+                <td colSpan="5">No heating devices available</td>
               </tr>
             )}
           </tbody>
@@ -227,14 +243,14 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
             <thead>
               <tr>
                 <th>Timestamp</th>
-                <th>Price (€/MWh)</th>
+                <th>Price (snt/kWh)</th>
               </tr>
             </thead>
             <tbody>
               {fiElectricityPrices.map((entry, index) => (
                 <tr key={index}>
                   <td>{new Date(entry.timestamp * 1000).toLocaleString()}</td> {/* Convert Unix timestamp to JS Date */}
-                  <td>{formatPrice(entry.price)}</td>
+                  <td>{formatPrice(entry.price)}</td> {/* Displayed in snt/kWh */}
                 </tr>
               ))}
             </tbody>

@@ -1,7 +1,8 @@
 // src/context/DataContext.js
 
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { fetchElectricityPricesFi } from '../api/elering'; // Import the new API utility
+import { generateControlSignals } from '../utils/controlData'; // Import the control signals utility
 
 // Create the DataContext
 const DataContext = createContext();
@@ -43,6 +44,14 @@ export const DataProvider = ({ children }) => {
   const [errorFiPrices, setErrorFiPrices] = useState(null);
 
   // =====================
+  // New State for Control Signals
+  // =====================
+
+  const [controlSignals, setControlSignals] = useState(() => {
+    return JSON.parse(localStorage.getItem('controlSignals')) || {};
+  });
+
+  // =====================
   // Helper Function for Conversion
   // =====================
 
@@ -51,12 +60,12 @@ export const DataProvider = ({ children }) => {
    * @param {Array} prices - Array of price objects with { timestamp, price }.
    * @returns {Array} - Converted array with prices in snt/kWh.
    */
-  const convertEuromWhToSntKWh = (prices) => {
+  const convertEuromWhToSntKWh = useCallback((prices) => {
     return prices.map((entry) => ({
       ...entry,
       price: parseFloat(entry.price) * 0.1, // Convert to snt/kWh
     }));
-  };
+  }, []);
 
   // =====================
   // Fetch FI Electricity Prices from Elering API (Converted to snt/kWh)
@@ -66,9 +75,10 @@ export const DataProvider = ({ children }) => {
     const fetchFiPrices = async () => {
       setLoadingFiPrices(true);
       try {
-        // Define the start and end times
-        const start = '2024-11-26T09:00:00.000Z';
-        const end = '2024-11-26T18:00:00.000Z';
+        // Define the start and end times (next 12 hours from current time)
+        const now = new Date();
+        const start = now.toISOString();
+        const end = new Date(now.getTime() + 12 * 60 * 60 * 1000).toISOString();
 
         const fiPrices = await fetchElectricityPricesFi(start, end);
         const convertedFiPrices = convertEuromWhToSntKWh(fiPrices); // Convert prices
@@ -83,7 +93,7 @@ export const DataProvider = ({ children }) => {
     };
 
     fetchFiPrices();
-  }, []); // Empty dependency array ensures this runs once on mount
+  }, [convertEuromWhToSntKWh]);
 
   // =====================
   // Fetch Electricity Prices from Backend (Converted to snt/kWh)
@@ -120,7 +130,7 @@ export const DataProvider = ({ children }) => {
     };
 
     fetchElectricityPrices();
-  }, []); // Empty dependency array ensures this runs once on mount
+  }, [convertEuromWhToSntKWh]);
 
   // =====================
   // Load Existing Electricity Prices from LocalStorage on Mount (Preserved)
@@ -177,6 +187,28 @@ export const DataProvider = ({ children }) => {
   }, [fiElectricityPrices]);
 
   // =====================
+  // Generate and Store Control Signals
+  // =====================
+
+  useEffect(() => {
+    if (heaters.length === 0 || fiElectricityPrices.length === 0) {
+      // If no heaters or no price data, set all control signals to OFF
+      const defaultControlSignals = {};
+      heaters.forEach((heater) => {
+        defaultControlSignals[heater.id] = Array(12).fill('OFF');
+      });
+      setControlSignals(defaultControlSignals);
+      localStorage.setItem('controlSignals', JSON.stringify(defaultControlSignals));
+      return;
+    }
+
+    // Generate control signals
+    const generatedControlSignals = generateControlSignals(heaters, fiElectricityPrices);
+    setControlSignals(generatedControlSignals);
+    localStorage.setItem('controlSignals', JSON.stringify(generatedControlSignals));
+  }, [heaters, fiElectricityPrices]);
+
+  // =====================
   // Functions to Manipulate Rooms (Existing - Preserved)
   // =====================
 
@@ -217,6 +249,11 @@ export const DataProvider = ({ children }) => {
    */
   const deleteHeater = (heaterId) => {
     setHeaters((prevHeaters) => prevHeaters.filter((heater) => heater.id !== heaterId));
+    // Also delete control signals associated with this heater
+    const updatedControlSignals = { ...controlSignals };
+    delete updatedControlSignals[heaterId];
+    setControlSignals(updatedControlSignals);
+    localStorage.setItem('controlSignals', JSON.stringify(updatedControlSignals));
   };
 
   // =====================
@@ -247,6 +284,10 @@ export const DataProvider = ({ children }) => {
         setFiElectricityPrices,
         loadingFiPrices,
         errorFiPrices,
+
+        // New Control Signals State
+        controlSignals,
+        setControlSignals,
 
         // ... Add any other states and setters you have
       }}

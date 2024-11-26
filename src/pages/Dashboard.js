@@ -12,7 +12,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
   const svgRef = useRef();
 
   // Access rooms and heaters from DataContext
-  const { rooms, heaters } = useContext(DataContext);
+  const { rooms, heaters, fiElectricityPrices } = useContext(DataContext);
 
   // Access sensors and devices from ConfigContext
   const { sensors, devices } = useContext(ConfigContext);
@@ -59,6 +59,16 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     },
     [convertTemperature]
   );
+
+  // Function to determine the latest electricity price
+  const getCurrentElectricityPrice = useCallback(() => {
+    if (!fiElectricityPrices || fiElectricityPrices.length === 0) return "N/A";
+    // Assuming fiElectricityPrices is sorted by timestamp ascending
+    // If not, sort it first
+    const sortedPrices = fiElectricityPrices.slice().sort((a, b) => b.timestamp - a.timestamp);
+    const latestPrice = sortedPrices[0].price;
+    return `${latestPrice.toFixed(2)} snt/kWh`;
+  }, [fiElectricityPrices]);
 
   // Render Visualization
   const renderVisualization = useCallback(() => {
@@ -198,7 +208,54 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         .attr("font-size", "12px")
         .attr("fill", "#fff");
     });
-  }, [rooms, heaters, getTemperatureDisplay, onDeviceClick]);
+
+    // Add Electricity Grid Square
+    const addElectricityGridSquare = () => {
+      // Determine position for the Electricity Grid square
+      // For example, place it at the top-right corner
+      const gridSize = 100; // Size of the square
+      const margin = 20; // Margin from the edges
+
+      // Current electricity price
+      const currentPrice = getCurrentElectricityPrice();
+
+      // Append a group for the electricity grid
+      const gridGroup = svg.append("g")
+        .attr("class", "electricity-grid")
+        .attr("transform", `translate(${containerWidth - margin - gridSize / 2}, ${margin + gridSize / 2})`);
+
+      // Draw the square
+      gridGroup.append("rect")
+        .attr("width", gridSize)
+        .attr("height", gridSize)
+        .attr("x", -gridSize / 2)
+        .attr("y", -gridSize / 2)
+        .attr("fill", "#2196F3") // Blue color for Electricity Grid
+        .attr("stroke", "#000")
+        .attr("stroke-width", 2)
+        .attr("rx", 10) // Rounded corners
+        .attr("ry", 10);
+
+      // Add label
+      gridGroup.append("text")
+        .text("Electricity Grid")
+        .attr("text-anchor", "middle")
+        .attr("dy", -10)
+        .attr("font-size", "14px")
+        .attr("fill", "#fff");
+
+      // Add current price
+      gridGroup.append("text")
+        .text(`Price: ${currentPrice}`)
+        .attr("text-anchor", "middle")
+        .attr("dy", 10)
+        .attr("font-size", "16px")
+        .attr("fill", "#fff");
+    };
+
+    // Call the function to add the Electricity Grid square
+    addElectricityGridSquare();
+  }, [rooms, heaters, getTemperatureDisplay, onDeviceClick, fiElectricityPrices, getCurrentElectricityPrice]);
 
   // Effect to render visualization
   useEffect(() => {
