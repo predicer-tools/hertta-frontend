@@ -9,6 +9,14 @@
   font-family: var(--font-family-primary); /* Ensure it uses the global font */
 }
 
+/* Outside Temperature Display */
+.outsideTempDisplay {
+  font-size: 1.25rem; /* 20px */
+  margin-bottom: 1rem; /* 16px */
+  color: #333;
+  font-family: var(--font-family-primary); /* Ensure it uses the global font */
+}
+
 /* Control Signals Section */
 .controlSignalsSection {
   width: 100%;
@@ -140,6 +148,75 @@
   fill: #555;
   font-family: var(--font-family-primary); /* Ensure it uses the global font */
   pointer-events: none; /* Prevent interfering with interactions */
+}
+
+/* Max Temperature Label */
+.roomMaxTempLabel {
+  font-size: 14px;
+  fill: #FF0000; /* Red */
+  font-family: var(--font-family-primary); /* Ensure it uses the global font */
+  pointer-events: none; /* Prevent interfering with interactions */
+  font-weight: bold;
+  white-space: nowrap; /* Prevent text wrapping */
+  text-anchor: middle; /* Center the text horizontally */ /* ** MODIFIED ** */
+  dominant-baseline: middle; /* Center the text vertically */
+  transform: translateY(5px); /* Adjust to move inside the square */
+}
+
+/* Min Temperature Label */
+.roomMinTempLabel {
+  font-size: 14px;
+  fill: #0000FF; /* Blue */
+  font-family: var(--font-family-primary); /* Ensure it uses the global font */
+  pointer-events: none; /* Prevent interfering with interactions */
+  font-weight: bold;
+  white-space: nowrap; /* Prevent text wrapping */
+  text-anchor: middle; /* Center the text horizontally */ /* ** MODIFIED ** */
+  dominant-baseline: middle; /* Center the text vertically */
+  transform: translateY(5px); /* Adjust to move inside the square */
+}
+
+/* Heater Labels */
+.heaterIdLabel {
+  font-size: 12px;
+  fill: #fff;
+  font-family: var(--font-family-primary);
+  pointer-events: none;
+  font-weight: bold;
+}
+
+.heaterStatusLabel {
+  font-size: 12px;
+  fill: #fff;
+  font-family: var(--font-family-primary);
+  pointer-events: none;
+}
+
+/* Responsive Heater Labels */
+@media (max-width: 768px) {
+  .heaterIdLabel,
+  .heaterStatusLabel {
+    font-size: 10px;
+  }
+  
+  /* Adjust Max and Min Labels Inside Square */
+  .roomMaxTempLabel,
+  .roomMinTempLabel {
+    transform: translateY(3px); /* Slight adjustment for smaller screens */
+  }
+}
+
+@media (max-width: 480px) {
+  .heaterIdLabel,
+  .heaterStatusLabel {
+    font-size: 8px;
+  }
+  
+  /* Further Adjust Max and Min Labels Inside Square */
+  .roomMaxTempLabel,
+  .roomMinTempLabel {
+    transform: translateY(2px); /* Further adjustment for very small screens */
+  }
 }
 
 /* Electricity Grid Labels */
@@ -379,6 +456,12 @@
   .noDataMessage {
     font-size: 1.25rem; /* 20px */
   }
+
+  /* Adjustments to ensure labels stay inside the square */
+  .roomMaxTempLabel,
+  .roomMinTempLabel {
+    transform: translateY(3px); /* Slight adjustment for smaller screens */
+  }
 }
 
 @media (max-width: 480px) {
@@ -421,5 +504,39 @@
 
   .noDataMessage {
     font-size: 1.25rem; /* 20px */
+  }
+
+  /* Further Heater Labels Adjustments */
+  .heaterIdLabel,
+  .heaterStatusLabel {
+    font-size: 8px;
+  }
+
+  /* Further Adjust Max and Min Labels Inside Square */
+  .roomMaxTempLabel,
+  .roomMinTempLabel {
+    transform: translateY(2px); /* Further adjustment for very small screens */
+  }
+}
+
+/* Responsive Heater Labels */
+@media (max-width: 768px) {
+  .heaterIdLabel,
+  .heaterStatusLabel {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .heaterIdLabel,
+  .heaterStatusLabel {
+    font-size: 8px;
+  }
+
+  /* Ensure Max and Min labels are properly aligned inside the square */
+  .roomMaxTempLabel,
+  .roomMinTempLabel {
+    transform: translateY(2px); /* Further adjustment for very small screens */
+    text-anchor: middle; /* Center align text */
   }
 }

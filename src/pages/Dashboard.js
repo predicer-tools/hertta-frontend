@@ -1,9 +1,9 @@
 // src/pages/Dashboard.js
 
-import React, { useEffect, useRef, useCallback, useState, useContext } from "react";
+import React, { useEffect, useRef, useCallback, useContext } from "react";
 import * as d3 from "d3";
 import ReactDOM from 'react-dom'; // Import ReactDOM
-import Switch from "react-switch"; // Import react-switch
+import HeaterSwitch from '../components/Switch/HeaterSwitch'; // Import HeaterSwitch
 import styles from "./Dashboard.module.css"; // Import the CSS Module
 import DataContext from '../context/DataContext'; // Import DataContext
 import ConfigContext from '../context/ConfigContext'; // Import ConfigContext
@@ -41,12 +41,30 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     }
   }, []);
 
-  // Function to get temperature display for room
+  // Function to get temperature display for current sensor state
   const getTemperatureDisplay = useCallback(
     (room) => {
       if (room.sensorState === undefined || room.sensorState === null) return "N/A";
       const unit = room.sensorUnit || "°C";
       return convertTemperature(room.sensorState, unit);
+    },
+    [convertTemperature]
+  );
+
+  // Function to convert and display maxTemp
+  const getMaxTemperatureDisplay = useCallback(
+    (room) => {
+      if (room.maxTemp === undefined || room.maxTemp === null) return "N/A";
+      return convertTemperature(room.maxTemp, "K");
+    },
+    [convertTemperature]
+  );
+
+  // Function to convert and display minTemp
+  const getMinTemperatureDisplay = useCallback(
+    (room) => {
+      if (room.minTemp === undefined || room.minTemp === null) return "N/A";
+      return convertTemperature(room.minTemp, "K");
     },
     [convertTemperature]
   );
@@ -72,6 +90,29 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     [controlSignals]
   );
 
+  // Function to calculate heater grid layout and sizes
+  const calculateHeaterLayout = useCallback((numHeaters, availableWidth, availableHeight) => {
+    if (numHeaters === 0) return { heatersPerRow: 0, heaterSize: 0 };
+
+    // Determine heaters per row (as close to square as possible)
+    const heatersPerRow = Math.ceil(Math.sqrt(numHeaters));
+    const heatersPerCol = Math.ceil(numHeaters / heatersPerRow);
+
+    // Calculate heater size based on available space and number of heaters
+    const heaterSpacing = 10; // Spacing between heaters in pixels
+    const heaterWidth = (availableWidth - (heatersPerRow + 1) * heaterSpacing) / heatersPerRow;
+    const heaterHeight = (availableHeight - (heatersPerCol + 1) * heaterSpacing) / heatersPerCol;
+    const heaterSize = Math.min(heaterWidth, heaterHeight);
+
+    // Set a minimum and maximum heater size
+    const minHeaterSize = 20; // pixels
+    const maxHeaterSize = 60; // pixels
+
+    const finalHeaterSize = Math.max(minHeaterSize, Math.min(heaterSize, maxHeaterSize));
+
+    return { heatersPerRow, heaterSize: finalHeaterSize, heatersPerCol };
+  }, []);
+
   // Render Visualization
   const renderVisualization = useCallback(() => {
     if (!svgRef.current || rooms.length === 0) return;
@@ -82,17 +123,19 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     const containerWidth = svgRef.current.parentElement.offsetWidth;
     const containerHeight = containerWidth * 0.8; // Maintain aspect ratio
 
-    // Calculate grid layout
+    // Calculate grid layout for rooms
     const numRooms = rooms.length;
     const numCols = Math.ceil(Math.sqrt(numRooms));
     const numRows = Math.ceil(numRooms / numCols);
 
-    // Calculate spacing
+    // Calculate spacing between rooms
     const horizontalSpacing = containerWidth / (numCols + 1);
     const verticalSpacing = containerHeight / (numRows + 1);
 
-    const roomSize = Math.min(horizontalSpacing, verticalSpacing) * 0.8; // Room size based on spacing
+    // Calculate room size (ensuring responsiveness)
+    const roomSize = Math.min(horizontalSpacing, verticalSpacing) * 0.8; // 80% of spacing
 
+    // Prepare room data with positions
     const roomData = rooms.map((room, index) => {
       const col = index % numCols;
       const row = Math.floor(index / numCols);
@@ -103,11 +146,13 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       };
     });
 
+    // Define color scale
     const color = d3
       .scaleOrdinal()
       .domain(["room", "heater"])
       .range(["#ffcc00", "#4CAF50"]); // Yellow for rooms, Green for heaters
 
+    // Create room groups
     const roomGroups = svg
       .selectAll(".room")
       .data(roomData)
@@ -127,7 +172,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       .attr("stroke", "#000")
       .attr("stroke-width", 2);
 
-    // Room Labels
+    // Room ID Labels
     roomGroups
       .append("text")
       .text((d) => d.roomId)
@@ -136,16 +181,38 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       .attr("class", styles.roomLabel)
       .attr("font-size", "16px");
 
-    // Room Temperature Labels
+    // Current Temperature Labels
     roomGroups
       .append("text")
       .text((d) => `Temp: ${getTemperatureDisplay(d)}`)
       .attr("text-anchor", "middle")
-      .attr("dy", 0)
-      .attr("dominant-baseline", "middle")
+      .attr("x", 0) // Center horizontally
+      .attr("y", -roomSize / 2 + 20) // Position near top
       .attr("class", styles.roomTemperatureLabel)
       .attr("font-size", "14px")
       .attr("fill", "#000");
+
+    // Max Temperature Labels
+    roomGroups
+      .append("text")
+      .text((d) => `Max: ${getMaxTemperatureDisplay(d)}`)
+      .attr("text-anchor", "middle") // ** MODIFIED: Changed from "end" to "middle" **
+      .attr("x", 0) // ** MODIFIED: Changed from -roomSize / 2 + 10 to 0 **
+      .attr("y", -roomSize / 2 + 40) // Below current temp
+      .attr("class", styles.roomMaxTempLabel)
+      .attr("font-size", "14px")
+      .attr("fill", "#FF0000"); // Red color for Max Temp
+
+    // Min Temperature Labels
+    roomGroups
+      .append("text")
+      .text((d) => `Min: ${getMinTemperatureDisplay(d)}`)
+      .attr("text-anchor", "middle") // ** MODIFIED: Changed from "start" to "middle" **
+      .attr("x", 0) // ** MODIFIED: Changed from roomSize / 2 - 10 to 0 **
+      .attr("y", -roomSize / 2 + 60) // Adjusted Y position to prevent overlap
+      .attr("class", styles.roomMinTempLabel)
+      .attr("font-size", "14px")
+      .attr("fill", "#0000FF"); // Blue color for Min Temp
 
     // Add Heaters inside Rooms
     roomGroups.each(function (room) {
@@ -154,35 +221,41 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       if (roomHeaters.length === 0) return; // No heaters in this room
 
       const numHeaters = roomHeaters.length;
-      const heaterSize = roomSize * 0.2; // Size of each heater
 
-      // Calculate grid positions for heaters within the room
-      const heatersPerRow = Math.ceil(Math.sqrt(numHeaters));
-      const heatersPerCol = Math.ceil(numHeaters / heatersPerRow);
-      const heaterSpacingX = heaterSize;
-      const heaterSpacingY = heaterSize;
+      // Define available space for heaters (subtracting space for labels)
+      const availableWidth = roomSize - 40; // 20px padding on each side
+      const availableHeight = roomSize - 80; // Increased to reserve more space for labels
 
-      const offsetX = -((heatersPerRow - 1) * heaterSpacingX) / 2;
-      const offsetY = -((heatersPerCol - 1) * heaterSpacingY) / 2;
+      // Calculate heater layout
+      const { heatersPerRow, heaterSize, heatersPerCol } = calculateHeaterLayout(numHeaters, availableWidth, availableHeight);
 
-      const heaterData = roomHeaters.map((heater, index) => {
-        const row = Math.floor(index / heatersPerRow);
-        const col = index % heatersPerRow;
-        return {
-          ...heater,
-          x: offsetX + col * heaterSpacingX,
-          y: offsetY + row * heaterSpacingY,
-        };
-      });
+      // Heater spacing
+      const heaterSpacingX = 10; // pixels
+      const heaterSpacingY = 10; // pixels
 
+      // Calculate total heater grid size
+      const totalHeaterWidth = heatersPerRow * heaterSize + (heatersPerRow - 1) * heaterSpacingX;
+      const totalHeaterHeight = heatersPerCol * heaterSize + (heatersPerCol - 1) * heaterSpacingY;
+
+      // Starting positions to center heaters
+      const startX = -totalHeaterWidth / 2 + heaterSize / 2;
+      const startY = -totalHeaterHeight / 2 + heaterSize / 2;
+
+      // Create heater groups
       const heaterGroup = d3
         .select(this)
         .selectAll(".heater")
-        .data(heaterData)
+        .data(roomHeaters)
         .enter()
         .append("g")
         .attr("class", "heater")
-        .attr("transform", (d) => `translate(${d.x}, ${d.y})`)
+        .attr("transform", (d, i) => {
+          const row = Math.floor(i / heatersPerRow);
+          const col = i % heatersPerRow;
+          const x = startX + col * (heaterSize + heaterSpacingX);
+          const y = startY + row * (heaterSize + heaterSpacingY);
+          return `translate(${x}, ${y})`;
+        })
         .style("cursor", "pointer");
 
       // Determine Heater Color Based on isEnabled
@@ -201,7 +274,8 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         .append("text")
         .text((d) => d.id)
         .attr("text-anchor", "middle")
-        .attr("dy", 5)
+        .attr("dy", heaterSize / 2 + 15) // Position below the heater rectangle
+        .attr("class", styles.heaterIdLabel) // Updated class
         .attr("font-size", "12px")
         .attr("fill", (d) => (d.isEnabled ? "#fff" : "#666")); // Darker text if disabled
 
@@ -213,17 +287,18 @@ function Dashboard({ activeDevices, onDeviceClick }) {
           return `Status: ${currentSignal}`;
         })
         .attr("text-anchor", "middle")
-        .attr("dy", heaterSize / 2 + 15) // Position below the heater rectangle
+        .attr("dy", heaterSize / 2 + 30) // Position below the heater rectangle
+        .attr("class", styles.heaterStatusLabel) // Updated class
         .attr("font-size", "12px")
         .attr("fill", (d) => (getCurrentControlSignal(d.id) === "ON" ? "#4CAF50" : "#F44336"));
 
-      // Add Heater Toggle Switch using react-switch
+      // Add Heater Toggle Switch using HeaterSwitch component
       heaterGroup
         .append("foreignObject")
-        .attr("width", 60)
-        .attr("height", 30)
-        .attr("x", -30) // Positioning the switch
-        .attr("y", heaterSize / 2 + 20)
+        .attr("width", heaterSize * 1.5) // Scale switch size relative to heater
+        .attr("height", heaterSize * 0.8)
+        .attr("x", -heaterSize * 0.75) // Center horizontally
+        .attr("y", heaterSize / 2 + 35) // Position below the control signal
         .append("xhtml:div")
         .attr("xmlns", "http://www.w3.org/1999/xhtml")
         .style("width", "100%")
@@ -235,16 +310,10 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         .each(function (d) {
           // Use ReactDOM to render the Switch inside the foreignObject
           ReactDOM.render(
-            <Switch
-              onChange={() => toggleHeaterEnabled(d.id)}
-              checked={d.isEnabled}
-              offColor="#888"
-              onColor="#4CAF50"
-              uncheckedIcon={false}
-              checkedIcon={false}
-              height={20}
-              width={48}
-              handleDiameter={18}
+            <HeaterSwitch
+              isEnabled={d.isEnabled}
+              onToggle={() => toggleHeaterEnabled(d.id)}
+              heaterSize={heaterSize}
             />,
             this.firstChild
           );
@@ -297,7 +366,20 @@ function Dashboard({ activeDevices, onDeviceClick }) {
 
     // Call the function to add the Electricity Grid square
     addElectricityGridSquare();
-  }, [rooms, heaters, getTemperatureDisplay, onDeviceClick, fiElectricityPrices, getCurrentElectricityPrice, controlSignals, getCurrentControlSignal, toggleHeaterEnabled]);
+  }, [
+    rooms,
+    heaters,
+    getTemperatureDisplay,
+    getMaxTemperatureDisplay,
+    getMinTemperatureDisplay,
+    onDeviceClick,
+    fiElectricityPrices,
+    getCurrentElectricityPrice,
+    controlSignals,
+    getCurrentControlSignal,
+    toggleHeaterEnabled,
+    calculateHeaterLayout
+  ]);
 
   // Effect to render visualization
   useEffect(() => {
