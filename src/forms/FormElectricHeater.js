@@ -1,3 +1,5 @@
+// src/components/Forms/FormElectricHeater.js
+
 import React, { useState } from 'react';
 import './DataForm.css';
 
@@ -15,11 +17,12 @@ function FormElectricHeater({ addElectricHeater, rooms = [], fetchedDevices = []
       capacity.trim() && // Capacity is required
       roomId.trim() // Room selection is required
     ) {
-      // Add heating device
+      // Add heating device with isEnabled set to true
       addElectricHeater({
         id: heaterId, // Device ID
         capacity: parseFloat(capacity), // Capacity in kW
         roomId, // Associated Room ID
+        // isEnabled will be set to true in DataContext
       });
 
       // Reset form

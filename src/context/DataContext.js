@@ -240,7 +240,13 @@ export const DataProvider = ({ children }) => {
    * @param {Object} heater - The heater object to add.
    */
   const addElectricHeater = (heater) => {
-    setHeaters((prevHeaters) => [...prevHeaters, heater]);
+    setHeaters((prevHeaters) => [
+      ...prevHeaters,
+      {
+        ...heater,
+        isEnabled: true, // Initialize isEnabled as true
+      },
+    ]);
   };
 
   /**
@@ -254,6 +260,18 @@ export const DataProvider = ({ children }) => {
     delete updatedControlSignals[heaterId];
     setControlSignals(updatedControlSignals);
     localStorage.setItem('controlSignals', JSON.stringify(updatedControlSignals));
+  };
+
+  /**
+   * Toggles the `isEnabled` state of a heater.
+   * @param {string} heaterId - The ID of the heater to toggle.
+   */
+  const toggleHeaterEnabled = (heaterId) => {
+    setHeaters((prevHeaters) =>
+      prevHeaters.map((heater) =>
+        heater.id === heaterId ? { ...heater, isEnabled: !heater.isEnabled } : heater
+      )
+    );
   };
 
   // =====================
@@ -274,6 +292,7 @@ export const DataProvider = ({ children }) => {
         setHeaters,
         addElectricHeater,
         deleteHeater,
+        toggleHeaterEnabled, // Expose the toggle function
 
         // Existing Electricity Prices State and Functions (snt/kWh)
         electricityPrices,

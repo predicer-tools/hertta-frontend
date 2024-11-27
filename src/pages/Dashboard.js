@@ -2,8 +2,9 @@
 
 import React, { useEffect, useRef, useCallback, useState, useContext } from "react";
 import * as d3 from "d3";
+import ReactDOM from 'react-dom'; // Import ReactDOM
+import Switch from "react-switch"; // Import react-switch
 import styles from "./Dashboard.module.css"; // Import the CSS Module
-import Modal from "../components/Modals/Modal";
 import DataContext from '../context/DataContext'; // Import DataContext
 import ConfigContext from '../context/ConfigContext'; // Import ConfigContext
 import WeatherContext from '../context/WeatherContext'; // Import WeatherContext
@@ -12,23 +13,13 @@ function Dashboard({ activeDevices, onDeviceClick }) {
   const svgRef = useRef();
 
   // Access rooms and heaters from DataContext
-  const { rooms, heaters, fiElectricityPrices, controlSignals } = useContext(DataContext);
+  const { rooms, heaters, fiElectricityPrices, controlSignals, toggleHeaterEnabled } = useContext(DataContext);
 
   // Access sensors and devices from ConfigContext
   const { sensors, devices } = useContext(ConfigContext);
 
   // Access weatherData from WeatherContext
   const { weatherData } = useContext(WeatherContext);
-
-  // State for Optimize Button and Control Signals
-  const [controlSignalsData, setControlSignalsData] = useState(null);
-  const [isOptimizing, setIsOptimizing] = useState(false);
-
-  // State for Modal
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // State for Last Optimized Time
-  const [lastOptimized, setLastOptimized] = useState(null);
 
   // Function to convert temperature based on unit
   const convertTemperature = useCallback((temperature, unit) => {
@@ -192,22 +183,16 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         .append("g")
         .attr("class", "heater")
         .attr("transform", (d) => `translate(${d.x}, ${d.y})`)
-        .on("click", (event, d) => { // Corrected handler
-          // Prevent default behavior if necessary
-          event.preventDefault();
-
-          // Handle heater click
-          if (onDeviceClick) onDeviceClick(d);
-        })
         .style("cursor", "pointer");
 
+      // Determine Heater Color Based on isEnabled
       heaterGroup
         .append("rect")
         .attr("width", heaterSize)
         .attr("height", heaterSize)
         .attr("x", -heaterSize / 2)
         .attr("y", -heaterSize / 2)
-        .attr("fill", color("heater"))
+        .attr("fill", (d) => (d.isEnabled ? color("heater") : "#B0B0B0")) // Grey if disabled
         .attr("stroke", "#000")
         .attr("stroke-width", 1.5);
 
@@ -218,7 +203,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         .attr("text-anchor", "middle")
         .attr("dy", 5)
         .attr("font-size", "12px")
-        .attr("fill", "#fff");
+        .attr("fill", (d) => (d.isEnabled ? "#fff" : "#666")); // Darker text if disabled
 
       // Add Current Control Signal
       heaterGroup
@@ -229,9 +214,41 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         })
         .attr("text-anchor", "middle")
         .attr("dy", heaterSize / 2 + 15) // Position below the heater rectangle
-        .attr("class", currentSignalClass => currentSignalClass === "ON" ? styles.on : styles.off)
         .attr("font-size", "12px")
         .attr("fill", (d) => (getCurrentControlSignal(d.id) === "ON" ? "#4CAF50" : "#F44336"));
+
+      // Add Heater Toggle Switch using react-switch
+      heaterGroup
+        .append("foreignObject")
+        .attr("width", 60)
+        .attr("height", 30)
+        .attr("x", -30) // Positioning the switch
+        .attr("y", heaterSize / 2 + 20)
+        .append("xhtml:div")
+        .attr("xmlns", "http://www.w3.org/1999/xhtml")
+        .style("width", "100%")
+        .style("height", "100%")
+        .style("display", "flex")
+        .style("justify-content", "center")
+        .style("align-items", "center")
+        .html(`<div></div>`) // Placeholder for React Switch
+        .each(function (d) {
+          // Use ReactDOM to render the Switch inside the foreignObject
+          ReactDOM.render(
+            <Switch
+              onChange={() => toggleHeaterEnabled(d.id)}
+              checked={d.isEnabled}
+              offColor="#888"
+              onColor="#4CAF50"
+              uncheckedIcon={false}
+              checkedIcon={false}
+              height={20}
+              width={48}
+              handleDiameter={18}
+            />,
+            this.firstChild
+          );
+        });
     });
 
     // Add Electricity Grid Square
@@ -280,7 +297,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
 
     // Call the function to add the Electricity Grid square
     addElectricityGridSquare();
-  }, [rooms, heaters, getTemperatureDisplay, onDeviceClick, fiElectricityPrices, getCurrentElectricityPrice, controlSignals, getCurrentControlSignal]);
+  }, [rooms, heaters, getTemperatureDisplay, onDeviceClick, fiElectricityPrices, getCurrentElectricityPrice, controlSignals, getCurrentControlSignal, toggleHeaterEnabled]);
 
   // Effect to render visualization
   useEffect(() => {

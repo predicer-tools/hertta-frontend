@@ -4,6 +4,8 @@ import React, { useEffect, useState, useContext } from 'react';
 import styles from './DataTable.module.css'; // Import CSS Module
 import WeatherContext from '../context/WeatherContext'; // Import WeatherContext
 import DataContext from '../context/DataContext'; // Import DataContext
+import { Tooltip } from 'react-tooltip'; // Import Tooltip from react-tooltip
+import 'react-tooltip/dist/react-tooltip.css'; // Import react-tooltip styles
 
 function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   const [sensors, setSensors] = useState([]);
@@ -126,6 +128,7 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
               <th>ID</th>
               <th>Capacity (kW)</th>
               <th>Room ID</th>
+              <th>Enabled</th> {/* New Column */}
               <th>Control Signals (Next 12 Hours)</th>
               <th>Action</th>
             </tr>
@@ -137,14 +140,21 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
                   <td>{heater.id}</td>
                   <td>{heater.capacity}</td>
                   <td>{heater.roomId}</td>
+                  <td>{heater.isEnabled ? 'Yes' : 'No'}</td> {/* Display Enabled Status */}
                   <td>
                     <ul className={styles.controlSignalsList}>
                       {getControlSignals(heater.id).map((signal, sigIndex) => (
-                        <li key={sigIndex} className={signal === 'ON' ? styles.on : styles.off}>
+                        <li
+                          key={sigIndex}
+                          className={signal === 'ON' ? styles.on : styles.off}
+                          data-tooltip-id={`tooltip-${heater.id}-${sigIndex}`}
+                          data-tooltip-content={`Time: ${controlSignalTimestamps[sigIndex]}\nSignal: ${signal}`}
+                        >
                           {controlSignalTimestamps[sigIndex] !== 'N/A' ? `${controlSignalTimestamps[sigIndex]}: ${signal}` : 'N/A'}
                         </li>
                       ))}
                     </ul>
+                    <Tooltip id={`tooltip-${heaters[index].id}-tooltip`} place="top" effect="solid" />
                   </td>
                   <td>
                     <button
@@ -158,7 +168,7 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
               ))
             ) : (
               <tr>
-                <td colSpan="5">No heating devices available</td>
+                <td colSpan="6">No heating devices available</td>
               </tr>
             )}
           </tbody>
