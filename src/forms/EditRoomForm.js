@@ -1,7 +1,7 @@
 // src/components/EditRoomForm.js
 
 import React, { useState, useContext } from 'react';
-import styles from './EditRoomForm.module.css'; // Create this CSS Module as needed
+import styles from './EditRoomForm.module.css'; // Import CSS Module
 import DataContext from '../context/DataContext'; // Import DataContext
 
 /**
@@ -38,11 +38,17 @@ function EditRoomForm({ room, onClose }) {
       roomId &&
       roomWidth &&
       roomLength &&
-      maxTemp &&
-      minTemp &&
+      maxTemp !== '' &&
+      minTemp !== '' &&
       selectedSensor &&
       selectedMaterial
     ) {
+      // Additional Validation: maxTemp >= minTemp
+      if (parseFloat(maxTemp) < parseFloat(minTemp)) {
+        alert('Max Temperature cannot be lower than Min Temperature.');
+        return;
+      }
+
       // Update room with new details
       updateRoom({
         roomId,
@@ -57,7 +63,7 @@ function EditRoomForm({ room, onClose }) {
       // Close the modal
       onClose();
     } else {
-      // Optionally, handle form validation errors here
+      // Handle form validation errors
       alert('Please fill in all required fields.');
     }
   };
@@ -102,27 +108,27 @@ function EditRoomForm({ room, onClose }) {
           />
         </div>
         <div className={styles.inputGroup}>
-          <label>Max Temp (K):</label>
+          <label>Max Temp (°C):</label>
           <input
             type="number"
             value={maxTemp}
             onChange={(e) => setMaxTemp(e.target.value)}
-            placeholder="Enter Max Temperature in Kelvin"
+            placeholder="Enter Max Temperature in Celsius"
             required
-            min="0"
-            step="0.01"
+            min="-50" // Assuming reasonable temperature ranges
+            step="0.1"
           />
         </div>
         <div className={styles.inputGroup}>
-          <label>Min Temp (K):</label>
+          <label>Min Temp (°C):</label>
           <input
             type="number"
             value={minTemp}
             onChange={(e) => setMinTemp(e.target.value)}
-            placeholder="Enter Min Temperature in Kelvin"
+            placeholder="Enter Min Temperature in Celsius"
             required
-            min="0"
-            step="0.01"
+            min="-50" // Assuming reasonable temperature ranges
+            step="0.1"
           />
         </div>
 

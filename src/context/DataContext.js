@@ -275,7 +275,7 @@ export const DataProvider = ({ children }) => {
   };
 
   // =====================
-  // ** ADDED: Function to Update a Room **
+  // Function to Update a Room
   // =====================
 
   /**
@@ -302,7 +302,7 @@ export const DataProvider = ({ children }) => {
         setRooms,
         addRoom,
         deleteRoom,
-        updateRoom, // ** ADDED **
+        updateRoom, // Added
 
         // Heaters State and Functions
         heaters,

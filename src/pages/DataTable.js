@@ -198,8 +198,8 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
                   <td>{room.roomId}</td>
                   <td>{room.roomWidth}</td>
                   <td>{room.roomLength}</td>
-                  <td>{(room.maxTemp - 273.15).toFixed(2)}</td>
-                  <td>{(room.minTemp - 273.15).toFixed(2)}</td>
+                  <td>{formatTemperature(room.maxTemp)}</td>
+                  <td>{formatTemperature(room.minTemp)}</td>
                   <td>{room.sensorId}</td>
                   <td>
                     {room.sensorState} {room.sensorUnit}

@@ -1,11 +1,11 @@
 // src/pages/Dashboard.js
 
-import React, { useEffect, useRef, useCallback, useContext, useState } from "react"; // ** MODIFIED: Added useState **
+import React, { useEffect, useRef, useCallback, useContext, useState } from "react"; // Added useState
 import * as d3 from "d3";
 import ReactDOM from 'react-dom'; // Import ReactDOM
 import HeaterSwitch from '../components/Switch/HeaterSwitch'; // Import HeaterSwitch
-import Modal from '../components/Modal/Modal'; // ** ADDED: Import Modal **
-import EditRoomForm from '../forms/EditRoomForm'; // ** ADDED: Import EditRoomForm **
+import Modal from '../components/Modal/Modal'; // Import Modal
+import EditRoomForm from '../forms/EditRoomForm'; // Import EditRoomForm
 import styles from "./Dashboard.module.css"; // Import the CSS Module
 import DataContext from '../context/DataContext'; // Import DataContext
 import ConfigContext from '../context/ConfigContext'; // Import ConfigContext
@@ -23,7 +23,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
   // Access weatherData from WeatherContext
   const { weatherData } = useContext(WeatherContext);
 
-  // ** ADDED: State for Modal **
+  // State for Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
 
@@ -39,24 +39,10 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     setSelectedRoom(null);
   };
 
-  // Function to convert temperature based on unit
-  const convertTemperature = useCallback((temperature, unit) => {
+  // Function to format temperature (already in Celsius)
+  const formatTemperature = useCallback((temperature) => {
     if (isNaN(parseFloat(temperature))) return "N/A";
-    let temp = parseFloat(temperature);
-
-    switch (unit) {
-      case "°F":
-        temp = (temp * 9) / 5 + 32;
-        return `${temp.toFixed(2)} °F`;
-      case "°C":
-        return `${temp.toFixed(2)} °C`;
-      case "K":
-      case "°K":
-        temp = temp - 273.15;
-        return `${temp.toFixed(2)} °C`;
-      default:
-        return `${temp.toFixed(2)} °C`;
-    }
+    return `${parseFloat(temperature).toFixed(2)} °C`;
   }, []);
 
   // Function to get temperature display for current sensor state
@@ -64,27 +50,27 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     (room) => {
       if (room.sensorState === undefined || room.sensorState === null) return "N/A";
       const unit = room.sensorUnit || "°C";
-      return convertTemperature(room.sensorState, unit);
+      return formatTemperature(room.sensorState);
     },
-    [convertTemperature]
+    [formatTemperature]
   );
 
-  // Function to convert and display maxTemp
+  // Function to display maxTemp in Celsius
   const getMaxTemperatureDisplay = useCallback(
     (room) => {
       if (room.maxTemp === undefined || room.maxTemp === null) return "N/A";
-      return convertTemperature(room.maxTemp, "K");
+      return formatTemperature(room.maxTemp);
     },
-    [convertTemperature]
+    [formatTemperature]
   );
 
-  // Function to convert and display minTemp
+  // Function to display minTemp in Celsius
   const getMinTemperatureDisplay = useCallback(
     (room) => {
       if (room.minTemp === undefined || room.minTemp === null) return "N/A";
-      return convertTemperature(room.minTemp, "K");
+      return formatTemperature(room.minTemp);
     },
-    [convertTemperature]
+    [formatTemperature]
   );
 
   // Function to determine the latest electricity price
@@ -178,8 +164,8 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       .append("g")
       .attr("class", "room")
       .attr("transform", (d) => `translate(${d.x}, ${d.y})`)
-      .on("click", (event, d) => openModal(d)) // ** ADDED: Add click event to open modal **
-      .style("cursor", "pointer"); // ** ADDED: Change cursor to pointer on hover **
+      .on("click", (event, d) => openModal(d)) // Add click event to open modal
+      .style("cursor", "pointer"); // Change cursor to pointer on hover
 
     // Draw Rooms
     roomGroups
@@ -216,8 +202,8 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     roomGroups
       .append("text")
       .text((d) => `Max: ${getMaxTemperatureDisplay(d)}`)
-      .attr("text-anchor", "middle") // ** MODIFIED: Changed from "end" to "middle" **
-      .attr("x", 0) // ** MODIFIED: Changed from -roomSize / 2 + 10 to 0 **
+      .attr("text-anchor", "middle") // Changed from "end" to "middle"
+      .attr("x", 0) // Changed from -roomSize / 2 + 10 to 0
       .attr("y", -roomSize / 2 + 40) // Below current temp
       .attr("class", styles.roomMaxTempLabel)
       .attr("font-size", "14px")
@@ -227,8 +213,8 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     roomGroups
       .append("text")
       .text((d) => `Min: ${getMinTemperatureDisplay(d)}`)
-      .attr("text-anchor", "middle") // ** MODIFIED: Changed from "start" to "middle" **
-      .attr("x", 0) // ** MODIFIED: Changed from roomSize / 2 - 10 to 0 **
+      .attr("text-anchor", "middle") // Changed from "start" to "middle"
+      .attr("x", 0) // Changed from roomSize / 2 - 10 to 0
       .attr("y", -roomSize / 2 + 60) // Adjusted Y position to prevent overlap
       .attr("class", styles.roomMinTempLabel)
       .attr("font-size", "14px")
@@ -423,7 +409,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         </svg>
       </div>
 
-      {/* ** ADDED: Modal for Editing Room Details ** */}
+      {/* Modal for Editing Room Details */}
       <Modal isOpen={isModalOpen} onClose={closeModal}>
         {selectedRoom && (
           <EditRoomForm room={selectedRoom} onClose={closeModal} />
