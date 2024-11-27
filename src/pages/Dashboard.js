@@ -1,9 +1,11 @@
 // src/pages/Dashboard.js
 
-import React, { useEffect, useRef, useCallback, useContext } from "react";
+import React, { useEffect, useRef, useCallback, useContext, useState } from "react"; // ** MODIFIED: Added useState **
 import * as d3 from "d3";
 import ReactDOM from 'react-dom'; // Import ReactDOM
 import HeaterSwitch from '../components/Switch/HeaterSwitch'; // Import HeaterSwitch
+import Modal from '../components/Modal/Modal'; // ** ADDED: Import Modal **
+import EditRoomForm from '../forms/EditRoomForm'; // ** ADDED: Import EditRoomForm **
 import styles from "./Dashboard.module.css"; // Import the CSS Module
 import DataContext from '../context/DataContext'; // Import DataContext
 import ConfigContext from '../context/ConfigContext'; // Import ConfigContext
@@ -20,6 +22,22 @@ function Dashboard({ activeDevices, onDeviceClick }) {
 
   // Access weatherData from WeatherContext
   const { weatherData } = useContext(WeatherContext);
+
+  // ** ADDED: State for Modal **
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+
+  // Function to open modal with selected room
+  const openModal = (room) => {
+    setSelectedRoom(room);
+    setIsModalOpen(true);
+  };
+
+  // Function to close modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedRoom(null);
+  };
 
   // Function to convert temperature based on unit
   const convertTemperature = useCallback((temperature, unit) => {
@@ -159,7 +177,9 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       .enter()
       .append("g")
       .attr("class", "room")
-      .attr("transform", (d) => `translate(${d.x}, ${d.y})`);
+      .attr("transform", (d) => `translate(${d.x}, ${d.y})`)
+      .on("click", (event, d) => openModal(d)) // ** ADDED: Add click event to open modal **
+      .style("cursor", "pointer"); // ** ADDED: Change cursor to pointer on hover **
 
     // Draw Rooms
     roomGroups
@@ -402,6 +422,13 @@ function Dashboard({ activeDevices, onDeviceClick }) {
           <g></g>
         </svg>
       </div>
+
+      {/* ** ADDED: Modal for Editing Room Details ** */}
+      <Modal isOpen={isModalOpen} onClose={closeModal}>
+        {selectedRoom && (
+          <EditRoomForm room={selectedRoom} onClose={closeModal} />
+        )}
+      </Modal>
     </div>
   );
 }

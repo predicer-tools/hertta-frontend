@@ -275,6 +275,22 @@ export const DataProvider = ({ children }) => {
   };
 
   // =====================
+  // ** ADDED: Function to Update a Room **
+  // =====================
+
+  /**
+   * Updates an existing room's details.
+   * @param {Object} updatedRoom - The room object with updated details.
+   */
+  const updateRoom = (updatedRoom) => {
+    setRooms((prevRooms) =>
+      prevRooms.map((room) =>
+        room.roomId === updatedRoom.roomId ? { ...room, ...updatedRoom } : room
+      )
+    );
+  };
+
+  // =====================
   // Provider's Value
   // =====================
 
@@ -286,6 +302,7 @@ export const DataProvider = ({ children }) => {
         setRooms,
         addRoom,
         deleteRoom,
+        updateRoom, // ** ADDED **
 
         // Heaters State and Functions
         heaters,
