@@ -1,7 +1,7 @@
 // src/forms/EditHeaterForm.js
 
 import React, { useState, useContext } from 'react';
-import styles from './EditHeaterForm.module.css'; // Create a corresponding CSS module
+import styles from './EditHeaterForm.module.css'; // Ensure this CSS module exists
 import DataContext from '../context/DataContext'; // Import DataContext
 
 /**
@@ -12,8 +12,12 @@ import DataContext from '../context/DataContext'; // Import DataContext
  * @param {Function} props.onClose - Function to close the modal after editing
  */
 function EditHeaterForm({ heater, onClose }) {
-  const { updateHeater } = useContext(DataContext); // Access updateHeater from DataContext
+  console.log("EditHeaterForm Props:", { heater, onClose }); // Debugging
 
+  const { updateHeater, rooms } = useContext(DataContext); // Access updateHeater and rooms from DataContext
+
+  // Local state for form inputs
+  const [name, setName] = useState(heater.name);
   const [capacity, setCapacity] = useState(heater.capacity);
   const [roomId, setRoomId] = useState(heater.roomId);
   const [isEnabled, setIsEnabled] = useState(heater.isEnabled);
@@ -26,46 +30,71 @@ function EditHeaterForm({ heater, onClose }) {
     e.preventDefault();
 
     // Validation: Ensure required fields are filled
-    if (capacity !== '' && roomId !== '') {
-      // Update heater with new details
-      updateHeater({
-        id: heater.id,
-        capacity: parseFloat(capacity),
-        roomId,
-        isEnabled,
-      });
-
-      // Close the modal
-      onClose();
-    } else {
-      // Handle form validation errors
+    if (name.trim() === '' || capacity === '' || roomId === '') {
       alert('Please fill in all required fields.');
+      return;
     }
+
+    // Additional Validation: capacity should be positive
+    if (parseFloat(capacity) <= 0) {
+      alert('Capacity must be a positive number.');
+      return;
+    }
+
+    // Update heater with new details
+    updateHeater({
+      id: heater.id,
+      name: name.trim(),
+      capacity: parseFloat(capacity),
+      roomId,
+      isEnabled,
+    });
+
+    // Close the modal
+    onClose();
   };
 
   return (
     <div className={styles.editHeaterForm}>
       <h2>Edit Heating Device</h2>
       <form onSubmit={handleSubmit}>
+        {/* Heater ID (Read-Only) */}
         <div className={styles.inputGroup}>
           <label>Heater ID:</label>
           <input
             type="text"
             value={heater.id}
-            disabled // Assuming heater ID should not be editable
+            disabled // Heater ID should not be editable
           />
         </div>
+
+        {/* Heater Name */}
+        <div className={styles.inputGroup}>
+          <label>Heater Name:</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter Heater Name"
+            required
+          />
+        </div>
+
+        {/* Capacity */}
         <div className={styles.inputGroup}>
           <label>Capacity (kW):</label>
           <input
             type="number"
             value={capacity}
             onChange={(e) => setCapacity(e.target.value)}
+            placeholder="Enter Capacity in kW"
             required
             min="0"
             step="0.1"
           />
         </div>
+
+        {/* Room Selection */}
         <div className={styles.inputGroup}>
           <label>Room:</label>
           <select
@@ -74,13 +103,15 @@ function EditHeaterForm({ heater, onClose }) {
             required
           >
             <option value="">Select a Room</option>
-            {JSON.parse(localStorage.getItem('rooms'))?.map((room) => (
+            {rooms.map((room) => (
               <option key={room.roomId} value={room.roomId}>
                 {room.roomId}
               </option>
             ))}
           </select>
         </div>
+
+        {/* Enabled Toggle */}
         <div className={styles.inputGroup}>
           <label>Enabled:</label>
           <input
@@ -90,7 +121,7 @@ function EditHeaterForm({ heater, onClose }) {
           />
         </div>
 
-        {/* Display Control Signals */}
+        {/* Control Signals Display */}
         <div className={styles.controlSignals}>
           <h3>Control Signals (Next 12 Hours)</h3>
           {heaterControlSignals.length > 0 ? (
@@ -106,6 +137,7 @@ function EditHeaterForm({ heater, onClose }) {
           )}
         </div>
 
+        {/* Buttons */}
         <div className={styles.buttonGroup}>
           <button type="submit">Save Changes</button>
           <button type="button" onClick={onClose} className={styles.cancelButton}>

@@ -282,13 +282,13 @@ export const DataProvider = ({ children }) => {
    * Updates an existing heater's details.
    * @param {Object} updatedHeater - The heater object with updated details.
    */
-  const updateHeater = (updatedHeater) => {
+  const updateHeaterFunc = useCallback((updatedHeater) => {
     setHeaters((prevHeaters) =>
       prevHeaters.map((heater) =>
         heater.id === updatedHeater.id ? { ...heater, ...updatedHeater } : heater
       )
     );
-  };
+  }, []);
 
   // =====================
   // ** ADDED: Function to Update a Room **
@@ -298,13 +298,13 @@ export const DataProvider = ({ children }) => {
    * Updates an existing room's details.
    * @param {Object} updatedRoom - The room object with updated details.
    */
-  const updateRoom = (updatedRoom) => {
+  const updateRoomFunc = useCallback((updatedRoom) => {
     setRooms((prevRooms) =>
       prevRooms.map((room) =>
         room.roomId === updatedRoom.roomId ? { ...room, ...updatedRoom } : room
       )
     );
-  };
+  }, []);
 
   // =====================
   // Provider's Value
@@ -318,7 +318,7 @@ export const DataProvider = ({ children }) => {
         setRooms,
         addRoom,
         deleteRoom,
-        updateRoom, // ** ADDED **
+        updateRoom: updateRoomFunc, // ** ADDED **
 
         // Heaters State and Functions
         heaters,
@@ -326,7 +326,7 @@ export const DataProvider = ({ children }) => {
         addElectricHeater,
         deleteHeater,
         toggleHeaterEnabled,
-        updateHeater, // ** ADDED **
+        updateHeater: updateHeaterFunc, // ** ADDED **
 
         // Existing Electricity Prices State and Functions (snt/kWh)
         electricityPrices,
