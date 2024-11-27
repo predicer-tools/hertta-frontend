@@ -81,7 +81,7 @@ const generateNodesData = (rooms, sensorStates) => {
       sensorState = 0.0; // Default to 0°C if sensor state is invalid or missing
     }
     // Convert Celsius to Kelvin
-    sensorState += 273.15;
+    //sensorState += 273.15;
 
     // Main room node (inside air)
     nodes[`${room.roomId}_air`] = {

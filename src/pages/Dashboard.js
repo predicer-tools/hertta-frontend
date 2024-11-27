@@ -1,26 +1,22 @@
 // src/pages/Dashboard.js
 
-import React, { useEffect, useRef, useCallback, useContext, useState } from "react"; // Added useState
+import React, { useEffect, useRef, useCallback, useContext, useState } from "react";
 import * as d3 from "d3";
-import ReactDOM from 'react-dom'; // Import ReactDOM
-import HeaterSwitch from '../components/Switch/HeaterSwitch'; // Import HeaterSwitch
-import Modal from '../components/Modal/Modal'; // Import Modal
-import EditRoomForm from '../forms/EditRoomForm'; // Import EditRoomForm
-import styles from "./Dashboard.module.css"; // Import the CSS Module
-import DataContext from '../context/DataContext'; // Import DataContext
-import ConfigContext from '../context/ConfigContext'; // Import ConfigContext
-import WeatherContext from '../context/WeatherContext'; // Import WeatherContext
+import ReactDOM from 'react-dom';
+import HeaterSwitch from '../components/Switch/HeaterSwitch';
+import Modal from '../components/Modal/Modal';
+import EditRoomForm from '../forms/EditRoomForm';
+import styles from "./Dashboard.module.css";
+import DataContext from '../context/DataContext';
+import ConfigContext from '../context/ConfigContext';
+import WeatherContext from '../context/WeatherContext';
 
 function Dashboard({ activeDevices, onDeviceClick }) {
   const svgRef = useRef();
 
-  // Access rooms and heaters from DataContext
+  // Access contexts
   const { rooms, heaters, fiElectricityPrices, controlSignals, toggleHeaterEnabled } = useContext(DataContext);
-
-  // Access sensors and devices from ConfigContext
   const { sensors, devices } = useContext(ConfigContext);
-
-  // Access weatherData from WeatherContext
   const { weatherData } = useContext(WeatherContext);
 
   // State for Modal
@@ -49,13 +45,12 @@ function Dashboard({ activeDevices, onDeviceClick }) {
   const getTemperatureDisplay = useCallback(
     (room) => {
       if (room.sensorState === undefined || room.sensorState === null) return "N/A";
-      const unit = room.sensorUnit || "°C";
       return formatTemperature(room.sensorState);
     },
     [formatTemperature]
   );
 
-  // Function to display maxTemp in Celsius
+  // Function to display maxTemp
   const getMaxTemperatureDisplay = useCallback(
     (room) => {
       if (room.maxTemp === undefined || room.maxTemp === null) return "N/A";
@@ -64,7 +59,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     [formatTemperature]
   );
 
-  // Function to display minTemp in Celsius
+  // Function to display minTemp
   const getMinTemperatureDisplay = useCallback(
     (room) => {
       if (room.minTemp === undefined || room.minTemp === null) return "N/A";
@@ -76,8 +71,6 @@ function Dashboard({ activeDevices, onDeviceClick }) {
   // Function to determine the latest electricity price
   const getCurrentElectricityPrice = useCallback(() => {
     if (!fiElectricityPrices || fiElectricityPrices.length === 0) return "N/A";
-    // Assuming fiElectricityPrices is sorted by timestamp ascending
-    // If not, sort it first
     const sortedPrices = fiElectricityPrices.slice().sort((a, b) => b.timestamp - a.timestamp);
     const latestPrice = sortedPrices[0].price;
     return `${latestPrice.toFixed(2)} snt/kWh`;
@@ -89,7 +82,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       if (!controlSignals || !controlSignals[heaterId] || controlSignals[heaterId].length === 0) {
         return "N/A";
       }
-      return controlSignals[heaterId][0]; // Assuming the first entry is the current hour
+      return controlSignals[heaterId][0];
     },
     [controlSignals]
   );
@@ -98,19 +91,16 @@ function Dashboard({ activeDevices, onDeviceClick }) {
   const calculateHeaterLayout = useCallback((numHeaters, availableWidth, availableHeight) => {
     if (numHeaters === 0) return { heatersPerRow: 0, heaterSize: 0 };
 
-    // Determine heaters per row (as close to square as possible)
     const heatersPerRow = Math.ceil(Math.sqrt(numHeaters));
     const heatersPerCol = Math.ceil(numHeaters / heatersPerRow);
 
-    // Calculate heater size based on available space and number of heaters
-    const heaterSpacing = 10; // Spacing between heaters in pixels
+    const heaterSpacing = 10;
     const heaterWidth = (availableWidth - (heatersPerRow + 1) * heaterSpacing) / heatersPerRow;
     const heaterHeight = (availableHeight - (heatersPerCol + 1) * heaterSpacing) / heatersPerCol;
     const heaterSize = Math.min(heaterWidth, heaterHeight);
 
-    // Set a minimum and maximum heater size
-    const minHeaterSize = 20; // pixels
-    const maxHeaterSize = 60; // pixels
+    const minHeaterSize = 20;
+    const maxHeaterSize = 60;
 
     const finalHeaterSize = Math.max(minHeaterSize, Math.min(heaterSize, maxHeaterSize));
 
@@ -125,21 +115,17 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     svg.selectAll("*").remove();
 
     const containerWidth = svgRef.current.parentElement.offsetWidth;
-    const containerHeight = containerWidth * 0.8; // Maintain aspect ratio
+    const containerHeight = containerWidth * 0.8;
 
-    // Calculate grid layout for rooms
     const numRooms = rooms.length;
     const numCols = Math.ceil(Math.sqrt(numRooms));
     const numRows = Math.ceil(numRooms / numCols);
 
-    // Calculate spacing between rooms
     const horizontalSpacing = containerWidth / (numCols + 1);
     const verticalSpacing = containerHeight / (numRows + 1);
 
-    // Calculate room size (ensuring responsiveness)
-    const roomSize = Math.min(horizontalSpacing, verticalSpacing) * 0.8; // 80% of spacing
+    const roomSize = Math.min(horizontalSpacing, verticalSpacing) * 0.8;
 
-    // Prepare room data with positions
     const roomData = rooms.map((room, index) => {
       const col = index % numCols;
       const row = Math.floor(index / numCols);
@@ -150,13 +136,11 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       };
     });
 
-    // Define color scale
     const color = d3
       .scaleOrdinal()
       .domain(["room", "heater"])
-      .range(["#ffcc00", "#4CAF50"]); // Yellow for rooms, Green for heaters
+      .range(["#ffcc00", "#4CAF50"]);
 
-    // Create room groups
     const roomGroups = svg
       .selectAll(".room")
       .data(roomData)
@@ -164,8 +148,8 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       .append("g")
       .attr("class", "room")
       .attr("transform", (d) => `translate(${d.x}, ${d.y})`)
-      .on("click", (event, d) => openModal(d)) // Add click event to open modal
-      .style("cursor", "pointer"); // Change cursor to pointer on hover
+      .on("click", (event, d) => openModal(d))
+      .style("cursor", "pointer");
 
     // Draw Rooms
     roomGroups
@@ -192,30 +176,29 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       .append("text")
       .text((d) => `Temp: ${getTemperatureDisplay(d)}`)
       .attr("text-anchor", "middle")
-      .attr("x", 0) // Center horizontally
-      .attr("y", -roomSize / 2 + 20) // Position near top
+      .attr("x", 0)
+      .attr("y", -roomSize / 2 + 20)
       .attr("class", styles.roomTemperatureLabel)
       .attr("font-size", "14px")
       .attr("fill", "#000");
 
-    // Max Temperature Labels
+    // Add Max and Min Temperature Labels inside the room square
     roomGroups
       .append("text")
       .text((d) => `Max: ${getMaxTemperatureDisplay(d)}`)
-      .attr("text-anchor", "middle") // Changed from "end" to "middle"
-      .attr("x", 0) // Changed from -roomSize / 2 + 10 to 0
-      .attr("y", -roomSize / 2 + 40) // Below current temp
+      .attr("text-anchor", "middle")
+      .attr("x", 0)
+      .attr("y", -roomSize / 2 + 40)
       .attr("class", styles.roomMaxTempLabel)
       .attr("font-size", "14px")
       .attr("fill", "#FF0000"); // Red color for Max Temp
 
-    // Min Temperature Labels
     roomGroups
       .append("text")
       .text((d) => `Min: ${getMinTemperatureDisplay(d)}`)
-      .attr("text-anchor", "middle") // Changed from "start" to "middle"
-      .attr("x", 0) // Changed from roomSize / 2 - 10 to 0
-      .attr("y", -roomSize / 2 + 60) // Adjusted Y position to prevent overlap
+      .attr("text-anchor", "middle")
+      .attr("x", 0)
+      .attr("y", -roomSize / 2 + 60)
       .attr("class", styles.roomMinTempLabel)
       .attr("font-size", "14px")
       .attr("fill", "#0000FF"); // Blue color for Min Temp
@@ -224,30 +207,25 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     roomGroups.each(function (room) {
       const roomHeaters = heaters.filter((heater) => heater.roomId === room.roomId);
 
-      if (roomHeaters.length === 0) return; // No heaters in this room
+      if (roomHeaters.length === 0) return;
 
       const numHeaters = roomHeaters.length;
 
-      // Define available space for heaters (subtracting space for labels)
-      const availableWidth = roomSize - 40; // 20px padding on each side
-      const availableHeight = roomSize - 80; // Increased to reserve more space for labels
+      // Adjusted availableHeight to accommodate max/min temp labels
+      const availableWidth = roomSize - 40;
+      const availableHeight = roomSize - 100;
 
-      // Calculate heater layout
       const { heatersPerRow, heaterSize, heatersPerCol } = calculateHeaterLayout(numHeaters, availableWidth, availableHeight);
 
-      // Heater spacing
-      const heaterSpacingX = 10; // pixels
-      const heaterSpacingY = 10; // pixels
+      const heaterSpacingX = 10;
+      const heaterSpacingY = 10;
 
-      // Calculate total heater grid size
       const totalHeaterWidth = heatersPerRow * heaterSize + (heatersPerRow - 1) * heaterSpacingX;
       const totalHeaterHeight = heatersPerCol * heaterSize + (heatersPerCol - 1) * heaterSpacingY;
 
-      // Starting positions to center heaters
       const startX = -totalHeaterWidth / 2 + heaterSize / 2;
-      const startY = -totalHeaterHeight / 2 + heaterSize / 2;
+      const startY = -roomSize / 2 + 80 + heaterSize / 2; // Adjusted startY to account for labels
 
-      // Create heater groups
       const heaterGroup = d3
         .select(this)
         .selectAll(".heater")
@@ -264,28 +242,25 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         })
         .style("cursor", "pointer");
 
-      // Determine Heater Color Based on isEnabled
       heaterGroup
         .append("rect")
         .attr("width", heaterSize)
         .attr("height", heaterSize)
         .attr("x", -heaterSize / 2)
         .attr("y", -heaterSize / 2)
-        .attr("fill", (d) => (d.isEnabled ? color("heater") : "#B0B0B0")) // Grey if disabled
+        .attr("fill", (d) => (d.isEnabled ? color("heater") : "#B0B0B0"))
         .attr("stroke", "#000")
         .attr("stroke-width", 1.5);
 
-      // Add Heater ID Label
       heaterGroup
         .append("text")
         .text((d) => d.id)
         .attr("text-anchor", "middle")
-        .attr("dy", heaterSize / 2 + 15) // Position below the heater rectangle
-        .attr("class", styles.heaterIdLabel) // Updated class
+        .attr("dy", heaterSize / 2 + 15)
+        .attr("class", styles.heaterIdLabel)
         .attr("font-size", "12px")
-        .attr("fill", (d) => (d.isEnabled ? "#fff" : "#666")); // Darker text if disabled
+        .attr("fill", (d) => (d.isEnabled ? "#fff" : "#666"));
 
-      // Add Current Control Signal
       heaterGroup
         .append("text")
         .text((d) => {
@@ -293,18 +268,17 @@ function Dashboard({ activeDevices, onDeviceClick }) {
           return `Status: ${currentSignal}`;
         })
         .attr("text-anchor", "middle")
-        .attr("dy", heaterSize / 2 + 30) // Position below the heater rectangle
-        .attr("class", styles.heaterStatusLabel) // Updated class
+        .attr("dy", heaterSize / 2 + 30)
+        .attr("class", styles.heaterStatusLabel)
         .attr("font-size", "12px")
         .attr("fill", (d) => (getCurrentControlSignal(d.id) === "ON" ? "#4CAF50" : "#F44336"));
 
-      // Add Heater Toggle Switch using HeaterSwitch component
       heaterGroup
         .append("foreignObject")
-        .attr("width", heaterSize * 1.5) // Scale switch size relative to heater
+        .attr("width", heaterSize * 1.5)
         .attr("height", heaterSize * 0.8)
-        .attr("x", -heaterSize * 0.75) // Center horizontally
-        .attr("y", heaterSize / 2 + 35) // Position below the control signal
+        .attr("x", -heaterSize * 0.75)
+        .attr("y", heaterSize / 2 + 35)
         .append("xhtml:div")
         .attr("xmlns", "http://www.w3.org/1999/xhtml")
         .style("width", "100%")
@@ -312,9 +286,8 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         .style("display", "flex")
         .style("justify-content", "center")
         .style("align-items", "center")
-        .html(`<div></div>`) // Placeholder for React Switch
+        .html(`<div></div>`)
         .each(function (d) {
-          // Use ReactDOM to render the Switch inside the foreignObject
           ReactDOM.render(
             <HeaterSwitch
               isEnabled={d.isEnabled}
@@ -328,32 +301,26 @@ function Dashboard({ activeDevices, onDeviceClick }) {
 
     // Add Electricity Grid Square
     const addElectricityGridSquare = () => {
-      // Determine position for the Electricity Grid square
-      // For example, place it at the top-right corner
-      const gridSize = 100; // Size of the square
-      const margin = 20; // Margin from the edges
+      const gridSize = 100;
+      const margin = 20;
 
-      // Current electricity price
       const currentPrice = getCurrentElectricityPrice();
 
-      // Append a group for the electricity grid
       const gridGroup = svg.append("g")
         .attr("class", "electricity-grid")
         .attr("transform", `translate(${containerWidth - margin - gridSize / 2}, ${margin + gridSize / 2})`);
 
-      // Draw the square
       gridGroup.append("rect")
         .attr("width", gridSize)
         .attr("height", gridSize)
         .attr("x", -gridSize / 2)
         .attr("y", -gridSize / 2)
-        .attr("fill", "#2196F3") // Blue color for Electricity Grid
+        .attr("fill", "#2196F3")
         .attr("stroke", "#000")
         .attr("stroke-width", 2)
-        .attr("rx", 10) // Rounded corners
+        .attr("rx", 10)
         .attr("ry", 10);
 
-      // Add label
       gridGroup.append("text")
         .text("Electricity Grid")
         .attr("text-anchor", "middle")
@@ -361,7 +328,6 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         .attr("font-size", "14px")
         .attr("fill", "#fff");
 
-      // Add current price
       gridGroup.append("text")
         .text(`Price: ${currentPrice}`)
         .attr("text-anchor", "middle")
@@ -370,7 +336,6 @@ function Dashboard({ activeDevices, onDeviceClick }) {
         .attr("fill", "#fff");
     };
 
-    // Call the function to add the Electricity Grid square
     addElectricityGridSquare();
   }, [
     rooms,
@@ -378,7 +343,6 @@ function Dashboard({ activeDevices, onDeviceClick }) {
     getTemperatureDisplay,
     getMaxTemperatureDisplay,
     getMinTemperatureDisplay,
-    onDeviceClick,
     fiElectricityPrices,
     getCurrentElectricityPrice,
     controlSignals,
