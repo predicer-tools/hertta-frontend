@@ -1,4 +1,4 @@
-// src/components/EditRoomForm.js
+// src/forms/EditRoomForm.js
 
 import React, { useState, useContext } from 'react';
 import styles from './EditRoomForm.module.css'; // Import CSS Module

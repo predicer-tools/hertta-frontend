@@ -275,7 +275,23 @@ export const DataProvider = ({ children }) => {
   };
 
   // =====================
-  // Function to Update a Room
+  // ** ADDED: Function to Update a Heater **
+  // =====================
+
+  /**
+   * Updates an existing heater's details.
+   * @param {Object} updatedHeater - The heater object with updated details.
+   */
+  const updateHeater = (updatedHeater) => {
+    setHeaters((prevHeaters) =>
+      prevHeaters.map((heater) =>
+        heater.id === updatedHeater.id ? { ...heater, ...updatedHeater } : heater
+      )
+    );
+  };
+
+  // =====================
+  // ** ADDED: Function to Update a Room **
   // =====================
 
   /**
@@ -302,14 +318,15 @@ export const DataProvider = ({ children }) => {
         setRooms,
         addRoom,
         deleteRoom,
-        updateRoom, // Added
+        updateRoom, // ** ADDED **
 
         // Heaters State and Functions
         heaters,
         setHeaters,
         addElectricHeater,
         deleteHeater,
-        toggleHeaterEnabled, // Expose the toggle function
+        toggleHeaterEnabled,
+        updateHeater, // ** ADDED **
 
         // Existing Electricity Prices State and Functions (snt/kWh)
         electricityPrices,
