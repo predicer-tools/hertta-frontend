@@ -2,7 +2,7 @@
   "name": "hertta-frontend",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://github.com/predicer-tools/hertta-frontend.git",
+  "homepage": "https://predicer-tools.github.io/hertta-frontend/",
   "dependencies": {
     "@babel/core": "^7.25.2",
     "@emotion/react": "^11.13.5",
