@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/predicer-tools/hertta-frontend.git/static/css/main.4a578666.css",
+    "main.js": "/predicer-tools/hertta-frontend.git/static/js/main.f69970bb.js",
+    "static/js/845.602fc464.chunk.js": "/predicer-tools/hertta-frontend.git/static/js/845.602fc464.chunk.js",
+    "index.html": "/predicer-tools/hertta-frontend.git/index.html",
+    "main.4a578666.css.map": "/predicer-tools/hertta-frontend.git/static/css/main.4a578666.css.map",
+    "main.f69970bb.js.map": "/predicer-tools/hertta-frontend.git/static/js/main.f69970bb.js.map",
+    "845.602fc464.chunk.js.map": "/predicer-tools/hertta-frontend.git/static/js/845.602fc464.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.4a578666.css",
+    "static/js/main.f69970bb.js"
+  ]
+}
