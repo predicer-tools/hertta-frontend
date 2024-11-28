@@ -134,7 +134,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
 
     // Define room layout parameters
     const roomsPerRow = 3;
-    const roomSize = 240; // Increased size from 120px to 240px
+    const roomSize = 360; // Increased size from 120px to 240px
     const roomSpacing = 60; // Increased spacing between rooms
 
     // Calculate number of rows
@@ -167,7 +167,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       .attr("transform", `translate(${gridX}, ${gridY})`);
 
     gridGroup.append("circle") // Changed to circle for perfect roundness
-      .attr("r", gridSize / 2)
+      .attr("r", gridSize / 1.5)
       .attr("fill", "#ffffff") // White background
       .attr("stroke", "#333333") // Darker border color
       .attr("stroke-width", 4) // Thicker border
@@ -181,7 +181,7 @@ function Dashboard({ activeDevices, onDeviceClick }) {
       .attr("fill", "#333");
 
     gridGroup.append("text")
-      .text(`Price: ${currentPrice}`)
+      .text(`${currentPrice}`)
       .attr("text-anchor", "middle")
       .attr("dy", 25) // Adjusted dy for better spacing
       .attr("font-size", "18px") // Increased font size

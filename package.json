@@ -2,6 +2,7 @@
   "name": "hertta-frontend",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://github.com/predicer-tools/hertta-frontend.git",
   "dependencies": {
     "@babel/core": "^7.25.2",
     "@emotion/react": "^11.13.5",
@@ -16,6 +17,7 @@
     "d3": "^7.9.0",
     "debug": "^4.3.7",
     "detect-port-alt": "^1.1.6",
+    "gh-pages": "^6.2.0",
     "http-proxy-middleware": "^3.0.3",
     "js-yaml": "^4.1.0",
     "normalize.css": "^8.0.1",
@@ -32,9 +34,12 @@
     "webpack": "^5.94.0"
   },
   "scripts": {
-    "start": "concurrently \"npm run start-react\" \"npm run start-python\"",
-    "start-react": "react-scripts start --stats-children",
-    "start-python": "cd ../mock-backend && python run.py",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -b ux-review -d build",
+    "start": "concurrently \"npm run start-react\" \"npm run start-backend\"",
+    "start-react": "react-scripts start",
+    "start-backend": "python mock-backend/run.py",
+    "start-backend-weather": "python mock-backend/app/weather.py",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
