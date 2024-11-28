@@ -17,7 +17,6 @@
     "d3": "^7.9.0",
     "debug": "^4.3.7",
     "detect-port-alt": "^1.1.6",
-    "gh-pages": "^6.2.0",
     "http-proxy-middleware": "^3.0.3",
     "js-yaml": "^4.1.0",
     "normalize.css": "^8.0.1",
@@ -35,7 +34,7 @@
   },
   "scripts": {
     "predeploy": "npm run build",
-    "deploy": "gh-pages -b ux-review -d build",
+    "deploy": "gh-pages -b ux -d build",
     "start": "concurrently \"npm run start-react\" \"npm run start-backend\"",
     "start-react": "react-scripts start",
     "start-backend": "python mock-backend/run.py",
@@ -64,6 +63,7 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "gh-pages": "^6.2.0"
   }
 }
