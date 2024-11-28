@@ -34,7 +34,7 @@
   },
   "scripts": {
     "predeploy": "npm run build",
-    "deploy": "gh-pages -b ux -d build",
+    "deploy": "gh-pages -d build",
     "start": "concurrently \"npm run start-react\" \"npm run start-backend\"",
     "start-react": "react-scripts start",
     "start-backend": "python mock-backend/run.py",
