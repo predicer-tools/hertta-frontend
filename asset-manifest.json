@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/hertta-frontend/static/css/main.4a578666.css",
+    "main.js": "/hertta-frontend/static/js/main.22030574.js",
+    "static/js/845.602fc464.chunk.js": "/hertta-frontend/static/js/845.602fc464.chunk.js",
+    "index.html": "/hertta-frontend/index.html",
+    "main.4a578666.css.map": "/hertta-frontend/static/css/main.4a578666.css.map",
+    "main.22030574.js.map": "/hertta-frontend/static/js/main.22030574.js.map",
+    "845.602fc464.chunk.js.map": "/hertta-frontend/static/js/845.602fc464.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.4a578666.css",
+    "static/js/main.22030574.js"
+  ]
+}

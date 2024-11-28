@@ -1,0 +1,69 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+/dist
+
+# misc
+.DS_Store
+Thumbs.db
+
+# environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Temporary files
+*.tmp
+*.swp
+
+# cache files
+.cache/
+.temp/
+
+# Other files created by some package managers or bundlers
+package-lock.json
+yarn.lock
+
+# Coverage and test result files
+/jest-coverage/
+test-results.xml
+
+# Optional lock files (if you are not using Yarn or NPM lockfiles)
+/npm-shrinkwrap.json
+/pnpm-lock.yaml
+
+# TypeScript specific (if using TypeScript)
+/tsconfig.tsbuildinfo
+
+# Mac specific files
+.AppleDouble
+.LSOverride
+
+# Windows specific files
+Desktop.ini
+
+# Build artifacts (optional)
+/out/
