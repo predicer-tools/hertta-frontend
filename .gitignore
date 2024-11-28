@@ -1,69 +1,41 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Ignore virtual environments
+mock-backend/venv/
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# Python cache files
+*.pyc
+__pycache__/
 
-# testing
-/coverage
-
-# production
-/build
-/dist
-
-# misc
-.DS_Store
-Thumbs.db
-
-# environment variables
+# Environment variables
 .env
+
+# IDE/editor directories
+.vscode/
+.idea/
+
+node_modules/
+*.log
+
+build/
+dist/
+*.egg-info/
+
+pip-log.txt
+pip-delete-this-directory.txt
+
+build/
+
+coverage/
+
+.cache/
+
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-*.log
+# macOS
+.DS_Store
 
-# IDE specific files
-.idea/
-.vscode/
-*.sublime-project
-*.sublime-workspace
+# Windows
+Thumbs.db
 
-# Temporary files
-*.tmp
-*.swp
-
-# cache files
-.cache/
-.temp/
-
-# Other files created by some package managers or bundlers
-package-lock.json
-yarn.lock
-
-# Coverage and test result files
-/jest-coverage/
-test-results.xml
-
-# Optional lock files (if you are not using Yarn or NPM lockfiles)
-/npm-shrinkwrap.json
-/pnpm-lock.yaml
-
-# TypeScript specific (if using TypeScript)
-/tsconfig.tsbuildinfo
-
-# Mac specific files
-.AppleDouble
-.LSOverride
-
-# Windows specific files
-Desktop.ini
-
-# Build artifacts (optional)
-/out/
