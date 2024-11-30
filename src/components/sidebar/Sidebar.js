@@ -35,6 +35,14 @@ function Sidebar({ isOpen }) {
               Input Data
             </NavLink>
           </li>
+          <li className={styles.navItem}>
+            <NavLink
+              to="/dashboard-grid"
+              className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+            >
+              Dashboard Grid
+            </NavLink>
+          </li>
           {/* Add more navigation links as needed */}
         </ul>
       </nav>

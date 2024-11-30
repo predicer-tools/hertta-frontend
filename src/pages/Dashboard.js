@@ -9,8 +9,8 @@ import styles from "./Dashboard.module.css";
 import DataContext from '../context/DataContext';
 import ConfigContext from '../context/ConfigContext';
 import WeatherContext from '../context/WeatherContext';
-import { WbIncandescent } from '@mui/icons-material'; // Importing a MUI icon
-import ReactDOM from 'react-dom'; // Import ReactDOM
+import Grid from '@mui/material/Grid';
+
 
 function Dashboard({ activeDevices, onDeviceClick }) {
   const svgRef = useRef();
