@@ -20,7 +20,7 @@ function App() {
         {/* Root Route */}
         <Route
           path="/"
-          element={isConfigured ? <Dashboard /> : <Navigate to="/config" replace />}
+          element={isConfigured ? <DashboardGrid /> : <Navigate to="/config" replace />}
         />
 
         {/* Configuration Route */}
@@ -32,7 +32,7 @@ function App() {
         {/* Dashboard Route */}
         <Route
           path="/dashboard"
-          element={isConfigured ? <Dashboard /> : <Navigate to="/config" replace />}
+          element={isConfigured ? <DashboardGrid /> : <Navigate to="/config" replace />}
         />
 
         {/* DashboardGrid Route */}

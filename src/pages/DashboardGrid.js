@@ -8,31 +8,49 @@ import EditIcon from '@mui/icons-material/Edit';
 import IconButton from '@mui/material/IconButton';
 import Modal from '../components/Modal/Modal'; 
 import EditRoomForm from '../forms/EditRoomForm';
+import EditElectricHeaterForm from '../forms/EditHeaterForm';
+import ClickableHeater from '../components/Objects/ClickableHeater';
 
 function DashboardGrid() {
     const {
         rooms,
         heaters,
-        fiElectricityPrices,
+
+        updateRoom,
+        updateElectricHeater,
+
         loadingFiPrices,
         errorFiPrices,
         currentFiElectricityPrice,
+
+
     } = useContext(DataContext);
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState(null);
 
-    const handleOpenModal = (room) => {
-        setSelectedRoom(room);
-        setIsModalOpen(true);
+    const [isHeaterModalOpen, setIsHeaterModalOpen] = useState(false);
+    const [selectedHeater, setSelectedHeater] = useState(null);
+
+    const handleOpenRoomModal = (room) => {
+      setSelectedRoom(room);
+      setIsRoomModalOpen(true);
     };
 
-    const handleCloseModal = () => {
+    const handleCloseRoomModal = () => {
         setSelectedRoom(null);
-        setIsModalOpen(false);
+        setIsRoomModalOpen(false);
     };
 
-    const now = new Date();
+    const handleOpenHeaterModal = (heater) => {
+        setSelectedHeater(heater);
+        setIsHeaterModalOpen(true);
+    };
+
+    const handleCloseHeaterModal = () => {
+        setSelectedHeater(null);
+        setIsHeaterModalOpen(false);
+    };
 
     if (!rooms || rooms.length === 0) {
         return <div>No rooms available.</div>;
@@ -80,7 +98,7 @@ function DashboardGrid() {
                             {/* Edit Icon Button */}
                             <IconButton
                                 aria-label={`Edit ${room.roomId}`}
-                                onClick={() => handleOpenModal(room)}
+                                onClick={() => handleOpenRoomModal(room)}
                                 style={{
                                     position: 'absolute',
                                     top: 8,
@@ -101,10 +119,10 @@ function DashboardGrid() {
                                     .filter((heater) => heater.roomId === room.roomId)
                                     .map((heater) => (
                                         <Grid2 xs={4} key={heater.id}>
-                                            <div style={{ border: '1px solid #aaa', padding: '8px' }}>
-                                                <h4>{heater.name}</h4>
-                                                <p>Status: {heater.isEnabled ? 'Enabled' : 'Disabled'}</p>
-                                            </div>
+                                            <ClickableHeater
+                                                heater={heater}
+                                                onClick={handleOpenHeaterModal}
+                                            />
                                         </Grid2>
                                     ))}
                             </Grid2>
@@ -113,8 +131,20 @@ function DashboardGrid() {
                 ))}
             </Grid2>
 
-            <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
-                {selectedRoom && <EditRoomForm room={selectedRoom} onClose={handleCloseModal} />}
+            {/* Modal for Editing Room */}
+            <Modal isOpen={isRoomModalOpen} onClose={handleCloseRoomModal}>
+              {selectedRoom && <EditRoomForm room={selectedRoom} onClose={handleCloseRoomModal} />}
+            </Modal>
+
+            {/* Modal for Editing Electric Heater */}
+            <Modal isOpen={isHeaterModalOpen} onClose={handleCloseHeaterModal}>
+                {selectedHeater && (
+                    <EditElectricHeaterForm
+                        heater={selectedHeater}
+                        onClose={handleCloseHeaterModal}
+                        rooms={rooms}
+                    />
+                )}
             </Modal>
         </>
     );
