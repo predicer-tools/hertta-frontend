@@ -1,32 +1,45 @@
 // src/components/Modal/Modal.js
 
-import React from 'react';
-import styles from './Modal.module.css'; // Ensure this CSS module exists
+import React, { useEffect, useRef } from 'react';
+import styles from './Modal.module.css';
+import FocusTrap from 'focus-trap-react';
 
-/**
- * Modal Component
- *
- * @param {Object} props
- * @param {boolean} props.isOpen - Determines if the modal is open
- * @param {Function} props.onClose - Function to close the modal
- * @param {React.ReactNode} props.children - Content of the modal
- */
 function Modal({ isOpen, onClose, children }) {
-  if (!isOpen) return null;
+    const modalRef = useRef(null);
 
-  return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div
-        className={styles.modalContent}
-        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the modal
-      >
-        <button className={styles.closeButton} onClick={onClose} aria-label="Close Modal">
-          &times;
-        </button>
-        {children}
-      </div>
-    </div>
-  );
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'auto';
+        }
+
+        return () => {
+            document.body.style.overflow = 'auto';
+        };
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    return (
+        <FocusTrap>
+            <div
+                className={`${styles.modalOverlay} ${isOpen ? styles.open : ''}`}
+                onClick={onClose}
+            >
+                <div
+                    className={styles.modalContent}
+                    onClick={(e) => e.stopPropagation()}
+                    ref={modalRef}
+                >
+                    <button className={styles.closeButton} onClick={onClose} aria-label="Close Modal">
+                        &times;
+                    </button>
+                    {children}
+                </div>
+            </div>
+        </FocusTrap>
+    );
 }
 
 export default Modal;

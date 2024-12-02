@@ -29,14 +29,6 @@ export const DataProvider = ({ children }) => {
   });
 
   // =====================
-  // New State for FI Electricity Prices (Converted to snt/kWh)
-  // =====================
-
-  const [fiElectricityPrices, setFiElectricityPrices] = useState(() => {
-    return JSON.parse(localStorage.getItem('fiElectricityPrices')) || [];
-  });
-
-  // =====================
   // Loading and Error States for FI Electricity Prices
   // =====================
 
@@ -50,6 +42,22 @@ export const DataProvider = ({ children }) => {
   const [controlSignals, setControlSignals] = useState(() => {
     return JSON.parse(localStorage.getItem('controlSignals')) || {};
   });
+
+    // =====================
+  // Helper Function to Process FI Electricity Prices
+  // =====================
+
+  /**
+   * Processes FI electricity prices by converting timestamps to Date objects.
+   * @param {Array} prices - Array of price objects with { timestamp, price }.
+   * @returns {Array}
+   */
+  const processFiElectricityPrices = useCallback((prices) => {
+    return prices.map((entry) => ({
+      ...entry,
+      date: new Date(entry.timestamp * 1000), // Convert timestamp to Date object
+    }));
+  }, []);
 
   // =====================
   // Helper Function for Conversion
@@ -67,6 +75,20 @@ export const DataProvider = ({ children }) => {
     }));
   }, []);
 
+    // =====================
+  // State for FI Electricity Prices (Converted to snt/kWh)
+  // =====================
+
+  const [fiElectricityPrices, setFiElectricityPrices] = useState(() => {
+    const storedPrices = JSON.parse(localStorage.getItem('fiElectricityPrices')) || [];
+    return processFiElectricityPrices(storedPrices); // Process stored prices
+  });
+
+    /**
+   * State to hold the current electricity price based on the current time.
+   */
+    const [currentFiElectricityPrice, setCurrentFiElectricityPrice] = useState(null);
+
   // =====================
   // Fetch FI Electricity Prices from Elering API (Converted to snt/kWh)
   // =====================
@@ -82,8 +104,12 @@ export const DataProvider = ({ children }) => {
 
         const fiPrices = await fetchElectricityPricesFi(start, end);
         const convertedFiPrices = convertEuromWhToSntKWh(fiPrices); // Convert prices
-        setFiElectricityPrices(convertedFiPrices);
-        localStorage.setItem('fiElectricityPrices', JSON.stringify(convertedFiPrices));
+
+        // Process the prices to add 'date' property
+        const processedFiPrices = processFiElectricityPrices(convertedFiPrices);
+
+        setFiElectricityPrices(processedFiPrices);
+        localStorage.setItem('fiElectricityPrices', JSON.stringify(processedFiPrices));
         setErrorFiPrices(null);
       } catch (error) {
         setErrorFiPrices(error.message);
@@ -94,6 +120,26 @@ export const DataProvider = ({ children }) => {
 
     fetchFiPrices();
   }, [convertEuromWhToSntKWh]);
+
+    /**
+   * Effect to compute the current electricity price based on the current time.
+   */
+    useEffect(() => {
+      if (fiElectricityPrices.length > 0) {
+        const now = new Date();
+  
+        const currentPriceEntry = fiElectricityPrices.find((priceEntry) => {
+          const priceTime = priceEntry.date; // date is already processed
+          const nextHour = new Date(priceTime.getTime() + 3600000); // Add 1 hour
+  
+          return now >= priceTime && now < nextHour;
+        });
+  
+        setCurrentFiElectricityPrice(currentPriceEntry);
+      } else {
+        setCurrentFiElectricityPrice(null);
+      }
+    }, [fiElectricityPrices]);
 
   // =====================
   // Fetch Electricity Prices from Backend (Converted to snt/kWh)
@@ -177,14 +223,6 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('heaters', JSON.stringify(heaters));
   }, [heaters]);
-
-  // =====================
-  // Persist FI Electricity Prices to LocalStorage on Change (Converted)
-  // =====================
-
-  useEffect(() => {
-    localStorage.setItem('fiElectricityPrices', JSON.stringify(fiElectricityPrices));
-  }, [fiElectricityPrices]);
 
   // =====================
   // Generate and Store Control Signals
@@ -275,7 +313,7 @@ export const DataProvider = ({ children }) => {
   };
 
   // =====================
-  // ** ADDED: Function to Update a Heater **
+  // Function to Update a Heater
   // =====================
 
   /**
@@ -291,7 +329,7 @@ export const DataProvider = ({ children }) => {
   }, []);
 
   // =====================
-  // ** ADDED: Function to Update a Room **
+  // Function to Update a Room
   // =====================
 
   /**
@@ -306,6 +344,33 @@ export const DataProvider = ({ children }) => {
     );
   }, []);
 
+    // =====================
+  // Function to Reset All Data
+  // =====================
+
+  /**
+   * Resets all data in the DataContext to their initial empty states.
+   * Clears corresponding localStorage entries.
+   */
+  const resetData = useCallback(() => {
+    // Reset all states to their initial empty values
+    setRooms([]);
+    setHeaters([]);
+    setElectricityPrices([]);
+    setFiElectricityPrices([]);
+    setControlSignals({});
+    setCurrentFiElectricityPrice(null);
+    setErrorFiPrices(null);
+    setErrorElectricityPrices(null);
+
+    // Clear corresponding localStorage entries
+    localStorage.removeItem('rooms');
+    localStorage.removeItem('heaters');
+    localStorage.removeItem('electricityPrices');
+    localStorage.removeItem('fiElectricityPrices');
+    localStorage.removeItem('controlSignals');
+  }, []);
+
   // =====================
   // Provider's Value
   // =====================
@@ -318,7 +383,7 @@ export const DataProvider = ({ children }) => {
         setRooms,
         addRoom,
         deleteRoom,
-        updateRoom: updateRoomFunc, // ** ADDED **
+        updateRoom: updateRoomFunc,
 
         // Heaters State and Functions
         heaters,
@@ -326,23 +391,25 @@ export const DataProvider = ({ children }) => {
         addElectricHeater,
         deleteHeater,
         toggleHeaterEnabled,
-        updateHeater: updateHeaterFunc, // ** ADDED **
+        updateHeater: updateHeaterFunc,
 
-        // Existing Electricity Prices State and Functions (snt/kWh)
+        // Electricity Prices State and Functions (snt/kWh)
         electricityPrices,
         setElectricityPrices,
 
-        // New FI Electricity Prices State and Functions (snt/kWh)
         fiElectricityPrices,
         setFiElectricityPrices,
         loadingFiPrices,
         errorFiPrices,
+        currentFiElectricityPrice,
 
-        // New Control Signals State
+        //Control signals
         controlSignals,
         setControlSignals,
 
-        // ... Add any other states and setters you have
+        //Reset
+        resetData,
+
       }}
     >
       {children}

@@ -7,17 +7,14 @@ import EditRoomForm from '../forms/EditRoomForm';
 import EditHeaterForm from '../forms/EditHeaterForm';
 import styles from "./Dashboard.module.css";
 import DataContext from '../context/DataContext';
-import ConfigContext from '../context/ConfigContext';
 import WeatherContext from '../context/WeatherContext';
-import Grid from '@mui/material/Grid';
 
 
 function Dashboard({ activeDevices, onDeviceClick }) {
   const svgRef = useRef();
 
   // Access contexts
-  const { rooms, heaters, fiElectricityPrices, controlSignals, toggleHeaterEnabled, updateHeater } = useContext(DataContext);
-  const { sensors, devices } = useContext(ConfigContext);
+  const { rooms, heaters, fiElectricityPrices, controlSignals, toggleHeaterEnabled} = useContext(DataContext);
   const { weatherData } = useContext(WeatherContext);
 
   // State for Room Modal

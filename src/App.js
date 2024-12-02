@@ -26,7 +26,7 @@ function App() {
         {/* Configuration Route */}
         <Route
           path="/config"
-          element={isConfigured ? <Navigate to="/" replace /> : <ConfigPage />}
+          element={<ConfigPage />}
         />
 
         {/* Dashboard Route */}

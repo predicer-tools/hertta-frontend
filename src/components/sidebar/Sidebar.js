@@ -3,7 +3,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import styles from './Sidebar.module.css'; // Import CSS Module
-import LogoutButton from '../Button/LogoutButton'; // Adjust the import path as per your project structure
+import ResetButton from '../Button/ResetButton';
 
 function Sidebar({ isOpen }) {
   return (
@@ -17,14 +17,6 @@ function Sidebar({ isOpen }) {
               className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
             >
               Home Energy
-            </NavLink>
-          </li>
-          <li className={styles.navItem}>
-            <NavLink
-              to="/config"
-              className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
-            >
-              Configuration
             </NavLink>
           </li>
           <li className={styles.navItem}>
@@ -43,11 +35,20 @@ function Sidebar({ isOpen }) {
               Dashboard Grid
             </NavLink>
           </li>
+          <li className={styles.navItem}>
+            <NavLink
+              to="/config"
+              className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+            >
+              Configuration
+            </NavLink>
+          </li>
           {/* Add more navigation links as needed */}
         </ul>
       </nav>
-      <div className={styles.logoutContainer}>
-        <LogoutButton className={styles.logoutButton} />
+      <div className={styles.resetContainer}>
+        {/* Replace LogoutButton with ResetButton */}
+        <ResetButton />
       </div>
     </div>
   );
