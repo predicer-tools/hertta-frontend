@@ -10,6 +10,8 @@ import Modal from '../components/Modal/Modal';
 import EditRoomForm from '../forms/EditRoomForm';
 import EditElectricHeaterForm from '../forms/EditHeaterForm';
 import ClickableHeater from '../components/Objects/ClickableHeater';
+import Typography from '@mui/material/Typography';
+import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 
 function DashboardGrid() {
     const {
@@ -19,10 +21,10 @@ function DashboardGrid() {
         updateRoom,
         updateElectricHeater,
 
-        loadingFiPrices,
-        errorFiPrices,
+        fiPrices,
+        fiPricesLoading,
+        fiPricesError,
         currentFiElectricityPrice,
-
 
     } = useContext(DataContext);
 
@@ -31,6 +33,8 @@ function DashboardGrid() {
 
     const [isHeaterModalOpen, setIsHeaterModalOpen] = useState(false);
     const [selectedHeater, setSelectedHeater] = useState(null);
+
+    const [isElectricityModalOpen, setIsElectricityModalOpen] = useState(false);
 
     const handleOpenRoomModal = (room) => {
       setSelectedRoom(room);
@@ -52,34 +56,42 @@ function DashboardGrid() {
         setIsHeaterModalOpen(false);
     };
 
+    // Handlers for Electricity Prices Modal
+    const handleOpenElectricityModal = () => {
+      setIsElectricityModalOpen(true);
+    };
+  
+    const handleCloseElectricityModal = () => {
+        setIsElectricityModalOpen(false);
+    };
+
     if (!rooms || rooms.length === 0) {
         return <div>No rooms available.</div>;
-    }
-
-    // Handle loading and error states for electricity prices
-    if (loadingFiPrices) {
-        return <div>Loading electricity prices...</div>;
-    }
-
-    if (errorFiPrices) {
-        return <div>Error loading electricity prices: {errorFiPrices}</div>;
     }
 
     return (
         <>
             <Grid2 container spacing={2}>
                 <Grid2 xs={12}>
-                    <Paper sx={{ padding: 2 }}>
-                        <h2>Electricity Grid Information</h2>
-                        {currentFiElectricityPrice ? (
-                            <p>
-                                Current Price: {currentFiElectricityPrice.price} snt/kWh from{' '}
-                                {currentFiElectricityPrice.date.toLocaleTimeString()} to{' '}
-                                {new Date(currentFiElectricityPrice.date.getTime() + 3600000).toLocaleTimeString()}
-                            </p>
-                        ) : (
-                            <p>No current electricity price data available.</p>
-                        )}
+                  <Paper
+                      sx={{ padding: 2, cursor: 'pointer' }}
+                      onClick={handleOpenElectricityModal}
+                      aria-label="View Electricity Prices"
+                  >
+                      <Typography variant="h5" component="h2">
+                          Electricity Grid Information
+                      </Typography>
+                      {currentFiElectricityPrice ? (
+                          <Typography variant="body1">
+                              Current Price: {currentFiElectricityPrice.price} snt/kWh from{' '}
+                              {new Date(currentFiElectricityPrice.start).toLocaleTimeString()} to{' '}
+                              {new Date(currentFiElectricityPrice.end).toLocaleTimeString()}
+                          </Typography>
+                      ) : (
+                          <Typography variant="body1">
+                              No current electricity price data available.
+                          </Typography>
+                      )}
                     </Paper>
                 </Grid2>
                 {rooms.map((room) => (

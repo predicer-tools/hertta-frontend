@@ -9,6 +9,7 @@ import 'react-tooltip/dist/react-tooltip.css'; // Import react-tooltip styles
 import Modal from '../components/Modal/Modal'; // Import Modal
 import EditHeaterForm from '../forms/EditHeaterForm'; // Import EditHeaterForm
 import EditRoomForm from '../forms/EditRoomForm'; // Import EditRoomForm
+import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 
 function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   const [sensors, setSensors] = useState([]);
@@ -18,7 +19,7 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   const { weatherData } = useContext(WeatherContext);
 
   // Consume DataContext for FI Electricity Prices and Control Signals
-  const { fiElectricityPrices, loadingFiPrices, errorFiPrices, controlSignals } = useContext(DataContext);
+  const { fiPrices, fiPricesLoading, fiPricesError, controlSignals } = useContext(DataContext);
 
   // State for Heater Edit Modal
   const [isHeaterModalOpen, setIsHeaterModalOpen] = useState(false);
@@ -38,21 +39,6 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
 
   // Function to format temperature
   const formatTemperature = (temp) => (temp === null || temp === undefined ? 'N/A' : `${temp.toFixed(2)} °C`);
-
-  // Function to format Electricity Prices
-  const formatPrice = (price) => (price === 'N/A' || price === null || price === undefined ? 'N/A' : `${price.toFixed(2)} snt/kWh`);
-
-  // Function to get control signals for a heater
-  const getControlSignals = (heaterId) => (controlSignals?.[heaterId] || Array(12).fill('N/A'));
-
-  // Function to get timestamps for control signals
-  const getControlSignalTimestamps = () => (
-    fiElectricityPrices?.length > 0
-      ? fiElectricityPrices.slice(0, 12).map(entry => new Date(entry.timestamp * 1000).toLocaleString())
-      : Array(12).fill('N/A')
-  );
-
-  const controlSignalTimestamps = getControlSignalTimestamps();
 
   // Modal handling functions for Heaters
   const openHeaterEditModal = (heater) => {
@@ -138,59 +124,6 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
         </table>
       </div>
 
-      {/* Heaters Table */}
-      <h3>Heating Devices</h3>
-      <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Capacity (kW)</th>
-              <th>Room ID</th>
-              <th>Enabled</th>
-              <th>Control Signals (Next 12 Hours)</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {heaters.length > 0 ? heaters.map((heater, index) => (
-              <tr key={index}>
-                <td>{heater.id}</td>
-                <td>{heater.capacity}</td>
-                <td>{heater.roomId}</td>
-                <td>{heater.isEnabled ? 'Yes' : 'No'}</td>
-                <td>
-                  <ul className={styles.controlSignalsList}>
-                    {getControlSignals(heater.id).map((signal, sigIndex) => (
-                      <li
-                        key={sigIndex}
-                        className={signal === 'ON' ? styles.on : styles.off}
-                        data-tooltip-id={`tooltip-${heater.id}-${sigIndex}`}
-                        data-tooltip-content={`Time: ${controlSignalTimestamps[sigIndex]}\nSignal: ${signal}`}
-                      >
-                        {controlSignalTimestamps[sigIndex] !== 'N/A' ? `${controlSignalTimestamps[sigIndex]}: ${signal}` : 'N/A'}
-                      </li>
-                    ))}
-                  </ul>
-                  {/* Initialize Tooltip for each signal */}
-                  {getControlSignals(heater.id).map((_, sigIndex) => (
-                    <Tooltip key={`tooltip-${heater.id}-${sigIndex}`} id={`tooltip-${heater.id}-${sigIndex}`} place="top" effect="solid" />
-                  ))}
-                </td>
-                <td>
-                  <button className={styles.editButton} onClick={() => openHeaterEditModal(heater)}>Edit</button>
-                  <button className={styles.deleteButton} onClick={() => deleteHeater(heater.id)}>Delete</button>
-                </td>
-              </tr>
-            )) : (
-              <tr>
-                <td colSpan="6">No heating devices available</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
       {/* Rooms Table */}
       <h3>Rooms</h3>
       <div className={styles.tableWrapper}>
@@ -233,6 +166,16 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
         </table>
       </div>
 
+            {/* Electricity Prices Table */}
+            <h3>Electricity Prices (FI)</h3>
+      <div className={styles.tableWrapper}>
+        <ElectricityPricesTable
+          fiPrices={fiPrices}
+          loading={fiPricesLoading}
+          error={fiPricesError}
+        />
+      </div>
+
       {/* Weather Data Table */}
       <h3>Outside Temperature</h3>
       <div className={styles.tableWrapper}>
@@ -258,35 +201,6 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Electricity Prices Table */}
-      <h3>Electricity Prices (FI)</h3>
-      <div className={styles.tableWrapper}>
-        {loadingFiPrices ? (
-          <p>Loading FI electricity prices...</p>
-        ) : errorFiPrices ? (
-          <p className={styles.error}>{errorFiPrices}</p>
-        ) : fiElectricityPrices.length > 0 ? (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>Price (snt/kWh)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fiElectricityPrices.map((entry, index) => (
-                <tr key={index}>
-                  <td>{new Date(entry.timestamp * 1000).toLocaleString()}</td>
-                  <td>{formatPrice(entry.price)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p>No FI electricity price data available.</p>
-        )}
       </div>
 
       {/* Heaters Edit Modal */}
