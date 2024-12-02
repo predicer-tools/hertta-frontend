@@ -158,6 +158,18 @@ function DashboardGrid() {
                     />
                 )}
             </Modal>
+
+            {/* Modal for Electricity Prices Table */}
+            <Modal isOpen={isElectricityModalOpen} onClose={handleCloseElectricityModal}>
+              <Typography variant="h6" component="h3" gutterBottom>
+                  Electricity Prices
+              </Typography>
+              <ElectricityPricesTable
+                  fiPrices={fiPrices}
+                  loading={fiPricesLoading}
+                  error={fiPricesError}
+              />
+            </Modal>
         </>
     );
 }
