@@ -65,6 +65,9 @@ function DashboardGrid() {
         setIsElectricityModalOpen(false);
     };
 
+    // Extract the first electricity price entry
+    const firstFiPrice = fiPrices && fiPrices.length > 0 ? fiPrices[0] : null;
+
     if (!rooms || rooms.length === 0) {
         return <div>No rooms available.</div>;
     }
@@ -81,11 +84,12 @@ function DashboardGrid() {
                       <Typography variant="h5" component="h2">
                           Electricity Grid Information
                       </Typography>
-                      {currentFiElectricityPrice ? (
+                      {/* Display the First Electricity Price as Current Price */}
+                      {firstFiPrice ? (
                           <Typography variant="body1">
-                              Current Price: {currentFiElectricityPrice.price} snt/kWh from{' '}
-                              {new Date(currentFiElectricityPrice.start).toLocaleTimeString()} to{' '}
-                              {new Date(currentFiElectricityPrice.end).toLocaleTimeString()}
+                              Current Price: {firstFiPrice.price} snt/kWh from{' '}
+                              {new Date(firstFiPrice.start).toLocaleTimeString()} to{' '}
+                              {new Date(firstFiPrice.end).toLocaleTimeString()}
                           </Typography>
                       ) : (
                           <Typography variant="body1">
