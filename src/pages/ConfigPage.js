@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import finlandLocations from '../utils/finlandLocations';
 import styles from './ConfigPage.module.css';
 import ConfigContext from '../context/ConfigContext';
+// Remove WeatherContext import
+// import WeatherContext from '../context/WeatherContext'; // Remove this line
 
 function ConfigPage() {
   const [country, setCountry] = useState('');
@@ -15,6 +17,8 @@ function ConfigPage() {
 
   const navigate = useNavigate();
   const { updateConfig, updateSensors, updateDevices } = useContext(ConfigContext);
+  // Remove WeatherContext consumption
+  // const { getWeatherData } = useContext(WeatherContext); // Remove this line
 
   const fetchHomeAssistantData = async () => {
     try {

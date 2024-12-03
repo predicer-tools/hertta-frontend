@@ -38,7 +38,7 @@ const ElectricityPricesTable = ({ fiPrices, loading, error }) => {
     );
   }
 
-  if (!fiPrices || fiPrices.length === 0) {
+  if (!Array.isArray(fiPrices) || fiPrices.length === 0) {
     return <Typography variant="body1">No electricity price data available.</Typography>;
   }
 
@@ -52,15 +52,36 @@ const ElectricityPricesTable = ({ fiPrices, loading, error }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {fiPrices.map((priceEntry, index) => (
-            <TableRow key={index}>
-              <TableCell component="th" scope="row">
-                {new Date(priceEntry.start).toLocaleTimeString()} -{' '}
-                {new Date(priceEntry.end).toLocaleTimeString()}
-              </TableCell>
-              <TableCell align="right">{priceEntry.price}</TableCell>
-            </TableRow>
-          ))}
+          {fiPrices.map((priceEntry, index) => {
+            // Validate individual priceEntry structure
+            if (!priceEntry.start || !priceEntry.end || typeof priceEntry.price !== 'number') {
+              return (
+                <TableRow key={index}>
+                  <TableCell colSpan="2" align="center">
+                    Invalid data format.
+                  </TableCell>
+                </TableRow>
+              );
+            }
+
+            return (
+              <TableRow key={index}>
+                <TableCell component="th" scope="row">
+                  {new Date(priceEntry.start).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                  })} -{' '}
+                  {new Date(priceEntry.end).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                  })}
+                </TableCell>
+                <TableCell align="right">{priceEntry.price}</TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </TableContainer>

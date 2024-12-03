@@ -1,12 +1,9 @@
 // src/components/Forms/FormElectricHeater.js
 
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import './DataForm.css';
-import DataContext from '../context/DataContext'; // Import DataContext
 
-function FormElectricHeater({ addElectricHeater, rooms = [], fetchedDevices = [] }) {
-  const { addElectricHeater: addHeater } = useContext(DataContext); // Access addHeater from DataContext
-
+function FormElectricHeater({ addElectricHeater, rooms = [], fetchedDevices = [], onClose }) {
   const [heaterId, setHeaterId] = useState('');
   const [capacity, setCapacity] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -25,7 +22,7 @@ function FormElectricHeater({ addElectricHeater, rooms = [], fetchedDevices = []
       const heaterName = selectedDevice?.attributes?.friendly_name || heaterId; // Fallback to heaterId if friendly_name is unavailable
 
       // Add heating device with isEnabled set to true and include name
-      addHeater({
+      addElectricHeater({
         id: heaterId, // Device ID
         name: heaterName, // Heater Name
         capacity: parseFloat(capacity), // Capacity in kW
@@ -37,6 +34,9 @@ function FormElectricHeater({ addElectricHeater, rooms = [], fetchedDevices = []
       setHeaterId('');
       setCapacity('');
       setRoomId('');
+
+      // Close the modal after successful submission
+      if (onClose) onClose();
     } else {
       alert('Please fill in all required fields.');
     }

@@ -13,15 +13,6 @@ function FormRoom({ homeAssistantSensors }) {
   const [maxTemp, setMaxTemp] = useState(25); // Default: 25°C
   const [minTemp, setMinTemp] = useState(15); // Default: 15°C
   const [selectedSensor, setSelectedSensor] = useState(''); // State to store selected sensor
-  const [selectedMaterial, setSelectedMaterial] = useState(''); // State to store selected material
-
-  // Material data from the image (in kWh/m²K)
-  const materials = [
-    { name: 'Kevytrakenteinen', value: 40 / 1000 },
-    { name: 'Keskiraskas I', value: 70 / 1000 },
-    { name: 'Keskiraskas II', value: 110 / 1000 },
-    { name: 'Raskasrakenteinen', value: 200 / 1000 },
-  ];
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -33,7 +24,6 @@ function FormRoom({ homeAssistantSensors }) {
       roomLength &&
       maxTemp !== '' &&
       minTemp !== '' &&
-      selectedMaterial &&
       selectedSensor
     ) {
       // Additional Validation: maxTemp >= minTemp
@@ -55,7 +45,6 @@ function FormRoom({ homeAssistantSensors }) {
         sensorId: selectedSensor, // Add the sensor ID
         sensorState: selectedSensorData?.state || 'N/A', // Add the sensor's state
         sensorUnit: selectedSensorData?.attributes?.unit_of_measurement || '°C', // Set default unit to °C
-        material: selectedMaterial, // Add selected material
       });
 
       // Reset form
@@ -65,7 +54,6 @@ function FormRoom({ homeAssistantSensors }) {
       setMaxTemp(25);
       setMinTemp(15);
       setSelectedSensor(''); // Reset sensor selection
-      setSelectedMaterial(''); // Reset material selection
     } else {
       // Handle form validation errors
       alert('Please fill in all required fields.');
@@ -147,23 +135,6 @@ function FormRoom({ homeAssistantSensors }) {
             {homeAssistantSensors.map((sensor) => (
               <option key={sensor.entity_id} value={sensor.entity_id}>
                 {sensor.attributes.friendly_name || sensor.entity_id}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Dropdown for selecting material */}
-        <div className="input-group">
-          <label>Select Material Type:</label>
-          <select
-            value={selectedMaterial}
-            onChange={(e) => setSelectedMaterial(e.target.value)}
-            required
-          >
-            <option value="">Select material type</option>
-            {materials.map((material, index) => (
-              <option key={index} value={material.value}>
-                {material.name}
               </option>
             ))}
           </select>

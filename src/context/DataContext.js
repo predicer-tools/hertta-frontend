@@ -1,9 +1,10 @@
 // src/context/DataContext.js
 
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { generateControlSignals } from '../utils/controlData'; // Import the control signals utility
 import useElectricityPrices from '../hooks/useElectricityPrices';
 import useWeatherData from '../hooks/useWeatherData'; 
+import ConfigContext from './ConfigContext'; // Import ConfigContext
 
 // Create the DataContext
 const DataContext = createContext();
@@ -25,20 +26,19 @@ export const DataProvider = ({ children }) => {
   });
 
   // State for Control Signals
-
   const [controlSignals, setControlSignals] = useState(() => {
     return JSON.parse(localStorage.getItem('controlSignals')) || {};
   });
 
-    // =====================
+  // =====================
   // Use the Hooks
   // =====================
 
+  const { config } = useContext(ConfigContext); // Consume ConfigContext to get configuration
+  const location = config.location; // Extract location from config
+  
   const { fiPrices, loading: fiPricesLoading, error: fiPricesError } = useElectricityPrices();
-
-  const location = 'Helsinki'; // Example location. Replace as needed.
   const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
-
 
   // =====================
   // Load Rooms Data from LocalStorage on Mount (Existing - Preserved)
@@ -74,7 +74,7 @@ export const DataProvider = ({ children }) => {
     localStorage.setItem('heaters', JSON.stringify(heaters));
   }, [heaters]);
 
-  // =====================
+   // =====================
   // Generate and Store Control Signals
   // =====================
 
@@ -194,7 +194,7 @@ export const DataProvider = ({ children }) => {
     );
   }, []);
 
-    // =====================
+  // =====================
   // Function to Reset All Data
   // =====================
 
@@ -212,6 +212,7 @@ export const DataProvider = ({ children }) => {
     localStorage.removeItem('rooms');
     localStorage.removeItem('heaters');
     localStorage.removeItem('fiElectricityPrices');
+    localStorage.removeItem('weatherData');
     localStorage.removeItem('controlSignals');
   }, []);
 
@@ -237,7 +238,7 @@ export const DataProvider = ({ children }) => {
         toggleHeaterEnabled,
         updateHeater: updateHeaterFunc,
 
-        //Control signals
+        // Control signals
         controlSignals,
         setControlSignals,
 
@@ -251,9 +252,8 @@ export const DataProvider = ({ children }) => {
         weatherLoading,
         weatherError,
 
-        //Reset
+        // Reset
         resetData,
-
       }}
     >
       {children}

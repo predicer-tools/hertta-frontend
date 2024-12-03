@@ -24,6 +24,30 @@ export const ConfigProvider = ({ children }) => {
   });
 
   // =====================
+  // Materials State
+  // =====================
+
+  // Stores the list of materials
+  const [materials, setMaterials] = useState(() => {
+    const storedMaterials = localStorage.getItem('materials');
+    if (storedMaterials) {
+      try {
+        return JSON.parse(storedMaterials);
+      } catch (error) {
+        console.error('Error parsing materials from localStorage:', error);
+        // If parsing fails, initialize with default materials
+      }
+    }
+    // Default materials
+    return [
+      { name: 'Kevytrakenteinen', value: 40 / 1000 },
+      { name: 'Keskiraskas I', value: 70 / 1000 },
+      { name: 'Keskiraskas II', value: 110 / 1000 },
+      { name: 'Raskasrakenteinen', value: 200 / 1000 },
+    ];
+  });
+
+  // =====================
   // Sensors and Devices State
   // =====================
   
@@ -47,6 +71,14 @@ export const ConfigProvider = ({ children }) => {
     localStorage.setItem('location', config.location);
     localStorage.setItem('apiKey', config.apiKey);
   }, [isConfigured, config]);
+
+  // =====================
+  // Persist Materials to LocalStorage
+  // =====================
+  
+  useEffect(() => {
+    localStorage.setItem('materials', JSON.stringify(materials));
+  }, [materials]);
 
   // =====================
   // Persist Sensors and Devices to LocalStorage
@@ -97,6 +129,17 @@ export const ConfigProvider = ({ children }) => {
     setDevices(newDevices);
   };
 
+  /**
+   * Updates an existing material in the materials list.
+   * @param {number} index - The index of the material to update.
+   * @param {Object} updatedMaterial - The updated material object.
+   */
+  const updateMaterial = (index, updatedMaterial) => {
+    setMaterials((prevMaterials) =>
+      prevMaterials.map((mat, idx) => (idx === index ? updatedMaterial : mat))
+    );
+  };
+
   // =====================
   // Function to Reset All Configuration, Sensors, and Devices
   // =====================
@@ -113,6 +156,7 @@ export const ConfigProvider = ({ children }) => {
     localStorage.removeItem('apiKey');
     localStorage.removeItem('homeAssistantSensors');
     localStorage.removeItem('fetchedDevices');
+    localStorage.removeItem('materials');
 
     // Reset state
     setIsConfigured(false);
@@ -123,6 +167,12 @@ export const ConfigProvider = ({ children }) => {
     });
     setSensors([]);
     setDevices([]);
+    setMaterials([
+      { name: 'Kevytrakenteinen', value: 40 / 1000 },
+      { name: 'Keskiraskas I', value: 70 / 1000 },
+      { name: 'Keskiraskas II', value: 110 / 1000 },
+      { name: 'Raskasrakenteinen', value: 200 / 1000 },
+    ]);
   };
 
   // =====================
@@ -144,6 +194,10 @@ export const ConfigProvider = ({ children }) => {
         // Devices State and Updaters
         devices,
         updateDevices,
+
+        // Materials State and Updaters
+        materials,
+        updateMaterial,
 
         // Reset Function
         resetConfig,

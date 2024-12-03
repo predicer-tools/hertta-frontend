@@ -9,13 +9,14 @@ import Modal from '../components/Modal/Modal'; // Import Modal
 import EditHeaterForm from '../forms/EditHeaterForm'; // Import EditHeaterForm
 import EditRoomForm from '../forms/EditRoomForm'; // Import EditRoomForm
 import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
+import useElectricityPrices from '../hooks/useElectricityPrices';
 
 function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   const [sensors, setSensors] = useState([]);
   const [devices, setDevices] = useState([]);
 
   // Consume DataContext for FI Electricity Prices and Control Signals
-  const { fiPrices, fiPricesLoading, fiPricesError, controlSignals } = useContext(DataContext);
+  const { fiPrices, loading, error } = useElectricityPrices();
 
   // State for Heater Edit Modal
   const [isHeaterModalOpen, setIsHeaterModalOpen] = useState(false);
@@ -162,15 +163,16 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
         </table>
       </div>
 
-            {/* Electricity Prices Table */}
-            <h3>Electricity Prices (FI)</h3>
+      {/* Electricity Prices Table */}
+      <h3>Electricity Prices (FI)</h3>
       <div className={styles.tableWrapper}>
         <ElectricityPricesTable
           fiPrices={fiPrices}
-          loading={fiPricesLoading}
-          error={fiPricesError}
+          loading={loading}
+          error={error}
         />
       </div>
+
 
       {/* Heaters Edit Modal */}
       <Modal isOpen={isHeaterModalOpen} onClose={closeHeaterEditModal}>
