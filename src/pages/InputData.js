@@ -5,7 +5,7 @@ import FormRoom from '../forms/FormRoom';
 import FormElectricHeater from '../forms/FormElectricHeater'; // Import the new form
 import DataTable from './DataTable'; // Import DataTable
 import Modal from '../components/Modal/Modal'; // Import Modal
-import styles from './InputData.module.css';
+import styles from './InputData.module.css'; // Import the CSS module
 import DataContext from '../context/DataContext'; // Import DataContext
 import ConfigContext from '../context/ConfigContext'; // Import ConfigContext
 
@@ -43,10 +43,16 @@ function InputData() {
       
       {/* Buttons to Open Modals */}
       <div className={styles.buttonsContainer}>
-        <button className={styles.addButton} onClick={openRoomModal}>
+        <button 
+          className={`${styles.addButton} button-group button`} 
+          onClick={openRoomModal}
+        >
           + Add Room
         </button>
-        <button className={styles.addButton} onClick={openHeaterModal}>
+        <button 
+          className={`${styles.addButton} button-group button`} 
+          onClick={openHeaterModal}
+        >
           + Add Heating Device
         </button>
       </div>
@@ -70,10 +76,7 @@ function InputData() {
         />
       </Modal>
 
-      <div className={styles.formsContainer}>
-        {/* Remove FormRoom and FormElectricHeater from here since they're now inside modals */}
-        {/* If you have other forms, they can remain here */}
-      </div>
+      {/* Data Table */}
       <div className={styles.dataTableContainer}>
         <DataTable
           rooms={rooms}
