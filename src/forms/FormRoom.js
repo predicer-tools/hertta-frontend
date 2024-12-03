@@ -5,8 +5,9 @@ import './DataForm.css'; // Import the updated CSS
 import DataContext from '../context/DataContext'; // Import DataContext
 
 function FormRoom({ homeAssistantSensors }) {
-  const { addRoom } = useContext(DataContext); // Access addRoom from DataContext
+  const { addRoom, rooms } = useContext(DataContext); // Access addRoom and existing rooms from DataContext
 
+  // Form state variables
   const [roomId, setRoomId] = useState('');
   const [roomWidth, setRoomWidth] = useState('');
   const [roomLength, setRoomLength] = useState('');
@@ -14,60 +15,110 @@ function FormRoom({ homeAssistantSensors }) {
   const [minTemp, setMinTemp] = useState(15); // Default: 15°C
   const [selectedSensor, setSelectedSensor] = useState(''); // State to store selected sensor
 
+  // Error state
+  const [error, setError] = useState(null);
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Reset previous errors
+    setError(null);
+
+    // Trimmed inputs for accurate validation
+    const trimmedRoomId = roomId.trim();
+
     // Validation: Ensure required fields are filled
     if (
-      roomId &&
-      roomWidth &&
-      roomLength &&
-      maxTemp !== '' &&
-      minTemp !== '' &&
-      selectedSensor
+      trimmedRoomId === '' ||
+      roomWidth === '' ||
+      roomLength === '' ||
+      maxTemp === '' ||
+      minTemp === '' ||
+      selectedSensor === ''
     ) {
-      // Additional Validation: maxTemp >= minTemp
-      if (parseFloat(maxTemp) < parseFloat(minTemp)) {
-        alert('Max Temperature cannot be lower than Min Temperature.');
+      setError('Please fill in all required fields.');
+      return;
+    }
+
+    // Validation: Ensure roomWidth and roomLength are greater than 0
+    if (parseFloat(roomWidth) <= 0 || parseFloat(roomLength) <= 0) {
+      setError('Value must be greater than 0.');
+      return;
+    }
+
+    // Validation: Ensure maxTemp >= minTemp
+    if (parseFloat(maxTemp) < parseFloat(minTemp)) {
+      setError('Max Temperature cannot be lower than Min Temperature.');
+      return;
+    }
+
+    // Validation: Ensure roomId is unique
+    const isDuplicateRoom = rooms.some(
+      (room) => room.roomId.toLowerCase() === trimmedRoomId.toLowerCase()
+    );
+    if (isDuplicateRoom) {
+      setError('Room ID already exists. Please choose a different name.');
+      return;
+    }
+
+    // Validation: Check if the selected sensor is already in use
+    const isSensorInUse = rooms.some(
+      (room) => room.sensorId === selectedSensor
+    );
+
+    if (isSensorInUse) {
+      const confirmProceed = window.confirm(
+        'The selected sensor is already assigned to another room. Do you want to continue and assign it to this room as well?'
+      );
+
+      if (!confirmProceed) {
+        // User chose not to proceed
         return;
       }
-
-      // Find the selected sensor data from homeAssistantSensors
-      const selectedSensorData = homeAssistantSensors.find((sensor) => sensor.entity_id === selectedSensor);
-
-      // Add room with sensor state information and selected material
-      addRoom({
-        roomId,
-        roomWidth: parseFloat(roomWidth),
-        roomLength: parseFloat(roomLength),
-        maxTemp: parseFloat(maxTemp),
-        minTemp: parseFloat(minTemp),
-        sensorId: selectedSensor, // Add the sensor ID
-        sensorState: selectedSensorData?.state || 'N/A', // Add the sensor's state
-        sensorUnit: selectedSensorData?.attributes?.unit_of_measurement || '°C', // Set default unit to °C
-      });
-
-      // Reset form
-      setRoomId('');
-      setRoomWidth('');
-      setRoomLength('');
-      setMaxTemp(25);
-      setMinTemp(15);
-      setSelectedSensor(''); // Reset sensor selection
-    } else {
-      // Handle form validation errors
-      alert('Please fill in all required fields.');
     }
+
+    // Find the selected sensor data from homeAssistantSensors
+    const selectedSensorData = homeAssistantSensors.find(
+      (sensor) => sensor.entity_id === selectedSensor
+    );
+
+    // Add room with sensor state information and selected material
+    addRoom({
+      roomId: trimmedRoomId,
+      roomWidth: parseFloat(roomWidth),
+      roomLength: parseFloat(roomLength),
+      maxTemp: parseFloat(maxTemp),
+      minTemp: parseFloat(minTemp),
+      sensorId: selectedSensor, // Add the sensor ID
+      sensorState: selectedSensorData?.state || 'N/A', // Add the sensor's state
+      sensorUnit: selectedSensorData?.attributes?.unit_of_measurement || '°C', // Set default unit to °C
+    });
+
+    // Reset form
+    setRoomId('');
+    setRoomWidth('');
+    setRoomLength('');
+    setMaxTemp(25);
+    setMinTemp(15);
+    setSelectedSensor(''); // Reset sensor selection
+
+    // Optionally, you can clear the error if needed
+    setError(null);
   };
 
   return (
     <div className="device-form">
       <h3>Add a New Room</h3>
+
+      {/* Display error message if any */}
+      {error && <div className="error-message">{error}</div>}
+
       <form onSubmit={handleSubmit}>
         <div className="input-group">
-          <label>Room ID:</label>
+          <label htmlFor="roomId">Room ID:</label>
           <input
             type="text"
+            id="roomId"
             value={roomId}
             onChange={(e) => setRoomId(e.target.value)}
             placeholder="Enter Room ID"
@@ -75,33 +126,36 @@ function FormRoom({ homeAssistantSensors }) {
           />
         </div>
         <div className="input-group">
-          <label>Room Width (m):</label>
+          <label htmlFor="roomWidth">Room Width (m):</label>
           <input
             type="number"
+            id="roomWidth"
             value={roomWidth}
             onChange={(e) => setRoomWidth(e.target.value)}
             placeholder="Enter Room Width in meters"
             required
-            min="0"
+            min="0.1"
             step="0.1"
           />
         </div>
         <div className="input-group">
-          <label>Room Length (m):</label>
+          <label htmlFor="roomLength">Room Length (m):</label>
           <input
             type="number"
+            id="roomLength"
             value={roomLength}
             onChange={(e) => setRoomLength(e.target.value)}
             placeholder="Enter Room Length in meters"
             required
-            min="0"
+            min="0.1"
             step="0.1"
           />
         </div>
         <div className="input-group">
-          <label>Max Temp (°C):</label>
+          <label htmlFor="maxTemp">Max Temp (°C):</label>
           <input
             type="number"
+            id="maxTemp"
             value={maxTemp}
             onChange={(e) => setMaxTemp(e.target.value)}
             placeholder="Enter Max Temperature in Celsius"
@@ -111,9 +165,10 @@ function FormRoom({ homeAssistantSensors }) {
           />
         </div>
         <div className="input-group">
-          <label>Min Temp (°C):</label>
+          <label htmlFor="minTemp">Min Temp (°C):</label>
           <input
             type="number"
+            id="minTemp"
             value={minTemp}
             onChange={(e) => setMinTemp(e.target.value)}
             placeholder="Enter Min Temperature in Celsius"
@@ -125,8 +180,9 @@ function FormRoom({ homeAssistantSensors }) {
 
         {/* Dropdown for Home Assistant Sensors */}
         <div className="input-group">
-          <label>Select Sensor:</label>
+          <label htmlFor="sensorSelect">Select Sensor:</label>
           <select
+            id="sensorSelect"
             value={selectedSensor}
             onChange={(e) => setSelectedSensor(e.target.value)}
             required
