@@ -9,7 +9,6 @@ import reportWebVitals from './reportWebVitals';
 import 'normalize.css';
 import { ConfigProvider } from './context/ConfigContext'; // Import ConfigProvider
 import { DataProvider } from './context/DataContext'; // Import DataProvider
-import { WeatherProvider } from './context/WeatherContext'; // Import WeatherProvider
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -17,9 +16,7 @@ root.render(
     <Router>
       <ConfigProvider>
         <DataProvider>
-          <WeatherProvider>
-            <App />
-          </WeatherProvider>
+          <App />
         </DataProvider>
       </ConfigProvider>
     </Router>

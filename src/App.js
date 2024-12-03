@@ -4,7 +4,6 @@ import React, { useContext } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './Layout';
 import ConfigPage from './pages/ConfigPage';
-import Dashboard from './pages/Dashboard';
 import InputData from './pages/InputData';
 import DataTable from './pages/DataTable';
 import ConfigContext from './context/ConfigContext';

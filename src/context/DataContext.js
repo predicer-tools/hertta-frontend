@@ -3,6 +3,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { generateControlSignals } from '../utils/controlData'; // Import the control signals utility
 import useElectricityPrices from '../hooks/useElectricityPrices';
+import useWeatherData from '../hooks/useWeatherData'; 
 
 // Create the DataContext
 const DataContext = createContext();
@@ -30,10 +31,13 @@ export const DataProvider = ({ children }) => {
   });
 
     // =====================
-  // Use the useElectricityPrices Hook
+  // Use the Hooks
   // =====================
 
   const { fiPrices, loading: fiPricesLoading, error: fiPricesError } = useElectricityPrices();
+
+  const location = 'Helsinki'; // Example location. Replace as needed.
+  const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
 
 
   // =====================
@@ -241,6 +245,11 @@ export const DataProvider = ({ children }) => {
         fiPrices,
         fiPricesLoading,
         fiPricesError,
+
+        // Weather Data
+        weatherData,
+        weatherLoading,
+        weatherError,
 
         //Reset
         resetData,

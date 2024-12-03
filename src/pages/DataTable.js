@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useContext } from 'react';
 import styles from './DataTable.module.css'; // Import CSS Module
-import WeatherContext from '../context/WeatherContext'; // Import WeatherContext
 import DataContext from '../context/DataContext'; // Import DataContext
 import { Tooltip } from 'react-tooltip'; // Import Tooltip from react-tooltip
 import 'react-tooltip/dist/react-tooltip.css'; // Import react-tooltip styles
@@ -14,9 +13,6 @@ import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
   const [sensors, setSensors] = useState([]);
   const [devices, setDevices] = useState([]);
-
-  // Consume WeatherContext
-  const { weatherData } = useContext(WeatherContext);
 
   // Consume DataContext for FI Electricity Prices and Control Signals
   const { fiPrices, fiPricesLoading, fiPricesError, controlSignals } = useContext(DataContext);
@@ -174,33 +170,6 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
           loading={fiPricesLoading}
           error={fiPricesError}
         />
-      </div>
-
-      {/* Weather Data Table */}
-      <h3>Outside Temperature</h3>
-      <div className={styles.tableWrapper}>
-        <table className={`${styles.table} ${styles.weatherTable}`}>
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Temperature (°C)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {weatherData && Array.isArray(weatherData.weather_values) && weatherData.weather_values.length > 0 ? (
-              weatherData.weather_values.map((entry, index) => (
-                <tr key={index}>
-                  <td>{new Date(entry.time).toLocaleString()}</td>
-                  <td>{formatTemperature(entry.value)}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="2">No weather data available</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
       </div>
 
       {/* Heaters Edit Modal */}
