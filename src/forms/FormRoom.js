@@ -11,9 +11,9 @@ function FormRoom({ homeAssistantSensors }) {
   const [roomId, setRoomId] = useState('');
   const [roomWidth, setRoomWidth] = useState('');
   const [roomLength, setRoomLength] = useState('');
-  const [maxTemp, setMaxTemp] = useState(25); // Default: 25°C
-  const [minTemp, setMinTemp] = useState(15); // Default: 15°C
-  const [selectedSensor, setSelectedSensor] = useState(''); // State to store selected sensor
+  const [maxTemp, setMaxTemp] = useState(''); 
+  const [minTemp, setMinTemp] = useState(''); 
+  const [selectedSensor, setSelectedSensor] = useState('');
 
   // Error state
   const [error, setError] = useState(null);

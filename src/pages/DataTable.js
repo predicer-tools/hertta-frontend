@@ -11,9 +11,11 @@ import EditRoomForm from '../forms/EditRoomForm'; // Import EditRoomForm
 import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 import useElectricityPrices from '../hooks/useElectricityPrices';
 
-function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
+function DataTable() {
   const [sensors, setSensors] = useState([]);
   const [devices, setDevices] = useState([]);
+
+  const { rooms, heaters, deleteRoom, deleteHeater } = useContext(DataContext); // Access rooms and heaters from DataContext
 
   // Consume DataContext for FI Electricity Prices and Control Signals
   const { fiPrices, loading, error } = useElectricityPrices();
@@ -63,66 +65,8 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
     <div className={styles.container}>
       <h2>Data Table</h2>
 
-      {/* Sensors Table */}
-      <h3>Home Assistant Sensors</h3>
-      <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Sensor ID</th>
-              <th>State</th>
-              <th>Friendly Name</th>
-              <th>Unit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sensors.length > 0 ? sensors.map((sensor, index) => (
-              <tr key={index}>
-                <td>{sensor.entity_id}</td>
-                <td>{sensor.state}</td>
-                <td>{sensor.attributes?.friendly_name || 'Unknown'}</td>
-                <td>{sensor.attributes?.unit_of_measurement || ''}</td>
-              </tr>
-            )) : (
-              <tr>
-                <td colSpan="4">No Home Assistant sensors available</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Devices Table */}
-      <h3>Other Devices</h3>
-      <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Device ID</th>
-              <th>State</th>
-              <th>Friendly Name</th>
-              <th>Domain</th>
-            </tr>
-          </thead>
-          <tbody>
-            {devices.length > 0 ? devices.map((device, index) => (
-              <tr key={index}>
-                <td>{device.entity_id}</td>
-                <td>{device.state}</td>
-                <td>{device.attributes?.friendly_name || 'Unknown'}</td>
-                <td>{device.entity_id.split('.')[0]}</td>
-              </tr>
-            )) : (
-              <tr>
-                <td colSpan="4">No other devices available</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Rooms Table */}
-      <h3>Rooms</h3>
+            {/* Rooms Table */}
+            <h3>Rooms</h3>
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
@@ -157,6 +101,106 @@ function DataTable({ rooms, heaters, deleteRoom, deleteHeater }) {
             )) : (
               <tr>
                 <td colSpan="8">No rooms available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Heating Devices Table */}
+      <h3>Heating Devices</h3>
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Heater ID</th>
+              <th>Name</th>
+              <th>Capacity (kW)</th>
+              <th>Room</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {heaters.length > 0 ? heaters.map((heater, index) => {
+              // Find the associated room's name
+              const associatedRoom = rooms.find(room => room.roomId === heater.roomId);
+              const roomName = associatedRoom ? associatedRoom.roomId : 'Unassigned';
+
+              return (
+                <tr key={index}>
+                  <td>{heater.id}</td>
+                  <td>{heater.name}</td>
+                  <td>{heater.capacity.toFixed(2)} kW</td>
+                  <td>{roomName}</td>
+                  <td>{heater.isEnabled ? 'Enabled' : 'Disabled'}</td>
+                  <td>
+                    <button className={styles.editButton} onClick={() => openHeaterEditModal(heater)}>Edit</button>
+                    <button className={styles.deleteButton} onClick={() => deleteHeater(heater.id)}>Delete</button>
+                  </td>
+                </tr>
+              );
+            }) : (
+              <tr>
+                <td colSpan="6">No heating devices available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Sensors Table */}
+      <h3>Home Assistant Sensors</h3>
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Sensor ID</th>
+              <th>State</th>
+              <th>Friendly Name</th>
+              <th>Unit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sensors.length > 0 ? sensors.map((sensor, index) => (
+              <tr key={index}>
+                <td>{sensor.entity_id}</td>
+                <td>{sensor.state}</td>
+                <td>{sensor.attributes?.friendly_name || 'Unknown'}</td>
+                <td>{sensor.attributes?.unit_of_measurement || ''}</td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan="4">No Home Assistant sensors available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Devices Table */}
+      <h3>All Home Assistant Devices</h3>
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Device ID</th>
+              <th>State</th>
+              <th>Friendly Name</th>
+              <th>Domain</th>
+            </tr>
+          </thead>
+          <tbody>
+            {devices.length > 0 ? devices.map((device, index) => (
+              <tr key={index}>
+                <td>{device.entity_id}</td>
+                <td>{device.state}</td>
+                <td>{device.attributes?.friendly_name || 'Unknown'}</td>
+                <td>{device.entity_id.split('.')[0]}</td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan="4">No other devices available</td>
               </tr>
             )}
           </tbody>

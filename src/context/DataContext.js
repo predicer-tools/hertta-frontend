@@ -102,10 +102,23 @@ export const DataProvider = ({ children }) => {
 
   /**
    * Adds a new room to the rooms state.
+   * Prevents adding rooms with duplicate roomIds.
    * @param {Object} room - The room object to add.
    */
   const addRoom = (room) => {
+    // Check for duplicate roomId (case-insensitive)
+    const duplicateRoom = rooms.find(
+      (existingRoom) => existingRoom.roomId.toLowerCase() === room.roomId.toLowerCase()
+    );
+
+    if (duplicateRoom) {
+      // Room with the same ID already exists
+      console.error(`Room with ID "${room.roomId}" already exists.`);
+      return false; // Indicate failure to add
+    }
+
     setRooms((prevRooms) => [...prevRooms, room]);
+    return true; // Indicate successful addition
   };
 
   /**
@@ -125,9 +138,21 @@ export const DataProvider = ({ children }) => {
 
   /**
    * Adds a new electric heater to the heaters state.
+   * Prevents adding heaters with duplicate IDs.
    * @param {Object} heater - The heater object to add.
    */
   const addElectricHeater = (heater) => {
+    // Check for duplicate heater ID
+    const duplicateHeater = heaters.find(
+      (existingHeater) => existingHeater.id.toLowerCase() === heater.id.toLowerCase()
+    );
+
+    if (duplicateHeater) {
+      // Heater with the same ID already exists
+      console.error(`Heater with ID "${heater.id}" already exists.`);
+      return;
+    }
+
     setHeaters((prevHeaters) => [
       ...prevHeaters,
       {
