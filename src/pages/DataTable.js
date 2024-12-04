@@ -12,6 +12,8 @@ import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 import useElectricityPrices from '../hooks/useElectricityPrices';
 import useWeatherData from '../hooks/useWeatherData';
 import WeatherDataTable from '../components/Table/WeatherDataTable';
+import ElectricityDataTable from '../components/Table/ElectricityDataTable';
+import ElectricityPricesTest from "../components/Table/ElectricityPricesTest";
 
 function DataTable() {
   const [sensors, setSensors] = useState([]);
@@ -19,8 +21,10 @@ function DataTable() {
 
   const { rooms, heaters, deleteRoom, deleteHeater } = useContext(DataContext); // Access rooms and heaters from DataContext
 
-  // Consume DataContext for FI Electricity Prices and Control Signals
-  const { fiPrices, loading, error } = useElectricityPrices();
+  const { fiPrices } = useElectricityPrices();
+  const location = 'Helsinki'; // Replace with dynamic input if needed
+  const { weatherData } = useWeatherData(location);
+
 
   // State for Heater Edit Modal
   const [isHeaterModalOpen, setIsHeaterModalOpen] = useState(false);
@@ -30,8 +34,6 @@ function DataTable() {
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
 
-  const location = 'Helsinki'; // Replace with dynamic input if needed
-  const { weatherData} = useWeatherData(location);
 
   // Load sensors and devices from localStorage on mount
   useEffect(() => {
@@ -110,6 +112,17 @@ function DataTable() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div>
+      <h1>Electricity Prices Test</h1>
+      <ElectricityPricesTest />
+    </div>
+
+      {/* Electricity Prices Table */}
+      <div>
+        <h3>Electricity Prices</h3>
+        <ElectricityDataTable electricityPrices={fiPrices} />
       </div>
 
       <div>
@@ -215,16 +228,6 @@ function DataTable() {
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Electricity Prices Table */}
-      <h3>Electricity Prices (FI)</h3>
-      <div className={styles.tableWrapper}>
-        <ElectricityPricesTable
-          fiPrices={fiPrices}
-          loading={loading}
-          error={error}
-        />
       </div>
 
 
