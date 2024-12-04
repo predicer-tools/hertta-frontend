@@ -1,10 +1,7 @@
-// src/hooks/useWeatherData.js
-
 import { useState, useEffect, useCallback } from 'react';
 
 /**
  * Custom React hook to fetch weather data.
- * It fetches data for the current hour and the next 11 hours.
  *
  * @param {string} location - The location for which to fetch weather data.
  * @returns {Object} - Contains `weatherData`, `loading`, and `error` states.
@@ -14,16 +11,15 @@ function useWeatherData(location) {
     const storedWeather = localStorage.getItem('weatherData');
     return storedWeather ? JSON.parse(storedWeather) : null;
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   /**
-   * Fetches weather data from the backend API.
+   * Fetch weather data from the backend API.
    *
    * @param {string} startTime - Start time in ISO format.
    * @param {string} endTime - End time in ISO format.
    * @param {string} place - Place name.
-   * @returns {Promise<Object>} - A promise that resolves to the weather data, including currentTemp.
    */
   const fetchWeatherData = async (startTime, endTime, place) => {
     const baseUrl = 'http://localhost:5000/get_weather_data';
@@ -33,7 +29,7 @@ function useWeatherData(location) {
       const response = await fetch(`${baseUrl}?${params.toString()}`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
       });
 
@@ -43,17 +39,7 @@ function useWeatherData(location) {
       }
 
       const data = await response.json();
-
-      // Extract currentTemp from the first entry of weather_values
-      let currentTemp = null;
-      if (data.weather_values && Array.isArray(data.weather_values) && data.weather_values.length > 0) {
-        currentTemp = data.weather_values[0].value; // Adjust based on your data structure
-      }
-
-      return {
-        ...data,
-        currentTemp, // Add currentTemp to the returned data
-      };
+      return data;
     } catch (error) {
       console.error('Failed to fetch weather data:', error);
       throw error;
@@ -77,14 +63,8 @@ function useWeatherData(location) {
       setError(null);
       const data = await fetchWeatherData(startTimeISO, endTimeISO, location);
 
-      // Validate the response structure
-      if (
-        data &&
-        typeof data.currentTemp === 'number' &&
-        data.weather_values &&
-        typeof data.weather_values.currentCondition === 'string' &&
-        Array.isArray(data.weather_values.forecast)
-      ) {
+      // Validate and store the response
+      if (data && Array.isArray(data.weather_values)) {
         setWeatherData(data);
         localStorage.setItem('weatherData', JSON.stringify(data));
       } else {
@@ -101,26 +81,11 @@ function useWeatherData(location) {
   useEffect(() => {
     getWeatherData();
 
-    // Calculate the delay until the start of the next hour
-    const now = new Date();
-    const delay =
-      (60 - now.getMinutes()) * 60 * 1000 -
-      now.getSeconds() * 1000 -
-      now.getMilliseconds();
+    // Set interval to refresh data every hour
+    const intervalId = setInterval(getWeatherData, 60 * 60 * 1000); // Every hour
 
-    // Set a timeout to fetch at the start of the next hour
-    const timeoutId = setTimeout(() => {
-      getWeatherData();
-
-      // Then set an interval to fetch every hour
-      const intervalId = setInterval(getWeatherData, 60 * 60 * 1000); // Every hour
-
-      // Cleanup function for interval
-      return () => clearInterval(intervalId);
-    }, delay);
-
-    // Cleanup function for timeout
-    return () => clearTimeout(timeoutId);
+    // Cleanup interval
+    return () => clearInterval(intervalId);
   }, [getWeatherData]);
 
   // Listen for changes in weatherData from other tabs/windows

@@ -10,6 +10,8 @@ import EditHeaterForm from '../forms/EditHeaterForm'; // Import EditHeaterForm
 import EditRoomForm from '../forms/EditRoomForm'; // Import EditRoomForm
 import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 import useElectricityPrices from '../hooks/useElectricityPrices';
+import useWeatherData from '../hooks/useWeatherData';
+import WeatherDataTable from '../components/Table/WeatherDataTable';
 
 function DataTable() {
   const [sensors, setSensors] = useState([]);
@@ -27,6 +29,9 @@ function DataTable() {
   // State for Room Edit Modal
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
+
+  const location = 'Helsinki'; // Replace with dynamic input if needed
+  const { weatherData} = useWeatherData(location);
 
   // Load sensors and devices from localStorage on mount
   useEffect(() => {
@@ -106,6 +111,11 @@ function DataTable() {
           </tbody>
         </table>
       </div>
+
+      <div>
+      <h1>Weather App</h1>
+      <WeatherDataTable weatherData={weatherData} />
+    </div>
 
       {/* Heating Devices Table */}
       <h3>Heating Devices</h3>

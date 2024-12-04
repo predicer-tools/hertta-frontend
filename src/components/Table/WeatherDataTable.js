@@ -1,83 +1,31 @@
-// src/components/Table/WeatherDataTable.js
+import React from 'react';
 
-import React, { useContext } from 'react';
-import DataContext from '../../context/DataContext';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Typography,
-  CircularProgress,
-} from '@mui/material';
-
-function WeatherDataTable() {
-  const { weatherData, weatherLoading, weatherError } = useContext(DataContext);
-
-  if (weatherLoading) {
-    return <CircularProgress />;
-  }
-
-  if (weatherError) {
-    return (
-      <Typography variant="body1" color="error">
-        Failed to load weather data.
-      </Typography>
-    );
-  }
-
-  if (!weatherData) {
-    return <Typography variant="body1">No weather data available.</Typography>;
-  }
-
-  const { currentTemp, weather_values } = weatherData;
-
-  // Defensive Checks
-  if (!weather_values) {
-    return <Typography variant="body1">Weather values are unavailable.</Typography>;
-  }
-
-  const { currentCondition, forecast } = weather_values;
-
-  if (!forecast || !Array.isArray(forecast)) {
-    return <Typography variant="body1">Weather forecast data is unavailable.</Typography>;
+const WeatherDataTable = ({ weatherData }) => {
+  if (!weatherData || !weatherData.weather_values || weatherData.weather_values.length === 0) {
+    return <p>No weather data available.</p>;
   }
 
   return (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Time</TableCell>
-            <TableCell>Temperature (°C)</TableCell>
-            <TableCell>Condition</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          <TableRow>
-            <TableCell>Current</TableCell>
-            <TableCell>{currentTemp}°C</TableCell>
-            <TableCell>{currentCondition}</TableCell>
-          </TableRow>
-          {forecast.map((forecastItem, index) => (
-            <TableRow key={index}>
-              <TableCell>
-                {new Date(forecastItem.time).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </TableCell>
-              <TableCell>{forecastItem.temperature}°C</TableCell>
-              <TableCell>{forecastItem.condition}</TableCell>
-            </TableRow>
+    <div>
+      <h2>Weather Data for {weatherData.place}</h2>
+      <table border="1" style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Temperature (°C)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {weatherData.weather_values.map((entry, index) => (
+            <tr key={index}>
+              <td>{entry.time}</td>
+              <td>{entry.value}</td>
+            </tr>
           ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+        </tbody>
+      </table>
+    </div>
   );
-}
+};
 
 export default WeatherDataTable;
