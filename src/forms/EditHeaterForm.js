@@ -23,7 +23,7 @@ function EditHeaterForm({ heater, onClose }) {
   const [isEnabled, setIsEnabled] = useState(heater.isEnabled);
 
   // Assuming controlSignals are managed in DataContext and accessible via heater.id
-  const { controlSignals } = useContext(DataContext);
+  const { controlSignals, optimizeStarted } = useContext(DataContext);
   const heaterControlSignals = controlSignals[heater.id] || [];
 
   const handleSubmit = (e) => {
@@ -122,19 +122,27 @@ function EditHeaterForm({ heater, onClose }) {
         </div>
 
         {/* Control Signals Display */}
-        <div className={styles.controlSignals}>
-          <h3>Control Signals (Next 12 Hours)</h3>
-          {heaterControlSignals.length > 0 ? (
-            <ul>
-              {heaterControlSignals.map((signal, index) => (
-                <li key={index}>
-                  Hour {index + 1}: {signal}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No control signals available.</p>
-          )}
+        <div className={styles.editHeaterForm}>
+            <h2>Edit Heating Device</h2>
+            <form>
+                {/* Existing form fields */}
+                <div className={styles.controlSignals}>
+                    <h3>Control Signals</h3>
+                    {optimizeStarted ? (
+                        heaterControlSignals.length > 0 ? (
+                            <ul>
+                                {heaterControlSignals.map((signal, index) => (
+                                    <li key={index}>Hour {index + 1}: {signal}</li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p>No control signals generated for this heater yet.</p>
+                        )
+                    ) : (
+                        <p>Start optimization to get control signals.</p>
+                    )}
+                </div>
+            </form>
         </div>
 
         {/* Buttons */}

@@ -19,7 +19,7 @@ function DataTable() {
   const [sensors, setSensors] = useState([]);
   const [devices, setDevices] = useState([]);
 
-  const { rooms, heaters, deleteRoom, deleteHeater } = useContext(DataContext); // Access rooms and heaters from DataContext
+  const { rooms, heaters, deleteRoom, deleteHeater, controlSignals } = useContext(DataContext); // Access rooms and heaters from DataContext
 
   const { fiPrices } = useElectricityPrices();
   const location = 'Helsinki'; // Replace with dynamic input if needed
@@ -119,11 +119,43 @@ function DataTable() {
       <ElectricityPricesTest />
     </div>
 
-      {/* Electricity Prices Table */}
-      <div>
-        <h3>Electricity Prices</h3>
-        <ElectricityDataTable electricityPrices={fiPrices} />
-      </div>
+    {/* Control Signals Table */}
+    <h3>Control Signals</h3>
+    <div className={styles.tableWrapper}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>Heater ID</th>
+            <th>Control Signals (Next 12 Hours)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {heaters.length > 0 ? (
+            heaters.map((heater) => (
+              <tr key={heater.id}>
+                <td>{heater.id}</td>
+                <td>
+                  {controlSignals[heater.id] ? (
+                    controlSignals[heater.id].map((signal, index) => (
+                      <span key={index}>
+                        {index > 0 && ', '}
+                        {signal}
+                      </span>
+                    ))
+                  ) : (
+                    <span>No Signals</span>
+                  )}
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="2">No control signals available</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
 
       <div>
       <h1>Weather App</h1>

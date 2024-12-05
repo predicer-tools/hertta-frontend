@@ -17,7 +17,7 @@ import WeatherDataTable from '../components/Table/WeatherDataTable';
 import Tooltip from '@mui/material/Tooltip';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import CircularProgress from '@mui/material/CircularProgress';
-
+import Button from '@mui/material/Button';
 
 
 function DashboardGrid() {
@@ -37,6 +37,12 @@ function DashboardGrid() {
         weatherLoading,
         weatherError,
 
+        controlSignals, // Access control signals
+        optimizeStarted,
+        startOptimization, // Use startOptimization from DataContext
+        stopOptimization,
+        lastOptimizedTime,
+
     } = useContext(DataContext);
 
     const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
@@ -48,6 +54,7 @@ function DashboardGrid() {
     const [isElectricityModalOpen, setIsElectricityModalOpen] = useState(false);
 
     const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
+
 
     const handleOpenRoomModal = (room) => {
       setSelectedRoom(room);
@@ -112,6 +119,31 @@ function DashboardGrid() {
                             Home Energy Dashboard
                         </Typography>
                     </Grid2>
+
+                    <Grid2 xs={12} sx={{ textAlign: 'center', marginBottom: 4 }}>
+                        <button
+                            onClick={startOptimization}
+                            disabled={optimizeStarted}
+                        >
+                            {optimizeStarted ? 'Optimization Active' : 'Start Optimize'}
+                        </button>
+
+                        {optimizeStarted && (
+                            <button
+                            onClick={stopOptimization}
+                            style={{ marginLeft: '10px' }}
+                            >
+                            Stop Optimization
+                            </button>
+                        )}
+
+                        {lastOptimizedTime && (
+                            <Typography variant="body2" sx={{ marginTop: 2 }}>
+                            Last Optimized: {new Date(lastOptimizedTime).toLocaleString()}
+                            </Typography>
+                        )}
+                    </Grid2>
+
 
                     {/* Side-by-Side Sections: Outside-Paper and Electricity Grid Paper */}
                     <Grid2 container spacing={2}>

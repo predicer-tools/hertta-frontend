@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import finlandLocations from '../utils/finlandLocations';
 import styles from './ConfigPage.module.css';
 import ConfigContext from '../context/ConfigContext';
-// Remove WeatherContext import
-// import WeatherContext from '../context/WeatherContext'; // Remove this line
+import { useMutation } from '@apollo/client';
+import { UPDATE_INPUT_DATA_SETUP } from '../graphql/inputdatasetup/updateInputDataSetup';
 
 function ConfigPage() {
   const [country, setCountry] = useState('');

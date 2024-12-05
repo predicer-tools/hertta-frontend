@@ -9,17 +9,25 @@ import reportWebVitals from './reportWebVitals';
 import 'normalize.css';
 import { ConfigProvider } from './context/ConfigContext'; // Import ConfigProvider
 import { DataProvider } from './context/DataContext'; // Import DataProvider
+import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
+
+const client = new ApolloClient({
+  uri: 'http://127.0.0.1:3030/graphql', // Your GraphQL endpoint
+  cache: new InMemoryCache(),
+});
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <Router>
-      <ConfigProvider>
-        <DataProvider>
-          <App />
-        </DataProvider>
-      </ConfigProvider>
-    </Router>
+    <ApolloProvider client={client}> {/* Wrap with ApolloProvider */}
+      <Router>
+        <ConfigProvider>
+          <DataProvider>
+            <App />
+          </DataProvider>
+        </ConfigProvider>
+      </Router>
+    </ApolloProvider>
   </React.StrictMode>
 );
 

@@ -1,10 +1,10 @@
 // src/context/DataContext.js
 
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
-import { generateControlSignals } from '../utils/controlData'; // Import the control signals utility
 import useElectricityPrices from '../hooks/useElectricityPrices';
 import useWeatherData from '../hooks/useWeatherData'; 
 import ConfigContext from './ConfigContext'; // Import ConfigContext
+import { generateControlSignals } from '../utils/controlData';
 
 // Create the DataContext
 const DataContext = createContext();
@@ -40,6 +40,73 @@ export const DataProvider = ({ children }) => {
   const { fiPrices, loading: fiPricesLoading, error: fiPricesError } = useElectricityPrices();
   const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
 
+  const [optimizeStarted, setOptimizeStarted] = useState(false);
+
+  const [lastOptimizedTime, setLastOptimizedTime] = useState(() => {
+    return JSON.parse(localStorage.getItem('lastOptimizedTime')) || null;
+  });
+  
+
+  const startOptimization = () => {
+    const now = new Date();
+    console.log('Starting optimization at:', now);
+  
+    if (!heaters || heaters.length === 0 || !fiPrices || fiPrices.length === 0) {
+      const generatedControlSignals = generateControlSignals(heaters, []);
+      setControlSignals(generatedControlSignals);
+      setOptimizeStarted(true); // Set optimizeStarted to true
+      setLastOptimizedTime(now);
+  
+      // Persist data
+      localStorage.setItem('controlSignals', JSON.stringify(generatedControlSignals));
+      localStorage.setItem('optimizeStarted', JSON.stringify(true));
+      localStorage.setItem('lastOptimizedTime', JSON.stringify(now));
+  
+      console.log('Optimization completed with OFF signals at:', now);
+      return;
+    }
+  
+    const generatedControlSignals = generateControlSignals(heaters, fiPrices);
+    setControlSignals(generatedControlSignals);
+    setOptimizeStarted(true); // Set optimizeStarted to true
+    setLastOptimizedTime(now);
+  
+    // Persist data
+    localStorage.setItem('controlSignals', JSON.stringify(generatedControlSignals));
+    localStorage.setItem('optimizeStarted', JSON.stringify(true));
+    localStorage.setItem('lastOptimizedTime', JSON.stringify(now));
+  
+    console.log('Optimization completed with generated signals at:', now);
+  };
+
+  const stopOptimization = () => {
+    console.log('Stopping optimization...');
+    setOptimizeStarted(false);
+    setControlSignals({}); // Clear control signals or leave them as is
+    setLastOptimizedTime(null);
+  
+    // Persist the reset state
+    localStorage.removeItem('controlSignals');
+    localStorage.setItem('optimizeStarted', JSON.stringify(false));
+    localStorage.removeItem('lastOptimizedTime');
+  };
+
+  useEffect(() => {
+    if (!optimizeStarted || !lastOptimizedTime) return;
+  
+    const intervalId = setInterval(() => {
+      const now = new Date();
+      const diffInMinutes = (now - new Date(lastOptimizedTime)) / (1000 * 60);
+  
+      if (diffInMinutes >= 15) {
+        console.log('Automatically triggering optimization.');
+        startOptimization();
+      }
+    }, 60000); // Check every 60 seconds
+  
+    return () => clearInterval(intervalId); // Cleanup on component unmount or optimizeStarted change
+  }, [optimizeStarted, lastOptimizedTime]);
+
   // =====================
   // Load Rooms Data from LocalStorage on Mount (Existing - Preserved)
   // =====================
@@ -73,28 +140,6 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('heaters', JSON.stringify(heaters));
   }, [heaters]);
-
-   // =====================
-  // Generate and Store Control Signals
-  // =====================
-
-  useEffect(() => {
-    if (heaters.length === 0 || fiPrices.length === 0) {
-      // If no heaters or no price data, set all control signals to OFF
-      const defaultControlSignals = {};
-      heaters.forEach((heater) => {
-        defaultControlSignals[heater.id] = Array(12).fill('OFF');
-      });
-      setControlSignals(defaultControlSignals);
-      localStorage.setItem('controlSignals', JSON.stringify(defaultControlSignals));
-      return;
-    }
-
-    // Generate control signals
-    const generatedControlSignals = generateControlSignals(heaters, fiPrices);
-    setControlSignals(generatedControlSignals);
-    localStorage.setItem('controlSignals', JSON.stringify(generatedControlSignals));
-  }, [heaters, fiPrices]);
 
   // =====================
   // Functions to Manipulate Rooms (Existing - Preserved)
@@ -263,14 +308,17 @@ export const DataProvider = ({ children }) => {
         toggleHeaterEnabled,
         updateHeater: updateHeaterFunc,
 
-        // Control signals
-        controlSignals,
-        setControlSignals,
-
         // Electricity Prices
         fiPrices,
         fiPricesLoading,
         fiPricesError,
+
+        controlSignals,
+        setControlSignals,
+        optimizeStarted,
+        startOptimization,
+        stopOptimization,
+        lastOptimizedTime,
 
         // Weather Data
         weatherData,
