@@ -12,12 +12,13 @@ import EditElectricHeaterForm from '../forms/EditHeaterForm';
 import ClickableHeater from '../components/Objects/ClickableHeater';
 import ClickablePaper from '../components/Objects/ClickablePaper';
 import Typography from '@mui/material/Typography';
-import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 import WeatherDataTable from '../components/Table/WeatherDataTable';
 import Tooltip from '@mui/material/Tooltip';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import CircularProgress from '@mui/material/CircularProgress';
 import Button from '@mui/material/Button';
+import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
+
 
 
 function DashboardGrid() {
@@ -31,7 +32,6 @@ function DashboardGrid() {
         fiPrices,
         fiPricesLoading,
         fiPricesError,
-        currentFiElectricityPrice,
 
         weatherData,
         weatherLoading,
@@ -183,34 +183,33 @@ function DashboardGrid() {
 
                         {/* Electricity Grid Information */}
                         <Grid2 xs={12} md={6}>
-                            <Paper
-                                sx={{ 
-                                  padding: 2, 
-                                  cursor: 'pointer', 
-                                  minHeight: '200px',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                 }}
-                                onClick={handleOpenElectricityModal}
-                                aria-label="View Electricity Prices"
-                                elevation={2}
-                            >
-                                <Typography variant="h5" component="h2" gutterBottom>
-                                    Electricity Grid
-                                </Typography>
-                                {/* Display the First Electricity Price as Current Price */}
-                                {firstFiPrice ? (
-                                    <Typography variant="body1">
-                                        Current Price: {firstFiPrice.price} snt/kWh from{' '}
-                                        {new Date(firstFiPrice.start).toLocaleTimeString()} to{' '}
-                                        {new Date(firstFiPrice.end).toLocaleTimeString()}
-                                    </Typography>
-                                ) : (
-                                    <Typography variant="body1">
-                                        No current electricity price data available.
-                                    </Typography>
-                                )}
-                            </Paper>
+                        <Paper
+                            sx={{ 
+                            padding: 2, 
+                            cursor: 'pointer', 
+                            minHeight: '200px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: 'auto', // Allow scrolling if content overflows
+                            }}
+                            onClick={handleOpenElectricityModal}
+                            aria-label="View Electricity Prices"
+                            elevation={2}
+                        >
+                            <Typography variant="h5" component="h2" gutterBottom>
+                            Electricity Grid
+                            </Typography>
+                            {/* Current Electricity Price */}
+                            {firstFiPrice ? (
+                            <Typography variant="body1" gutterBottom>
+                                <strong>Current Price:</strong> {firstFiPrice.finalPrice} c/kWh at {firstFiPrice.timestampLocal}
+                            </Typography>
+                            ) : (
+                            <Typography variant="body1" gutterBottom>
+                                No current electricity price data available.
+                            </Typography>
+                            )}
+                        </Paper>
                         </Grid2>
                     </Grid2>
 
@@ -296,14 +295,10 @@ function DashboardGrid() {
 
             {/* Modal for Electricity Prices Table */}
             <Modal isOpen={isElectricityModalOpen} onClose={handleCloseElectricityModal}>
-              <Typography variant="h6" component="h3" gutterBottom>
-                  Electricity Prices
-              </Typography>
-              <ElectricityPricesTable
-                  fiPrices={fiPrices}
-                  loading={fiPricesLoading}
-                  error={fiPricesError}
-              />
+            <Typography variant="h6" component="h3" gutterBottom>
+                Electricity Prices
+            </Typography>
+            <ElectricityPricesTable />
             </Modal>
 
             {/* Modal for Weather Data */}

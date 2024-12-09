@@ -8,20 +8,16 @@ import 'react-tooltip/dist/react-tooltip.css'; // Import react-tooltip styles
 import Modal from '../components/Modal/Modal'; // Import Modal
 import EditHeaterForm from '../forms/EditHeaterForm'; // Import EditHeaterForm
 import EditRoomForm from '../forms/EditRoomForm'; // Import EditRoomForm
-import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
-import useElectricityPrices from '../hooks/useElectricityPrices';
 import useWeatherData from '../hooks/useWeatherData';
 import WeatherDataTable from '../components/Table/WeatherDataTable';
-import ElectricityDataTable from '../components/Table/ElectricityDataTable';
-import ElectricityPricesTest from "../components/Table/ElectricityPricesTest";
+
 
 function DataTable() {
   const [sensors, setSensors] = useState([]);
   const [devices, setDevices] = useState([]);
 
-  const { rooms, heaters, deleteRoom, deleteHeater, controlSignals } = useContext(DataContext); // Access rooms and heaters from DataContext
+  const { rooms, heaters, deleteRoom, deleteHeater, controlSignals, fiPrices, fiPricesLoading, fiPricesError  } = useContext(DataContext); // Access rooms and heaters from DataContext
 
-  const { fiPrices } = useElectricityPrices();
   const location = 'Helsinki'; // Replace with dynamic input if needed
   const { weatherData } = useWeatherData(location);
 
@@ -114,11 +110,6 @@ function DataTable() {
         </table>
       </div>
 
-      <div>
-      <h1>Electricity Prices Test</h1>
-      <ElectricityPricesTest />
-    </div>
-
     {/* Control Signals Table */}
     <h3>Control Signals</h3>
     <div className={styles.tableWrapper}>
@@ -156,6 +147,42 @@ function DataTable() {
         </tbody>
       </table>
     </div>
+
+      {/* Electricity Prices Table */}
+      <h3>Electricity Prices (FI)</h3>
+      <div className={styles.tableWrapper}>
+        {/* Handle Loading State */}
+        {fiPricesLoading && <p>Loading electricity prices...</p>}
+
+        {/* Handle Error State */}
+        {fiPricesError && <p>Error: {fiPricesError}</p>}
+
+        {/* Render Table if Data is Available */}
+        {!fiPricesLoading && !fiPricesError && (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Timestamp (Finnish Time)</th>
+                <th>Final Price (c/kWh)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fiPrices.length > 0 ? (
+                fiPrices.map((entry, index) => (
+                  <tr key={index}>
+                    <td>{entry.timestampLocal}</td>
+                    <td>{entry.finalPrice}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="2">No FI electricity price data available.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       <div>
       <h1>Weather App</h1>

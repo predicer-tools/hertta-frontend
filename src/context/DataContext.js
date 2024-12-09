@@ -1,8 +1,8 @@
 // src/context/DataContext.js
 
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
-import useElectricityPrices from '../hooks/useElectricityPrices';
 import useWeatherData from '../hooks/useWeatherData'; 
+import useElectricityData from '../hooks/useElectricityData';
 import ConfigContext from './ConfigContext'; // Import ConfigContext
 import { generateControlSignals } from '../utils/controlData';
 
@@ -37,8 +37,9 @@ export const DataProvider = ({ children }) => {
   const { config } = useContext(ConfigContext); // Consume ConfigContext to get configuration
   const location = config.location; // Extract location from config
   
-  const { fiPrices, loading: fiPricesLoading, error: fiPricesError } = useElectricityPrices();
   const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
+
+  const { fiPrices, fiPricesLoading, fiPricesError } = useElectricityData();
 
   const [optimizeStarted, setOptimizeStarted] = useState(false);
 
