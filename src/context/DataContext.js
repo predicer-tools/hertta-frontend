@@ -17,7 +17,28 @@ export const DataProvider = ({ children }) => {
 
   // State for Rooms
   const [rooms, setRooms] = useState(() => {
-    return JSON.parse(localStorage.getItem('rooms')) || [];
+    const storedRooms = JSON.parse(localStorage.getItem('rooms')) || [];
+    // Migrate existing rooms to include new fields and remove invalid exceptions
+    const migratedRooms = storedRooms.map(room => {
+      const {
+        defaultMaxTemp = room.maxTemp || 25,
+        defaultMinTemp = room.minTemp || 15,
+        exceptions = []
+      } = room;
+
+      // Filter out exceptions that duplicate default temperatures
+      const filteredExceptions = exceptions.filter(ex => {
+        return !(ex.maxTemp === defaultMaxTemp && ex.minTemp === defaultMinTemp);
+      });
+
+      return {
+        ...room,
+        defaultMaxTemp,
+        defaultMinTemp,
+        exceptions: filteredExceptions
+      };
+    });
+    return migratedRooms;
   });
 
   // State for Heaters
@@ -41,14 +62,17 @@ export const DataProvider = ({ children }) => {
 
   const { fiPrices, fiPricesLoading, fiPricesError } = useElectricityData();
 
-  const [optimizeStarted, setOptimizeStarted] = useState(false);
+  const [optimizeStarted, setOptimizeStarted] = useState(() => {
+    const storedOptimizeStarted = JSON.parse(localStorage.getItem('optimizeStarted'));
+    return storedOptimizeStarted || false;
+  });
 
   const [lastOptimizedTime, setLastOptimizedTime] = useState(() => {
     return JSON.parse(localStorage.getItem('lastOptimizedTime')) || null;
   });
   
 
-  const startOptimization = () => {
+  const startOptimization = useCallback(() => {
     const now = new Date();
     console.log('Starting optimization at:', now);
   
@@ -78,9 +102,9 @@ export const DataProvider = ({ children }) => {
     localStorage.setItem('lastOptimizedTime', JSON.stringify(now));
   
     console.log('Optimization completed with generated signals at:', now);
-  };
+  }, [heaters, fiPrices]);
 
-  const stopOptimization = () => {
+  const stopOptimization = useCallback(() => {
     console.log('Stopping optimization...');
     setOptimizeStarted(false);
     setControlSignals({}); // Clear control signals or leave them as is
@@ -90,7 +114,7 @@ export const DataProvider = ({ children }) => {
     localStorage.removeItem('controlSignals');
     localStorage.setItem('optimizeStarted', JSON.stringify(false));
     localStorage.removeItem('lastOptimizedTime');
-  };
+  }, []);
 
   useEffect(() => {
     if (!optimizeStarted || !lastOptimizedTime) return;
@@ -106,16 +130,13 @@ export const DataProvider = ({ children }) => {
     }, 60000); // Check every 60 seconds
   
     return () => clearInterval(intervalId); // Cleanup on component unmount or optimizeStarted change
-  }, [optimizeStarted, lastOptimizedTime]);
+  }, [optimizeStarted, lastOptimizedTime, startOptimization]);
 
   // =====================
   // Load Rooms Data from LocalStorage on Mount (Existing - Preserved)
   // =====================
 
-  useEffect(() => {
-    const storedRooms = JSON.parse(localStorage.getItem('rooms')) || [];
-    setRooms(storedRooms);
-  }, []);
+  // Already handled in initial useState with potential migration
 
   // =====================
   // Load Heaters Data from LocalStorage on Mount (Existing - Preserved)
@@ -127,7 +148,7 @@ export const DataProvider = ({ children }) => {
   }, []);
 
   // =====================
-  // Persist Rooms Data to LocalStorage on Change (Existing - Preserved)
+  // Persist Rooms Data to LocalStorage on Change (Updated)
   // =====================
 
   useEffect(() => {
@@ -143,40 +164,84 @@ export const DataProvider = ({ children }) => {
   }, [heaters]);
 
   // =====================
-  // Functions to Manipulate Rooms (Existing - Preserved)
+  // Functions to Manipulate Rooms (Updated)
   // =====================
 
   /**
    * Adds a new room to the rooms state.
    * Prevents adding rooms with duplicate roomIds.
    * @param {Object} room - The room object to add.
+   * @returns {boolean} - Returns true if room is added successfully, false otherwise.
    */
-  const addRoom = (room) => {
+  const addRoom = useCallback((room) => {
+    // Destructure room object to ensure required fields are present
+    const {
+      roomId,
+      roomWidth,
+      roomLength,
+      defaultMaxTemp,
+      defaultMinTemp,
+      sensorId,
+      sensorState,
+      sensorUnit,
+      exceptions = []
+    } = room;
+  
+    // Validate required fields
+    if (
+      !roomId ||
+      !roomWidth ||
+      !roomLength ||
+      defaultMaxTemp === undefined ||
+      defaultMinTemp === undefined ||
+      !sensorId
+    ) {
+      console.error('Missing required room fields.');
+      return false;
+    }
+
     // Check for duplicate roomId (case-insensitive)
-    const duplicateRoom = rooms.find(
-      (existingRoom) => existingRoom.roomId.toLowerCase() === room.roomId.toLowerCase()
+    const isDuplicateRoom = rooms.some(
+      (existingRoom) => existingRoom.roomId.toLowerCase() === roomId.toLowerCase()
     );
 
-    if (duplicateRoom) {
-      // Room with the same ID already exists
-      console.error(`Room with ID "${room.roomId}" already exists.`);
+    if (isDuplicateRoom) {
+      console.error(`Room with ID "${roomId}" already exists.`);
       return false; // Indicate failure to add
     }
 
-    setRooms((prevRooms) => [...prevRooms, room]);
+    // Construct new room object
+    const newRoom = {
+      roomId,
+      roomWidth,
+      roomLength,
+      defaultMaxTemp,
+      defaultMinTemp,
+      sensorId,
+      sensorState,
+      sensorUnit,
+      exceptions
+    };
+
+    setRooms((prevRooms) => {
+      const updatedRooms = [...prevRooms, newRoom];
+      console.log('Room added:', newRoom);
+      console.log('Updated Rooms:', updatedRooms);
+      return updatedRooms;
+    });
     return true; // Indicate successful addition
-  };
+  }, [rooms]);
 
   /**
    * Deletes a room from the rooms state based on roomId.
    * Also deletes associated heaters.
    * @param {string} roomId - The ID of the room to delete.
    */
-  const deleteRoom = (roomId) => {
+  const deleteRoom = useCallback((roomId) => {
     setRooms((prevRooms) => prevRooms.filter((room) => room.roomId !== roomId));
     // Also delete heaters associated with this room
     setHeaters((prevHeaters) => prevHeaters.filter((heater) => heater.roomId !== roomId));
-  };
+  }, []);
 
   // =====================
   // Functions to Manipulate Heaters (Existing - Preserved)
@@ -187,15 +252,27 @@ export const DataProvider = ({ children }) => {
    * Prevents adding heaters with duplicate IDs.
    * @param {Object} heater - The heater object to add.
    */
-  const addElectricHeater = (heater) => {
+  const addElectricHeater = useCallback((heater) => {
+    // Destructure heater object to ensure required fields are present
+    const {
+      id,
+      roomId,
+      // ... other heater fields
+    } = heater;
+
+    // Validate required fields
+    if (!id || !roomId) {
+      console.error('Missing required heater fields.');
+      return;
+    }
+
     // Check for duplicate heater ID
-    const duplicateHeater = heaters.find(
-      (existingHeater) => existingHeater.id.toLowerCase() === heater.id.toLowerCase()
+    const isDuplicateHeater = heaters.find(
+      (existingHeater) => existingHeater.id.toLowerCase() === id.toLowerCase()
     );
 
-    if (duplicateHeater) {
-      // Heater with the same ID already exists
-      console.error(`Heater with ID "${heater.id}" already exists.`);
+    if (isDuplicateHeater) {
+      console.error(`Heater with ID "${id}" already exists.`);
       return;
     }
 
@@ -206,35 +283,31 @@ export const DataProvider = ({ children }) => {
         isEnabled: true, // Initialize isEnabled as true
       },
     ]);
-  };
+  }, [heaters]);
 
   /**
    * Deletes an electric heater from the heaters state based on heaterId.
    * @param {string} heaterId - The ID of the heater to delete.
    */
-  const deleteHeater = (heaterId) => {
+  const deleteHeater = useCallback((heaterId) => {
     setHeaters((prevHeaters) => prevHeaters.filter((heater) => heater.id !== heaterId));
     // Also delete control signals associated with this heater
     const updatedControlSignals = { ...controlSignals };
     delete updatedControlSignals[heaterId];
     setControlSignals(updatedControlSignals);
     localStorage.setItem('controlSignals', JSON.stringify(updatedControlSignals));
-  };
+  }, [controlSignals]);
 
-  /**
-   * Toggles the `isEnabled` state of a heater.
-   * @param {string} heaterId - The ID of the heater to toggle.
-   */
-  const toggleHeaterEnabled = (heaterId) => {
+  const toggleHeaterEnabled = useCallback((heaterId) => {
     setHeaters((prevHeaters) =>
       prevHeaters.map((heater) =>
         heater.id === heaterId ? { ...heater, isEnabled: !heater.isEnabled } : heater
       )
     );
-  };
+  }, []);
 
   // =====================
-  // Function to Update a Heater
+  // Function to Update a Heater (Existing - Preserved)
   // =====================
 
   /**
@@ -250,23 +323,66 @@ export const DataProvider = ({ children }) => {
   }, []);
 
   // =====================
-  // Function to Update a Room
+  // Function to Update a Room (Updated)
   // =====================
 
   /**
    * Updates an existing room's details.
    * @param {Object} updatedRoom - The room object with updated details.
+   * @returns {boolean} - Returns true if update is successful, false otherwise.
    */
   const updateRoomFunc = useCallback((updatedRoom) => {
-    setRooms((prevRooms) =>
-      prevRooms.map((room) =>
-        room.roomId === updatedRoom.roomId ? { ...room, ...updatedRoom } : room
-      )
-    );
+    const {
+      roomId,
+      roomWidth,
+      roomLength,
+      defaultMaxTemp,
+      defaultMinTemp,
+      sensorId,
+      sensorState,
+      sensorUnit,
+      exceptions
+    } = updatedRoom;
+
+    // Validate required fields
+    if (
+      !roomId ||
+      !roomWidth ||
+      !roomLength ||
+      defaultMaxTemp === undefined ||
+      defaultMinTemp === undefined ||
+      !sensorId
+    ) {
+      console.error('Missing required room fields.');
+      return false;
+    }
+
+    // Validation: Ensure no exception has the same temp as default
+  for (let i = 0; i < exceptions.length; i++) {
+    const ex = exceptions[i];
+    if (ex.maxTemp === defaultMaxTemp && ex.minTemp === defaultMinTemp) {
+      console.error(`Exception ${i + 1} has the same maxTemp and minTemp as the room's defaults.`);
+      return false; // Prevent adding or updating this exception
+    }
+  }
+
+    setRooms((prevRooms) => {
+      const roomExists = prevRooms.some((room) => room.roomId === roomId);
+      if (!roomExists) {
+        console.error(`Room with ID "${roomId}" does not exist.`);
+        return prevRooms;
+      }
+
+      return prevRooms.map((room) =>
+        room.roomId === roomId ? { ...room, ...updatedRoom } : room
+      );
+    });
+
+    return true;
   }, []);
 
   // =====================
-  // Function to Reset All Data
+  // Function to Reset All Data (Existing - Preserved)
   // =====================
 
   /**
@@ -278,6 +394,8 @@ export const DataProvider = ({ children }) => {
     setRooms([]);
     setHeaters([]);
     setControlSignals({});
+    setOptimizeStarted(false);
+    setLastOptimizedTime(null);
 
     // Clear corresponding localStorage entries
     localStorage.removeItem('rooms');
@@ -285,6 +403,8 @@ export const DataProvider = ({ children }) => {
     localStorage.removeItem('fiElectricityPrices');
     localStorage.removeItem('weatherData');
     localStorage.removeItem('controlSignals');
+    localStorage.removeItem('optimizeStarted');
+    localStorage.removeItem('lastOptimizedTime');
   }, []);
 
   // =====================
@@ -314,6 +434,7 @@ export const DataProvider = ({ children }) => {
         fiPricesLoading,
         fiPricesError,
 
+        // Control Signals
         controlSignals,
         setControlSignals,
         optimizeStarted,

@@ -18,6 +18,9 @@ import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import CircularProgress from '@mui/material/CircularProgress';
 import Button from '@mui/material/Button';
 import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
+import Box from '@mui/material/Box';
+import { getCurrentTempLimits } from '../utils/tempUtils';
+import Switch from '@mui/material/Switch';
 
 
 
@@ -28,6 +31,7 @@ function DashboardGrid() {
 
         updateRoom,
         updateElectricHeater,
+        toggleHeaterEnabled,
 
         fiPrices,
         fiPricesLoading,
@@ -249,12 +253,27 @@ function DashboardGrid() {
                                     <Typography variant="h6" component="h3" gutterBottom>
                                         {room.roomId}
                                     </Typography>
-                                    <Typography variant="body1">
-                                        <strong>Max Temp:</strong> {room.maxTemp} °C
+                                    {/* Current Hour Temperature Limits */}
+                                <Box
+                                    sx={{
+                                        marginTop: 2,
+                                        padding: 1,
+                                        borderRadius: '4px',
+                                        backgroundColor: '#f5f5f5', // Light grey background for consistency
+                                        color: '#333', // Dark text for readability
+                                    }}
+                                >
+                                    <Typography variant="subtitle1">
+                                        <strong>Current temperature limits:</strong>
                                     </Typography>
-                                    <Typography variant="body1">
-                                        <strong>Min Temp:</strong> {room.minTemp} °C
+                                    <Typography variant="body2">
+                                        <strong>Max:</strong> {getCurrentTempLimits(room).maxTemp} °C
                                     </Typography>
+                                    <Typography variant="body2">
+                                        <strong>Min:</strong> {getCurrentTempLimits(room).minTemp} °C
+                                    </Typography>
+                                </Box>
+
                                     <Typography variant="body1">
                                         <strong>Sensor ID:</strong> {room.sensorId}
                                     </Typography>
@@ -262,13 +281,18 @@ function DashboardGrid() {
                                         {heaters
                                             .filter((heater) => heater.roomId === room.roomId)
                                             .map((heater) => (
-                                                <Grid2 xs={4} key={heater.id}>
-                                                    <ClickableHeater
-                                                        heater={heater}
-                                                        onClick={() => handleOpenHeaterModal(heater)}
-                                                    />
-                                                </Grid2>
-                                            ))}
+                                            <Grid2 xs={12} key={heater.id} sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <ClickableHeater heater={heater} onClick={() => handleOpenHeaterModal(heater)} />
+                                                <Switch
+                                                checked={heater.isEnabled}
+                                                onChange={() => toggleHeaterEnabled(heater.id)}
+                                                inputProps={{ 'aria-label': 'Enable Optimization' }}
+                                                />
+                                                <Typography variant="body2" sx={{ marginLeft: 1 }}>
+                                                {heater.isEnabled ? 'Optimized' : 'Not Optimized'}
+                                                </Typography>
+                                            </Grid2>
+                                        ))}
                                     </Grid2>
                                 </Paper>
                             </Grid2>

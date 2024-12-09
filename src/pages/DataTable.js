@@ -10,6 +10,7 @@ import EditHeaterForm from '../forms/EditHeaterForm'; // Import EditHeaterForm
 import EditRoomForm from '../forms/EditRoomForm'; // Import EditRoomForm
 import useWeatherData from '../hooks/useWeatherData';
 import WeatherDataTable from '../components/Table/WeatherDataTable';
+import TemperatureCalendar from '../components/TemperatureCalendar';
 
 
 function DataTable() {
@@ -187,6 +188,11 @@ function DataTable() {
       <div>
       <h1>Weather App</h1>
       <WeatherDataTable weatherData={weatherData} />
+    </div>
+
+    <div>
+      <h1>Weather App</h1>
+      <TemperatureCalendar />
     </div>
 
       {/* Heating Devices Table */}

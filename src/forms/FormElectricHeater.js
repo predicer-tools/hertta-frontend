@@ -68,7 +68,7 @@ function FormElectricHeater({ fetchedDevices = [], onClose }) {
       name: heaterName, // Heater Name
       capacity: parsedCapacity, // Capacity in kW
       roomId: trimmedRoomId, // Associated Room ID
-      isEnabled: true, // Initialize isEnabled as true
+      isEnabled: false, // Initialize isEnabled as true
     });
 
     // Reset form

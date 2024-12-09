@@ -1,43 +1,126 @@
-/* Existing styles */
+/* src/forms/DataForm.css */
+
 .device-form {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start; /* Aligns everything to the left */
-    gap: 8px; /* Reducing gap between form elements to make it more compact */
-    margin: 10px; /* Reducing margin to make the form more compact */
-}
-
-.input-group {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start; /* Keeps labels and inputs aligned to the left */
-    margin-bottom: 8px; /* Reducing margin between input groups for compactness */
-}
-
-.input-group label {
-    margin-bottom: 4px; /* Slightly tighter space between label and input */
-}
-
-.input-group input,
-.input-group select {
-    width: 100%; /* Make input boxes as long as the container allows */
-    padding: 10px; /* Padding inside the input for better text visibility */
-    border: 1px solid #ccc; /* Light border */
-    border-radius: 4px; /* Slightly rounded corners */
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .device-form h3 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .input-group {
+    margin-bottom: 15px;
+  }
+  
+  .input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  
+  .input-group input,
+  .input-group select {
+    width: 100%;
+    padding: 8px;
     box-sizing: border-box;
-}
-
-button {
-    padding: 10px 20px; /* Bigger button size */
-    font-size: 16px;
-    cursor: pointer;
-    margin-top: 8px; /* Reducing margin to tighten the form layout */
-    background-color: #f44336;
+  }
+  
+  .exceptions-section {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  
+  .exception-item {
+    background-color: #f9f9f9;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    position: relative;
+  }
+  
+  .exception-item h5 {
+    margin-top: 0;
+  }
+  
+  .exception-item p {
+    margin: 5px 0;
+  }
+  
+  .edit-exception-button,
+  .remove-exception-button {
+    background-color: #007bff;
     color: white;
     border: none;
+    padding: 6px 10px;
     border-radius: 4px;
-}
-
-button:hover {
-    background-color: #d32f2f; /* Darker red for hover effect */
-}
+    cursor: pointer;
+    margin-right: 10px;
+  }
+  
+  .remove-exception-button {
+    background-color: #dc3545;
+  }
+  
+  .edit-exception-button:hover,
+  .remove-exception-button:hover {
+    opacity: 0.9;
+  }
+  
+  .add-exception-button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .add-exception-button:hover {
+    opacity: 0.9;
+  }
+  
+  .modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+  }
+  
+  .save-button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .cancel-button {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .save-button:hover,
+  .cancel-button:hover {
+    opacity: 0.9;
+  }
+  
+  .error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+  }
+  
+  /* Modal-specific styles are handled in Modal.module.css */
+  
