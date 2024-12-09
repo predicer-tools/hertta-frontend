@@ -1,0 +1,500 @@
+type ConFactor {
+  data: Float!
+  varTuple: VariableId!
+  varType: String!
+}
+
+"""Delay for connections between nodes."""
+type Delay {
+  delay: Float!
+  fromNode: String!
+  maxDelayFlow: Float!
+  minDelayFlow: Float!
+  toNode: String!
+}
+
+type Duration {
+  hours: Int!
+  minutes: Int!
+  seconds: Int!
+}
+
+input DurationInput {
+  hours: Int!
+  minutes: Int!
+  seconds: Int!
+}
+
+type GenConstraint {
+  constant: Float
+  factors: [ConFactor!]!
+  gcType: String!
+  isSetpoint: Boolean!
+  name: String!
+  penalty: Float!
+}
+
+type Group {
+  gType: GroupType!
+  members: [String!]!
+  name: String!
+}
+
+enum GroupType {
+  NODE
+  PROCESS
+}
+
+type InflowBlock {
+  data: Float!
+  name: String!
+  node: String!
+}
+
+"""The model itself."""
+type InputData {
+  genConstraints: [GenConstraint!]!
+  groups: [Group!]!
+  inflowBlocks: [InflowBlock!]!
+  markets: [Market!]!
+  nodeDelay: [Delay!]!
+  nodeDiffusion: [NodeDiffusion!]!
+  nodeHistories: [NodeHistory!]!
+  nodes: [Node!]!
+  processes: [Process!]!
+  reserveType: [ReserveType!]!
+  risk: [Risk!]!
+  scenarios: [Scenario!]!
+  setup: InputDataSetup!
+}
+
+type InputDataSetup {
+  commonScenarioName: String!
+  commonTimesteps: Int!
+  containsDelay: Boolean!
+  containsDiffusion: Boolean!
+  containsMarkets: Boolean!
+  containsOnline: Boolean!
+  containsPiecewiseEff: Boolean!
+  containsReserves: Boolean!
+  containsRisk: Boolean!
+  containsStates: Boolean!
+  nodeDummyVariableCost: Float!
+  rampDummyVariableCost: Float!
+  reserveRealisation: Boolean!
+  useMarketBids: Boolean!
+  useNodeDummyVariables: Boolean!
+  useRampDummyVariables: Boolean!
+}
+
+input InputDataSetupUpdate {
+  commonScenarioName: String
+  commonTimesteps: Int
+  containsDelay: Boolean
+  containsDiffusion: Boolean
+  containsMarkets: Boolean
+  containsOnline: Boolean
+  containsPiecewiseEff: Boolean
+  containsReserves: Boolean
+  containsRisk: Boolean
+  containsStates: Boolean
+  nodeDummyVariableCost: Float
+  rampDummyVariableCost: Float
+  reserveRealization: Boolean
+  useMarketBids: Boolean
+  useNodeDummyVariables: Boolean
+  useRampDummyVariables: Boolean
+}
+
+"""Location input."""
+input LocationInput {
+  """Country."""
+  country: String
+
+  """Place within the country."""
+  place: String
+}
+
+type LocationSettings {
+  """Country."""
+  country: String!
+
+  """Place within country."""
+  place: String!
+}
+
+type Market {
+  direction: String!
+  downPrice: Float
+  fee: Float!
+  fixed: [MarketFix!]!
+  isBid: Boolean!
+  isLimited: Boolean!
+  mType: String!
+  maxBid: Float!
+  minBid: Float!
+  name: String!
+  node: String!
+  price: Float
+  processgroup: String!
+  realisation: Float
+  reserveActivationPrice: Float
+  reserveType: String!
+  upPrice: Float
+}
+
+type MarketFix {
+  factor: Float!
+  name: String!
+}
+
+type MaybeError {
+  """Error message; if null, the operation succeeded."""
+  error: String
+}
+
+"""Optimization model."""
+type Model {
+  inputData: InputData!
+  timeLine: TimeLineSettings!
+}
+
+type Mutation {
+  """Add node to node group."""
+  addNodeToGroup(groupName: String!, nodeName: String!): MaybeError!
+
+  """Add process to process group."""
+  addProcessToGroup(groupName: String!, processName: String!): MaybeError!
+
+  """Clear input data from model."""
+  clearInputData: MaybeError!
+
+  """Create new flow constraint factor and add it to generic constraint."""
+  createFlowConFactor(constraintName: String!, factor: Float!, processName: String!, sourceOrSinkNodeName: String!): ValidationErrors!
+
+  """Create new generic constraint."""
+  createGenConstraint(constraint: NewGenConstraint!): ValidationErrors!
+
+  """Create new market."""
+  createMarket(market: NewMarket!): ValidationErrors!
+
+  """Create new node."""
+  createNode(node: NewNode!): ValidationErrors!
+
+  """Create new diffusion between nodes."""
+  createNodeDiffusion(coefficient: Float!, fromNode: String!, toNode: String!): ValidationErrors!
+
+  """Create new node group"""
+  createNodeGroup(name: String!): MaybeError!
+
+  """Create new online constraint factor and add it to generic constraint."""
+  createOnlineConFactor(constraintName: String!, factor: Float!, processName: String!): ValidationErrors!
+
+  """Create new process."""
+  createProcess(process: NewProcess!): ValidationErrors!
+
+  """Create new process group."""
+  createProcessGroup(name: String!): MaybeError!
+
+  """Create new risk."""
+  createRisk(risk: NewRisk!): ValidationErrors!
+
+  """Create new scenario."""
+  createScenario(name: String!, weight: Float!): MaybeError!
+
+  """Create new state constraint factor and add it to generic constraint."""
+  createStateConFactor(constraintName: String!, factor: Float!, nodeName: String!): ValidationErrors!
+
+  """Create new topology and add it to process."""
+  createTopology(processName: String!, sinkNodeName: String, sourceNodeName: String, topology: NewTopology!): ValidationErrors!
+
+  """Save the model on disk."""
+  saveModel: MaybeError!
+
+  """Set state for node. Null clears the state."""
+  setNodeState(nodeName: String!, state: StateInput): ValidationErrors!
+  startOptimization: StartOptimizationResult!
+
+  """Update input data setup."""
+  updateInputDataSetup(setupUpdate: InputDataSetupUpdate!): ValidationErrors!
+
+  """Update state of a node. The state has to be set."""
+  updateNodeState(nodeName: String!, state: StateUpdate!): ValidationErrors!
+  updateSettings(settingsInput: SettingsInput!): SettingsResult!
+
+  """Update model's time line."""
+  updateTimeLine(timeLineInput: TimeLineUpdate!): ValidationErrors!
+}
+
+input NewGenConstraint {
+  constant: Float
+  gcType: String!
+  isSetpoint: Boolean!
+  name: String!
+  penalty: Float!
+}
+
+input NewMarket {
+  direction: String
+  downPrice: Float
+  fee: Float!
+  isBid: Boolean!
+  isLimited: Boolean!
+  mType: String!
+  maxBid: Float!
+  minBid: Float!
+  name: String!
+  node: String!
+  price: Float
+  processgroup: String!
+  realisation: Float
+  reserveActivationPrice: Float
+  reserveType: String
+  upPrice: Float
+}
+
+input NewNode {
+  cost: Float
+  inflow: Float
+  isCommodity: Boolean!
+  isMarket: Boolean!
+  isRes: Boolean!
+  name: String!
+}
+
+input NewProcess {
+  cf: Float
+
+  """Must be 'unit' or 'transport'."""
+  conversion: String!
+  eff: Float!
+  effTs: Float
+  initialState: Boolean!
+  isCfFix: Boolean!
+  isOnline: Boolean!
+  isRes: Boolean!
+  isScenarioIndependent: Boolean!
+  loadMax: Float!
+  loadMin: Float!
+  maxOffline: Float!
+  maxOnline: Float!
+  minOffline: Float!
+  minOnline: Float!
+  name: String!
+  startCost: Float!
+}
+
+input NewRisk {
+  parameter: String!
+  value: Float!
+}
+
+input NewTopology {
+  capTs: Float
+  capacity: Float!
+  initialFlow: Float!
+  initialLoad: Float!
+  rampDown: Float!
+  rampUp: Float!
+  vomCost: Float!
+}
+
+type Node {
+  cost: Float
+  groups: [String!]!
+  inflow: Float
+  isCommodity: Boolean!
+  isMarket: Boolean!
+  isRes: Boolean!
+  name: String!
+  state: State
+}
+
+type NodeDiffusion {
+  coefficient: Float!
+  fromNode: String!
+  toNode: String!
+}
+
+type NodeHistory {
+  node: String!
+  steps: Float!
+}
+
+type Point {
+  x: Float!
+  y: Float!
+}
+
+type Process {
+  cf: Float!
+  conversion: String!
+  eff: Float!
+  effFun: [Point!]!
+  effOps: [String!]!
+  effTs: Float
+  groups: [String!]!
+  initialState: Boolean!
+  isCf: Boolean!
+  isCfFix: Boolean!
+  isOnline: Boolean!
+  isRes: Boolean!
+  isScenarioIndependent: Boolean!
+  loadMax: Float!
+  loadMin: Float!
+  maxOffline: Float!
+  maxOnline: Float!
+  minOffline: Float!
+  minOnline: Float!
+  name: String!
+  startCost: Float!
+  topos: [Topology!]!
+}
+
+type Query {
+  apiVersion: String!
+  genConstraint(name: String!): GenConstraint!
+  group(name: String!): Group!
+
+  """return all groups the given node is member of"""
+  groupsForNode(name: String!): [Group!]!
+
+  """return all groups the given process is member of"""
+  groupsForProcess(name: String!): [Group!]!
+  market(name: String!): Market!
+  model: Model!
+  node(name: String!): Node!
+  nodeDiffusion(fromNode: String!, toNode: String!): NodeDiffusion!
+  nodesInGroup(name: String!): [Node!]!
+  process(name: String!): Process!
+  processesInGroup(name: String!): [Process!]!
+  scenario(name: String!): Scenario!
+  settings: Settings!
+  status: Status!
+}
+
+type ReserveType {
+  name: String!
+  rampRate: Float!
+}
+
+type Risk {
+  parameter: String!
+  value: Float!
+}
+
+"""Scenario for stochastics."""
+type Scenario {
+  """Scenario name."""
+  name: String!
+
+  """Scenario weight."""
+  weight: Float!
+}
+
+"""General Hertta settings."""
+type Settings {
+  """Device location."""
+  location: LocationSettings
+}
+
+input SettingsInput {
+  location: LocationInput
+}
+
+union SettingsResult = Settings | ValidationErrors
+
+type StartOptimizationError {
+  message: String!
+}
+
+type StartOptimizationOutput {
+  jobId: Int!
+}
+
+union StartOptimizationResult = StartOptimizationError | StartOptimizationOutput
+
+type State {
+  inMax: Float!
+  initialState: Float!
+  isScenarioIndependent: Boolean!
+  isTemp: Boolean!
+  outMax: Float!
+  residualValue: Float!
+  stateLossProportional: Float!
+  stateMax: Float!
+  stateMin: Float!
+  tEConversion: Float!
+}
+
+input StateInput {
+  inMax: Float!
+  initialState: Float!
+  isScenarioIndependent: Boolean!
+  isTemp: Boolean!
+  outMax: Float!
+  residualValue: Float!
+  stateLossProportional: Float!
+  stateMax: Float!
+  stateMin: Float!
+  tEConversion: Float!
+}
+
+input StateUpdate {
+  inMax: Float
+  initialState: Float
+  isScenarioIndependent: Boolean
+  isTemp: Boolean
+  outMax: Float
+  residualValue: Float
+  stateLossProportional: Float
+  stateMax: Float
+  stateMin: Float
+  tEConversion: Float
+}
+
+type Status {
+  jobId: Int
+  message: String
+  state: String!
+}
+
+"""Optimization time line settings."""
+type TimeLineSettings {
+  """Time line duration."""
+  duration: Duration!
+
+  """Time step length."""
+  step: Duration!
+}
+
+input TimeLineUpdate {
+  duration: DurationInput
+  step: DurationInput
+}
+
+type Topology {
+  capTs: Float
+  capacity: Float!
+  initialFlow: Float!
+  initialLoad: Float!
+  rampDown: Float!
+  rampUp: Float!
+  sink: String!
+  source: String!
+  vomCost: Float!
+}
+
+type ValidationError {
+  field: String!
+  message: String!
+}
+
+type ValidationErrors {
+  errors: [ValidationError!]!
+}
+
+type VariableId {
+  entity: String!
+  identifier: String
+}

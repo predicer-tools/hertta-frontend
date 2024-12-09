@@ -8,6 +8,7 @@ import InputData from './pages/InputData';
 import DataTable from './pages/DataTable';
 import ConfigContext from './context/ConfigContext';
 import DashboardGrid from './pages/DashboardGrid';
+import ManageInputData from './ManageInputData';
 
 function App() {
   const { isConfigured } = useContext(ConfigContext);
@@ -55,6 +56,14 @@ function App() {
             ) : (
               <Navigate to="/config" replace />
             )
+          }
+        />
+
+        {/* Manage Input Data Route */}
+        <Route
+          path="/manage-input-data"
+          element={
+            isConfigured ? <ManageInputData /> : <Navigate to="/config" replace />
           }
         />
 

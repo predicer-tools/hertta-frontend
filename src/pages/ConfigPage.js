@@ -6,7 +6,6 @@ import finlandLocations from '../utils/finlandLocations';
 import styles from './ConfigPage.module.css';
 import ConfigContext from '../context/ConfigContext';
 import { useMutation } from '@apollo/client';
-import { UPDATE_INPUT_DATA_SETUP } from '../graphql/inputdatasetup/updateInputDataSetup';
 
 function ConfigPage() {
   const [country, setCountry] = useState('');
