@@ -40,6 +40,7 @@ function DashboardGrid() {
         weatherData,
         weatherLoading,
         weatherError,
+        currentWeather,
 
         controlSignals, // Access control signals
         optimizeStarted,
@@ -173,7 +174,7 @@ function DashboardGrid() {
                                   </Typography>
                                 ) : weatherData ? (
                                   <Typography variant="body1">
-                                    Current Weather: {weatherData.weather_values.currentCondition}, {weatherData.currentTemp}°C
+                                    Temperature: {currentWeather.value}°C
                                   </Typography>
                                 ) : (
                                   <Typography variant="body1">
@@ -327,10 +328,11 @@ function DashboardGrid() {
 
             {/* Modal for Weather Data */}
             <Modal isOpen={isWeatherModalOpen} onClose={handleCloseWeatherModal}>
-              <Typography variant="h6" component="h3" gutterBottom>
+            <Typography variant="h6" component="h3" gutterBottom>
                 Weather Information
-              </Typography>
-              <WeatherDataTable />
+            </Typography>
+            {/* Pass the weatherData prop here */}
+            <WeatherDataTable weatherData={weatherData} />
             </Modal>
         </>
     ); // Closing parenthesis for the return block

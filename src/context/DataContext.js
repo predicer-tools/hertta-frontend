@@ -55,10 +55,19 @@ export const DataProvider = ({ children }) => {
   // Use the Hooks
   // =====================
 
-  const { config } = useContext(ConfigContext); // Consume ConfigContext to get configuration
-  const location = config.location; // Extract location from config
-  
+  // Get config from ConfigContext
+  const { config } = useContext(ConfigContext);
+  const location = config.location;
+
+  // Integrate the new weather data hook (location comes from ConfigContext)
   const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
+
+  const currentWeather =
+  weatherData && Array.isArray(weatherData.weather_values) && weatherData.weather_values.length > 0
+    ? weatherData.weather_values[0]
+    : null;
+
+  console.log("Current Weather:", currentWeather);
 
   const { fiPrices, fiPricesLoading, fiPricesError } = useElectricityData();
 
@@ -442,10 +451,11 @@ export const DataProvider = ({ children }) => {
         stopOptimization,
         lastOptimizedTime,
 
-        // Weather Data
+        // Weather Data (from useWeatherData hook)
         weatherData,
         weatherLoading,
         weatherError,
+        currentWeather,
 
         // Reset
         resetData,
