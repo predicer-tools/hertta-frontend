@@ -1,5 +1,3 @@
-// src/context/ConfigContext.js
-
 import React, { createContext, useState, useEffect } from 'react';
 
 // Create the ConfigContext
@@ -10,7 +8,7 @@ export const ConfigProvider = ({ children }) => {
   // =====================
   // Configuration State
   // =====================
-  
+
   // Determines if the application has been configured
   const [isConfigured, setIsConfigured] = useState(() => {
     return localStorage.getItem('isConfigured') === 'true';
@@ -51,7 +49,7 @@ export const ConfigProvider = ({ children }) => {
   // =====================
   // Sensors and Devices State
   // =====================
-  
+
   // Stores the fetched sensors from Home Assistant
   const [sensors, setSensors] = useState(() => {
     return JSON.parse(localStorage.getItem('homeAssistantSensors')) || [];
@@ -65,7 +63,7 @@ export const ConfigProvider = ({ children }) => {
   // =====================
   // Persist Configuration to LocalStorage
   // =====================
-  
+
   useEffect(() => {
     localStorage.setItem('isConfigured', isConfigured ? 'true' : 'false');
     localStorage.setItem('country', config.country);
@@ -77,7 +75,7 @@ export const ConfigProvider = ({ children }) => {
   // =====================
   // Persist Materials to LocalStorage
   // =====================
-  
+
   useEffect(() => {
     localStorage.setItem('materials', JSON.stringify(materials));
   }, [materials]);
@@ -85,7 +83,7 @@ export const ConfigProvider = ({ children }) => {
   // =====================
   // Persist Sensors and Devices to LocalStorage
   // =====================
-  
+
   useEffect(() => {
     localStorage.setItem('homeAssistantSensors', JSON.stringify(sensors));
   }, [sensors]);
@@ -182,7 +180,7 @@ export const ConfigProvider = ({ children }) => {
   // =====================
   // Provider's Value
   // =====================
-  
+
   const contextValue = {
     // Configuration State and Updaters
     isConfigured,
@@ -203,12 +201,15 @@ export const ConfigProvider = ({ children }) => {
 
     // Reset Function
     resetConfig,
+
+    // Location Accessor
+    getLocation: () => config.location, // Returns the location
   };
 
   // =====================
   // Provider's Return
   // =====================
-  
+
   return (
     <ConfigContext.Provider
       value={contextValue}

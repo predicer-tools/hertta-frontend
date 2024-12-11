@@ -10,6 +10,7 @@ import EditRoomForm from '../forms/EditRoomForm'; // Import EditRoomForm
 import useWeatherData from '../hooks/useWeatherData';
 import WeatherDataTable from '../components/Table/WeatherDataTable';
 import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
+import ConfigContext from '../context/ConfigContext';
 
 
 function DataTable() {
@@ -17,8 +18,8 @@ function DataTable() {
   const [devices, setDevices] = useState([]);
 
   const { rooms, heaters, deleteRoom, deleteHeater, controlSignals, fiPrices, fiPricesLoading, fiPricesError  } = useContext(DataContext); // Access rooms and heaters from DataContext
-
-  const location = 'Helsinki'; // Replace with dynamic input if needed
+  const { getLocation } = useContext(ConfigContext);
+  const location = getLocation();
   const { weatherData } = useWeatherData(location);
 
 
