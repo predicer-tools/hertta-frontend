@@ -1,34 +1,53 @@
 /* src/components/Objects/ClickableHeater.module.css */
 
 .clickableHeater {
-    border: 1px solid #aaa;
-    padding: 12px;
-    border-radius: 6px;
-    background-color: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    cursor: pointer;
-    transition: background-color 0.3s, transform 0.3s;
-    outline: none; /* Remove default outline */
-  }
-  
-  .clickableHeater:hover {
-    background-color: #f0f0f0;
-    transform: scale(1.02);
-  }
-  
-  .clickableHeater:focus {
-    outline: 2px solid #1976d2; /* Custom focus outline */
-  }
-  
-  .heaterName {
-    margin: 0 0 8px 0;
-    font-size: 1.1rem;
-    color: #333;
-  }
-  
-  .heaterStatus {
-    margin: 0;
-    font-size: 0.9rem;
-    color: #555;
-  }
-  
+  border: 1px solid #aaa;
+  padding: 12px;
+  border-radius: 6px;
+  background-color: #fff; /* Default background */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.3s;
+  outline: none; /* Remove default outline */
+}
+
+.clickableHeater:hover {
+  transform: scale(1.02);
+}
+
+.clickableHeater:focus {
+  outline: 2px solid #1976d2; /* Custom focus outline */
+}
+
+.heaterName {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.heaterStatus,
+.heaterState {
+  margin: 4px 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* State-based background colors */
+.on {
+  background-color: #d4edda; /* Light green */
+}
+
+.off {
+  background-color: #f8f9fa; /* Light grey */
+}
+
+/* State text colors */
+.stateOn {
+  color: green;
+  font-weight: bold;
+}
+
+.stateOff {
+  color: grey;
+  font-weight: bold;
+}
