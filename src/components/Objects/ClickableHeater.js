@@ -46,11 +46,7 @@ function ClickableHeater({ heater, onClick }) {
       }}
     >
       <h4 className={styles.heaterName}>{heater.name}</h4>
-      
-      {/* Display Enabled Status */}
-      <p className={styles.heaterStatus}>
-        Enabled: {heater.isEnabled ? 'Yes' : 'No'}
-      </p>
+    
       
       {/* Display Current State */}
       <p className={styles.heaterState}>

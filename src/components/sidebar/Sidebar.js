@@ -29,7 +29,7 @@ function Sidebar({ isOpen }) {
           </li>
           <li className={styles.navItem}>
             <NavLink
-              to="/config"
+              to="/edit-config"
               className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
             >
               Configuration

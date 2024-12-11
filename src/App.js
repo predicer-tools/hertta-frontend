@@ -9,6 +9,7 @@ import DataTable from './pages/DataTable';
 import ConfigContext from './context/ConfigContext';
 import DashboardGrid from './pages/DashboardGrid';
 import ManageInputData from './ManageInputData';
+import EditConfigPage from './pages/EditConfigPage';
 
 function App() {
   const { isConfigured } = useContext(ConfigContext);
@@ -27,6 +28,12 @@ function App() {
         <Route
           path="/config"
           element={<ConfigPage />}
+        />
+
+        {/* Edit Configuration Route */}
+        <Route
+          path="/edit-config"
+          element={isConfigured ? <EditConfigPage /> : <Navigate to="/config" replace />}
         />
 
         {/* Dashboard Route */}

@@ -1,5 +1,3 @@
-# mock-backend/app/mock_homeassistant.py
-
 from flask import Blueprint, request, jsonify
 
 mock_homeassistant_bp = Blueprint('mock_homeassistant', __name__)
@@ -24,6 +22,61 @@ SENSORS = [
             "friendly_name": "Kitchen Humidity",
             "unit_of_measurement": "%"
         }
+    },
+    {
+        "entity_id": "sensor.motion_hallway",
+        "state": "detected",
+        "attributes": {
+            "friendly_name": "Hallway Motion Sensor"
+        }
+    },
+    {
+        "entity_id": "sensor.light_bedroom",
+        "state": "300",
+        "attributes": {
+            "friendly_name": "Bedroom Light Level",
+            "unit_of_measurement": "lux"
+        }
+    },
+    {
+        "entity_id": "sensor.temperature_kitchen",
+        "state": "20.0",
+        "attributes": {
+            "friendly_name": "Kitchen Temperature",
+            "unit_of_measurement": "°C"
+        }
+    },
+    {
+        "entity_id": "sensor.temperature_bedroom",
+        "state": "18.5",
+        "attributes": {
+            "friendly_name": "Bedroom Temperature",
+            "unit_of_measurement": "°C"
+        }
+    },
+    {
+        "entity_id": "sensor.temperature_bathroom",
+        "state": "23.0",
+        "attributes": {
+            "friendly_name": "Bathroom Temperature",
+            "unit_of_measurement": "°C"
+        }
+    },
+    {
+        "entity_id": "sensor.temperature_office",
+        "state": "21.0",
+        "attributes": {
+            "friendly_name": "Office Temperature",
+            "unit_of_measurement": "°C"
+        }
+    },
+    {
+        "entity_id": "sensor.temperature_dining_room",
+        "state": "19.5",
+        "attributes": {
+            "friendly_name": "Dining Room Temperature",
+            "unit_of_measurement": "°C"
+        }
     }
 ]
 
@@ -40,6 +93,61 @@ DEVICES = [
         "state": "off",
         "attributes": {
             "friendly_name": "Shelly Switch 2"
+        }
+    },
+    {
+        "entity_id": "light.living_room_light",
+        "state": "on",
+        "attributes": {
+            "friendly_name": "Living Room Light",
+            "brightness": 180
+        }
+    },
+    {
+        "entity_id": "lock.front_door_lock",
+        "state": "locked",
+        "attributes": {
+            "friendly_name": "Front Door Lock"
+        }
+    },
+    {
+        "entity_id": "climate.heater_living_room",
+        "state": "heat",
+        "attributes": {
+            "friendly_name": "Living Room Heater",
+            "temperature": 22.5
+        }
+    },
+    {
+        "entity_id": "climate.heater_kitchen",
+        "state": "heat",
+        "attributes": {
+            "friendly_name": "Kitchen Heater",
+            "temperature": 20.0
+        }
+    },
+    {
+        "entity_id": "climate.heater_bedroom",
+        "state": "heat",
+        "attributes": {
+            "friendly_name": "Bedroom Heater",
+            "temperature": 18.5
+        }
+    },
+    {
+        "entity_id": "climate.heater_bathroom",
+        "state": "heat",
+        "attributes": {
+            "friendly_name": "Bathroom Heater",
+            "temperature": 23.0
+        }
+    },
+    {
+        "entity_id": "climate.heater_office",
+        "state": "heat",
+        "attributes": {
+            "friendly_name": "Office Heater",
+            "temperature": 21.0
         }
     }
 ]
