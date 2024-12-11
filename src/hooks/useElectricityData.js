@@ -1,5 +1,3 @@
-// src/hooks/useElectricityData.js
-
 import { useState, useEffect } from 'react';
 
 // Configurable constants for tax and marginal price
@@ -62,7 +60,12 @@ const useElectricityData = () => {
               timestampUTC: entry.timestamp, // Original timestamp from API
               timestampLocal: new Date(entry.timestamp * 1000).toLocaleString("fi-FI", {
                 timeZone: "Europe/Helsinki",
-              }), // Convert to Finnish time
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }).replace(",", " klo"), // Convert to Finnish time with date and "klo"
               finalPrice: finalPrice.toFixed(2), // Final price after tax and marginal
             };
           });

@@ -55,8 +55,14 @@ function useWeatherData(location) {
 
     const currentTime = new Date();
     currentTime.setMinutes(0, 0, 0); // Start of the current hour
-    const startTimeISO = currentTime.toISOString();
-    const endTimeISO = new Date(currentTime.getTime() + 12 * 60 * 60 * 1000).toISOString(); // 12 hours later
+
+    // Use current local time directly without converting to UTC
+    const localStartTime = currentTime;
+    const localEndTime = new Date(localStartTime.getTime() + 12 * 60 * 60 * 1000); // 12 hours later
+
+    // Convert to ISO string but remove 'Z' (indicating UTC)
+    const startTimeISO = localStartTime.toISOString().slice(0, -1);
+    const endTimeISO = localEndTime.toISOString().slice(0, -1);
 
     try {
       setLoading(true);

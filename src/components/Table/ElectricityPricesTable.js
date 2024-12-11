@@ -1,54 +1,46 @@
-// src/components/Table/ElectricityPricesTable.js
+import React from 'react';
+import styles from './WeatherDataTable.module.css';
 
-import React, { useContext } from 'react';
-import DataContext from '../../context/DataContext';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
-import Typography from '@mui/material/Typography';
-import CircularProgress from '@mui/material/CircularProgress';
-import Alert from '@mui/material/Alert';
-
-const ElectricityPricesTable = () => {
-  const { fiPrices, fiPricesLoading, fiPricesError } = useContext(DataContext);
-
-  if (fiPricesLoading) {
-    return <CircularProgress />;
+/**
+ * Component to display electricity prices in a table.
+ *
+ * @param {Array} fiPrices - Array of electricity price data.
+ * @param {boolean} loading - Whether the data is loading.
+ * @param {string|null} error - Any error message.
+ */
+const ElectricityPricesTable = ({ fiPrices, loading, error }) => {
+  if (loading) {
+    return <p>Loading electricity prices...</p>;
   }
 
-  if (fiPricesError) {
-    return <Alert severity="error">Error: {fiPricesError}</Alert>;
+  if (error) {
+    return <p>Error: {error}</p>;
   }
 
   if (!fiPrices || fiPrices.length === 0) {
-    return <Typography>No electricity price data available.</Typography>;
+    return <p>No FI electricity price data available.</p>;
   }
 
   return (
-    <TableContainer component={Paper}>
-      <Table aria-label="Electricity Prices Table">
-        <TableHead>
-          <TableRow>
-            <TableCell>Timestamp (Finnish Time)</TableCell>
-            <TableCell align="right">Final Price (c/kWh)</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {fiPrices.map((price, index) => (
-            <TableRow key={index}>
-              <TableCell component="th" scope="row">
-                {price.timestampLocal}
-              </TableCell>
-              <TableCell align="right">{price.finalPrice}</TableCell>
-            </TableRow>
+    <div className={styles.tableWrapper}>
+      <h3>Electricity Prices</h3>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Price (c/kWh)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {fiPrices.map((entry, index) => (
+            <tr key={index}>
+              <td>{entry.timestampLocal}</td> {/* Use pre-formatted Finnish timestamp */}
+              <td>{entry.finalPrice}</td>
+            </tr>
           ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+        </tbody>
+      </table>
+    </div>
   );
 };
 

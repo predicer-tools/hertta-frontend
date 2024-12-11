@@ -16,11 +16,10 @@ import WeatherDataTable from '../components/Table/WeatherDataTable';
 import Tooltip from '@mui/material/Tooltip';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import CircularProgress from '@mui/material/CircularProgress';
-import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 import Box from '@mui/material/Box';
 import Switch from '@mui/material/Switch';
 import styles from '../pages/Dashboard.module.css';
-
+import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 
 
 function DashboardGrid() {
@@ -31,6 +30,8 @@ function DashboardGrid() {
         toggleHeaterEnabled,
 
         fiPrices,
+        fiPricesLoading,
+        fiPricesError,
 
         weatherData,
         weatherLoading,
@@ -314,7 +315,11 @@ function DashboardGrid() {
             <Typography variant="h6" component="h3" gutterBottom>
                 Electricity Prices
             </Typography>
-            <ElectricityPricesTable />
+            <ElectricityPricesTable
+            fiPrices={fiPrices}
+            loading={fiPricesLoading}
+            error={fiPricesError}
+            />
             </Modal>
 
             {/* Modal for Weather Data */}

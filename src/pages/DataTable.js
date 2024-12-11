@@ -9,6 +9,7 @@ import EditHeaterForm from '../forms/EditHeaterForm'; // Import EditHeaterForm
 import EditRoomForm from '../forms/EditRoomForm'; // Import EditRoomForm
 import useWeatherData from '../hooks/useWeatherData';
 import WeatherDataTable from '../components/Table/WeatherDataTable';
+import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 
 
 function DataTable() {
@@ -190,41 +191,11 @@ function DataTable() {
       </table>
     </div>
 
-      {/* Electricity Prices Table */}
-      <h3>Electricity Prices (FI)</h3>
-      <div className={styles.tableWrapper}>
-        {/* Handle Loading State */}
-        {fiPricesLoading && <p>Loading electricity prices...</p>}
-
-        {/* Handle Error State */}
-        {fiPricesError && <p>Error: {fiPricesError}</p>}
-
-        {/* Render Table if Data is Available */}
-        {!fiPricesLoading && !fiPricesError && (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Timestamp (Finnish Time)</th>
-                <th>Final Price (c/kWh)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fiPrices.length > 0 ? (
-                fiPrices.map((entry, index) => (
-                  <tr key={index}>
-                    <td>{entry.timestampLocal}</td>
-                    <td>{entry.finalPrice}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="2">No FI electricity price data available.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+    <ElectricityPricesTable
+      fiPrices={fiPrices}
+      loading={fiPricesLoading}
+      error={fiPricesError}
+    />
 
       <div>
       <h1>Weather App</h1>
