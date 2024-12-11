@@ -1,42 +1,25 @@
-// src/pages/ConfigPage.js
-
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import finlandLocations from '../utils/finlandLocations';
+import { materialInfo } from '../utils/materialInfo'; // Import materialInfo
 import styles from './ConfigPage.module.css';
 import ConfigContext from '../context/ConfigContext';
-// import { useMutation } from '@apollo/client'; // Assuming you're using GraphQL mutations
+import Modal from '../components/Modal/Modal';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 function ConfigPage() {
-  // =====================
-  // Configuration Form State
-  // =====================
   const [country, setCountry] = useState('');
   const [location, setLocation] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  // =====================
-  // Selected Material State
-  // =====================
   const [selectedMaterial, setSelectedMaterial] = useState('');
+  const [isMaterialInfoOpen, setIsMaterialInfoOpen] = useState(false);
 
   const navigate = useNavigate();
 
-  // =====================
-  // Context Consumption
-  // =====================
-  const {
-    updateConfig,
-    updateSensors,
-    updateDevices,
-    materials,
-  } = useContext(ConfigContext);
+  const { updateConfig, updateSensors, updateDevices } = useContext(ConfigContext);
 
-  // =====================
-  // Function to Fetch Home Assistant Data
-  // =====================
   const fetchHomeAssistantData = async () => {
     try {
       const sensorsResponse = await fetch('http://localhost:5000/mock-homeassistant/sensors');
@@ -49,22 +32,17 @@ function ConfigPage() {
       const sensors = await sensorsResponse.json();
       const devices = await devicesResponse.json();
 
-      // Update ConfigContext with sensors and devices
       updateSensors(sensors);
       updateDevices(devices);
     } catch (err) {
       console.error('Error fetching Home Assistant data:', err);
-      throw err; // Re-throw to handle in handleSubmit
+      throw err;
     }
   };
 
-  // =====================
-  // Handler to Submit Configuration Form
-  // =====================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation: Ensure all fields are filled
     if (!country.trim() || !location.trim() || !apiKey.trim() || !selectedMaterial.trim()) {
       setError('All fields, including Material selection, are required.');
       return;
@@ -76,16 +54,13 @@ function ConfigPage() {
     try {
       const response = await fetch('http://localhost:5000/mock-homeassistant/connect', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey }),
       });
 
       const result = await response.json();
 
       if (response.ok && result.success) {
-        // Update configuration state in context, including selectedMaterial
         updateConfig({
           isConfigured: true,
           country: country.trim(),
@@ -94,10 +69,7 @@ function ConfigPage() {
           selectedMaterial: selectedMaterial.trim(),
         });
 
-        // Fetch sensors and devices data
         await fetchHomeAssistantData();
-
-        // Redirect to Dashboard or desired page
         navigate('/');
       } else {
         throw new Error(result.error || 'Unknown error occurred.');
@@ -109,14 +81,14 @@ function ConfigPage() {
     }
   };
 
+  const handleOpenMaterialInfo = () => setIsMaterialInfoOpen(true);
+  const handleCloseMaterialInfo = () => setIsMaterialInfoOpen(false);
+
   return (
     <div className={styles.configPageContainer}>
       <h1>Welcome to Hertta Add-on</h1>
       <p>Please complete the following configuration to get started.</p>
       <form onSubmit={handleSubmit} className={styles.configForm}>
-        {/* =====================
-             Country Selection
-             ===================== */}
         <div className={styles.formGroup}>
           <label htmlFor="country">Country:</label>
           <select
@@ -130,9 +102,6 @@ function ConfigPage() {
           </select>
         </div>
 
-        {/* =====================
-             Location Selection
-             ===================== */}
         <div className={styles.formGroup}>
           <label htmlFor="location">Location:</label>
           <select
@@ -151,9 +120,6 @@ function ConfigPage() {
           </select>
         </div>
 
-        {/* =====================
-             API Key Input
-             ===================== */}
         <div className={styles.formGroup}>
           <label htmlFor="apiKey">Home Assistant API Key:</label>
           <input
@@ -166,11 +132,15 @@ function ConfigPage() {
           />
         </div>
 
-        {/* =====================
-             Material Selection Section
-             ===================== */}
         <div className={styles.formGroup}>
-          <label htmlFor="material">Select Material:</label>
+          <label htmlFor="material">
+            Select Material:
+            <InfoOutlinedIcon
+              onClick={handleOpenMaterialInfo}
+              style={{ marginLeft: '10px', cursor: 'pointer' }}
+              aria-label="More info about materials"
+            />
+          </label>
           <select
             id="material"
             value={selectedMaterial}
@@ -178,26 +148,31 @@ function ConfigPage() {
             required
           >
             <option value="">Select Material</option>
-            {materials.map((material, index) => (
+            {materialInfo.map((material, index) => (
               <option key={index} value={material.name}>
-                {material.name} ({material.value * 1000} W/m³)
+                {material.dropdown}
               </option>
             ))}
           </select>
         </div>
 
-        {/* =====================
-             Display Error Messages
-             ===================== */}
         {error && <p className={styles.errorMessage}>{error}</p>}
 
-        {/* =====================
-             Submit Button
-             ===================== */}
         <button type="submit" disabled={loading}>
           {loading ? 'Configuring...' : 'Save and Continue'}
         </button>
       </form>
+
+      <Modal isOpen={isMaterialInfoOpen} onClose={handleCloseMaterialInfo}>
+        <h2>Material Information</h2>
+        <ul>
+          {materialInfo.map((material, index) => (
+            <li key={index}>
+              <strong>{material.name}:</strong> {material.description}
+            </li>
+          ))}
+        </ul>
+      </Modal>
     </div>
   );
 }

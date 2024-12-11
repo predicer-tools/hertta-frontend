@@ -1,50 +1,38 @@
-// src/pages/EditConfigPage.js
-
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import finlandLocations from '../utils/finlandLocations';
+import { materialInfo } from '../utils/materialInfo'; // Import materialInfo
 import ConfigContext from '../context/ConfigContext';
 import styles from './ConfigPage.module.css';
+import Modal from '../components/Modal/Modal';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 function EditConfigPage() {
-  // =====================
-  // Configuration Form State
-  // =====================
   const [country, setCountry] = useState('');
   const [location, setLocation] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [selectedMaterial, setSelectedMaterial] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false); // State to toggle API key visibility
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isMaterialInfoOpen, setIsMaterialInfoOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const navigate = useNavigate();
 
-  // =====================
-  // Context Consumption
-  // =====================
   const {
     updateConfig,
     updateSensors,
     updateDevices,
-    materials,
     config, // Access current configuration
   } = useContext(ConfigContext);
 
-  // =====================
-  // Initialize Form with Existing Config
-  // =====================
   useEffect(() => {
     setCountry(config.country);
     setLocation(config.location);
-    // Do not pre-fill API Key to keep it hidden
-    setApiKey(''); // Initialize as empty
+    setApiKey(''); // Do not pre-fill API Key for security
     setSelectedMaterial(config.selectedMaterial);
   }, [config]);
 
-  // =====================
-  // Function to Fetch Home Assistant Data
-  // =====================
   const fetchHomeAssistantData = async () => {
     try {
       const sensorsResponse = await fetch('http://localhost:5000/mock-homeassistant/sensors');
@@ -57,29 +45,23 @@ function EditConfigPage() {
       const sensors = await sensorsResponse.json();
       const devices = await devicesResponse.json();
 
-      // Update ConfigContext with sensors and devices
       updateSensors(sensors);
       updateDevices(devices);
     } catch (err) {
       console.error('Error fetching Home Assistant data:', err);
-      throw err; // Re-throw to handle in handleSubmit
+      throw err;
     }
   };
 
-  // =====================
-  // Handler to Submit Edit Configuration Form
-  // =====================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation: Ensure required fields are filled
     if (!country.trim() || !location.trim() || !selectedMaterial.trim()) {
       setError('Country, Location, and Material selection are required.');
       return;
     }
 
-    // If updating API Key, ensure it's provided
-    if (apiKey.trim() && apiKey.trim().length < 8) { // Example validation: min length
+    if (apiKey.trim() && apiKey.trim().length < 8) {
       setError('API Key must be at least 8 characters long.');
       return;
     }
@@ -88,30 +70,20 @@ function EditConfigPage() {
     setError(null);
 
     try {
-      // Prepare new configuration object
       const newConfig = {
-        isConfigured: true, // Ensure this remains true
+        isConfigured: true,
         country: country.trim(),
         location: location.trim(),
         selectedMaterial: selectedMaterial.trim(),
+        apiKey: apiKey.trim() || config.apiKey, // Use new API Key if provided, otherwise retain the current one
       };
 
-      // Conditionally include API Key if a new one is provided
-      if (apiKey.trim()) {
-        newConfig.apiKey = apiKey.trim();
-      } else {
-        newConfig.apiKey = config.apiKey; // Retain existing API Key
-      }
-
-      // Update configuration state in context
       updateConfig(newConfig);
 
-      // Optionally, re-fetch sensors and devices if API key or other critical info changed
       if (apiKey.trim()) {
         await fetchHomeAssistantData();
       }
 
-      // Redirect to Dashboard or desired page
       navigate('/');
     } catch (err) {
       setError(err.message || 'An error occurred while updating the configuration.');
@@ -120,21 +92,15 @@ function EditConfigPage() {
     }
   };
 
-  // =====================
-  // Handler to Toggle API Key Visibility
-  // =====================
-  const toggleShowApiKey = () => {
-    setShowApiKey((prev) => !prev);
-  };
+  const toggleShowApiKey = () => setShowApiKey((prev) => !prev);
+  const handleOpenMaterialInfo = () => setIsMaterialInfoOpen(true);
+  const handleCloseMaterialInfo = () => setIsMaterialInfoOpen(false);
 
   return (
     <div className={styles.editConfigPageContainer}>
       <h1>Edit Configuration</h1>
       <p>Update your configuration settings below.</p>
       <form onSubmit={handleSubmit} className={styles.editConfigForm}>
-        {/* =====================
-             Country Selection
-             ===================== */}
         <div className={styles.formGroup}>
           <label htmlFor="country">Country:</label>
           <select
@@ -145,13 +111,9 @@ function EditConfigPage() {
           >
             <option value="">Select Country</option>
             <option value="Finland">Finland</option>
-            {/* Add more countries as needed */}
           </select>
         </div>
 
-        {/* =====================
-             Location Selection
-             ===================== */}
         <div className={styles.formGroup}>
           <label htmlFor="location">Location:</label>
           <select
@@ -170,9 +132,6 @@ function EditConfigPage() {
           </select>
         </div>
 
-        {/* =====================
-             API Key Input
-             ===================== */}
         <div className={styles.formGroup}>
           <label htmlFor="apiKey">Home Assistant API Key:</label>
           <div className={styles.passwordWrapper}>
@@ -198,11 +157,15 @@ function EditConfigPage() {
           </small>
         </div>
 
-        {/* =====================
-             Material Selection Dropdown
-             ===================== */}
         <div className={styles.formGroup}>
-          <label htmlFor="material">Select Material:</label>
+          <label htmlFor="material">
+            Select Material:
+            <InfoOutlinedIcon
+              onClick={handleOpenMaterialInfo}
+              style={{ marginLeft: '10px', cursor: 'pointer' }}
+              aria-label="More info about materials"
+            />
+          </label>
           <select
             id="material"
             value={selectedMaterial}
@@ -210,26 +173,31 @@ function EditConfigPage() {
             required
           >
             <option value="">Select Material</option>
-            {materials.map((material, index) => (
+            {materialInfo.map((material, index) => (
               <option key={index} value={material.name}>
-                {material.name} ({material.value * 1000} W/m³)
+                {material.dropdown}
               </option>
             ))}
           </select>
         </div>
 
-        {/* =====================
-             Display Error Messages
-             ===================== */}
         {error && <p className={styles.errorMessage}>{error}</p>}
 
-        {/* =====================
-             Submit Button
-             ===================== */}
         <button type="submit" disabled={loading} className={styles.submitButton}>
           {loading ? 'Updating...' : 'Update Configuration'}
         </button>
       </form>
+
+      <Modal isOpen={isMaterialInfoOpen} onClose={handleCloseMaterialInfo}>
+        <h2>Material Information</h2>
+        <ul>
+          {materialInfo.map((material, index) => (
+            <li key={index}>
+              <strong>{material.name}:</strong> {material.description}
+            </li>
+          ))}
+        </ul>
+      </Modal>
     </div>
   );
 }
