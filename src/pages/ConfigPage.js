@@ -5,20 +5,38 @@ import { useNavigate } from 'react-router-dom';
 import finlandLocations from '../utils/finlandLocations';
 import styles from './ConfigPage.module.css';
 import ConfigContext from '../context/ConfigContext';
-import { useMutation } from '@apollo/client';
+// import { useMutation } from '@apollo/client'; // Assuming you're using GraphQL mutations
 
 function ConfigPage() {
+  // =====================
+  // Configuration Form State
+  // =====================
   const [country, setCountry] = useState('');
   const [location, setLocation] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const navigate = useNavigate();
-  const { updateConfig, updateSensors, updateDevices } = useContext(ConfigContext);
-  // Remove WeatherContext consumption
-  // const { getWeatherData } = useContext(WeatherContext); // Remove this line
+  // =====================
+  // Selected Material State
+  // =====================
+  const [selectedMaterial, setSelectedMaterial] = useState('');
 
+  const navigate = useNavigate();
+
+  // =====================
+  // Context Consumption
+  // =====================
+  const {
+    updateConfig,
+    updateSensors,
+    updateDevices,
+    materials,
+  } = useContext(ConfigContext);
+
+  // =====================
+  // Function to Fetch Home Assistant Data
+  // =====================
   const fetchHomeAssistantData = async () => {
     try {
       const sensorsResponse = await fetch('http://localhost:5000/mock-homeassistant/sensors');
@@ -40,11 +58,15 @@ function ConfigPage() {
     }
   };
 
+  // =====================
+  // Handler to Submit Configuration Form
+  // =====================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!country.trim() || !location.trim() || !apiKey.trim()) {
-      setError('All fields are required.');
+    // Validation: Ensure all fields are filled
+    if (!country.trim() || !location.trim() || !apiKey.trim() || !selectedMaterial.trim()) {
+      setError('All fields, including Material selection, are required.');
       return;
     }
 
@@ -63,18 +85,19 @@ function ConfigPage() {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        // Update configuration state
+        // Update configuration state in context, including selectedMaterial
         updateConfig({
           isConfigured: true,
           country: country.trim(),
           location: location.trim(),
           apiKey: apiKey.trim(),
+          selectedMaterial: selectedMaterial.trim(),
         });
 
-        // Fetch sensors and devices
+        // Fetch sensors and devices data
         await fetchHomeAssistantData();
 
-        // Redirect to Dashboard
+        // Redirect to Dashboard or desired page
         navigate('/');
       } else {
         throw new Error(result.error || 'Unknown error occurred.');
@@ -91,6 +114,9 @@ function ConfigPage() {
       <h1>Welcome to Hertta Add-on</h1>
       <p>Please complete the following configuration to get started.</p>
       <form onSubmit={handleSubmit} className={styles.configForm}>
+        {/* =====================
+             Country Selection
+             ===================== */}
         <div className={styles.formGroup}>
           <label htmlFor="country">Country:</label>
           <select
@@ -103,6 +129,10 @@ function ConfigPage() {
             <option value="Finland">Finland</option>
           </select>
         </div>
+
+        {/* =====================
+             Location Selection
+             ===================== */}
         <div className={styles.formGroup}>
           <label htmlFor="location">Location:</label>
           <select
@@ -120,6 +150,10 @@ function ConfigPage() {
             ))}
           </select>
         </div>
+
+        {/* =====================
+             API Key Input
+             ===================== */}
         <div className={styles.formGroup}>
           <label htmlFor="apiKey">Home Assistant API Key:</label>
           <input
@@ -131,7 +165,35 @@ function ConfigPage() {
             required
           />
         </div>
+
+        {/* =====================
+             Material Selection Section
+             ===================== */}
+        <div className={styles.formGroup}>
+          <label htmlFor="material">Select Material:</label>
+          <select
+            id="material"
+            value={selectedMaterial}
+            onChange={(e) => setSelectedMaterial(e.target.value)}
+            required
+          >
+            <option value="">Select Material</option>
+            {materials.map((material, index) => (
+              <option key={index} value={material.name}>
+                {material.name} ({material.value * 1000} W/m³)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* =====================
+             Display Error Messages
+             ===================== */}
         {error && <p className={styles.errorMessage}>{error}</p>}
+
+        {/* =====================
+             Submit Button
+             ===================== */}
         <button type="submit" disabled={loading}>
           {loading ? 'Configuring...' : 'Save and Continue'}
         </button>

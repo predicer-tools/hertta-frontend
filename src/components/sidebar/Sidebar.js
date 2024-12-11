@@ -29,14 +29,6 @@ function Sidebar({ isOpen }) {
           </li>
           <li className={styles.navItem}>
             <NavLink
-              to="/manage-input-data" // New Route Link
-              className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
-            >
-              Manage Input Data
-            </NavLink>
-          </li>
-          <li className={styles.navItem}>
-            <NavLink
               to="/config"
               className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
             >

@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import styles from './DataTable.module.css'; // Import CSS Module
 import DataContext from '../context/DataContext'; // Import DataContext
-import { Tooltip } from 'react-tooltip'; // Import Tooltip from react-tooltip
 import 'react-tooltip/dist/react-tooltip.css'; // Import react-tooltip styles
 import Modal from '../components/Modal/Modal'; // Import Modal
 import EditHeaterForm from '../forms/EditHeaterForm'; // Import EditHeaterForm

@@ -4,7 +4,6 @@ import React, { useState, useContext } from 'react';
 import PropTypes from 'prop-types';
 import styles from './EditRoomForm.module.css'; // Ensure your CSS module is properly set up
 import DataContext from '../context/DataContext'; // Import DataContext
-import Modal from '../components/Modal/Modal'; // Import Modal component
 
 /**
  * EditRoomForm Component

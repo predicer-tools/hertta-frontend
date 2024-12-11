@@ -21,6 +21,7 @@ export const ConfigProvider = ({ children }) => {
     country: localStorage.getItem('country') || '',
     location: localStorage.getItem('location') || '',
     apiKey: localStorage.getItem('apiKey') || '',
+    selectedMaterial: localStorage.getItem('selectedMaterial') || '', // Added selectedMaterial
   });
 
   // =====================
@@ -70,6 +71,7 @@ export const ConfigProvider = ({ children }) => {
     localStorage.setItem('country', config.country);
     localStorage.setItem('location', config.location);
     localStorage.setItem('apiKey', config.apiKey);
+    localStorage.setItem('selectedMaterial', config.selectedMaterial); // Persist selectedMaterial
   }, [isConfigured, config]);
 
   // =====================
@@ -99,7 +101,7 @@ export const ConfigProvider = ({ children }) => {
   /**
    * Updates the configuration state.
    * @param {Object} newConfig - Partial configuration to update.
-   * Example: { isConfigured: true, country: 'Finland' }
+   * Example: { isConfigured: true, country: 'Finland', selectedMaterial: 'Kevytrakenteinen' }
    */
   const updateConfig = (newConfig) => {
     if (newConfig.isConfigured !== undefined) {
@@ -110,6 +112,7 @@ export const ConfigProvider = ({ children }) => {
       country: newConfig.country || prev.country,
       location: newConfig.location || prev.location,
       apiKey: newConfig.apiKey || prev.apiKey,
+      selectedMaterial: newConfig.selectedMaterial || prev.selectedMaterial, // Update selectedMaterial
     }));
   };
 
@@ -164,6 +167,7 @@ export const ConfigProvider = ({ children }) => {
       country: '',
       location: '',
       apiKey: '',
+      selectedMaterial: '', // Reset selectedMaterial
     });
     setSensors([]);
     setDevices([]);
@@ -179,29 +183,35 @@ export const ConfigProvider = ({ children }) => {
   // Provider's Value
   // =====================
   
+  const contextValue = {
+    // Configuration State and Updaters
+    isConfigured,
+    config,
+    updateConfig,
+
+    // Sensors State and Updaters
+    sensors,
+    updateSensors,
+
+    // Devices State and Updaters
+    devices,
+    updateDevices,
+
+    // Materials State and Updaters
+    materials,
+    updateMaterial,
+
+    // Reset Function
+    resetConfig,
+  };
+
+  // =====================
+  // Provider's Return
+  // =====================
+  
   return (
     <ConfigContext.Provider
-      value={{
-        // Configuration State and Updaters
-        isConfigured,
-        config,
-        updateConfig,
-
-        // Sensors State and Updaters
-        sensors,
-        updateSensors,
-
-        // Devices State and Updaters
-        devices,
-        updateDevices,
-
-        // Materials State and Updaters
-        materials,
-        updateMaterial,
-
-        // Reset Function
-        resetConfig,
-      }}
+      value={contextValue}
     >
       {children}
     </ConfigContext.Provider>

@@ -16,10 +16,10 @@ import WeatherDataTable from '../components/Table/WeatherDataTable';
 import Tooltip from '@mui/material/Tooltip';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import CircularProgress from '@mui/material/CircularProgress';
-import Button from '@mui/material/Button';
 import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 import Box from '@mui/material/Box';
 import Switch from '@mui/material/Switch';
+import styles from '../pages/Dashboard.module.css';
 
 
 
@@ -130,6 +130,7 @@ function DashboardGrid() {
                         {optimizeStarted && (
                             <button
                             onClick={stopOptimization}
+                            className={styles.cancelButton}
                             style={{ marginLeft: '10px' }}
                             >
                             Stop Optimization
@@ -201,7 +202,7 @@ function DashboardGrid() {
                             {/* Current Electricity Price */}
                             {firstFiPrice ? (
                             <Typography variant="body1" gutterBottom>
-                                <strong>Current Price:</strong> {firstFiPrice.finalPrice} c/kWh at {firstFiPrice.timestampLocal}
+                                <strong>Current Price:</strong> {firstFiPrice.finalPrice} c/kWh
                             </Typography>
                             ) : (
                             <Typography variant="body1" gutterBottom>
