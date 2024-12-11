@@ -14,7 +14,7 @@ import DataContext from '../context/DataContext'; // Import DataContext
 function EditHeaterForm({ heater, onClose }) {
   console.log("EditHeaterForm Props:", { heater, onClose }); // Debugging
 
-  const { updateHeater, rooms } = useContext(DataContext); // Access updateHeater and rooms from DataContext
+  const { updateHeater, rooms, controlSignals, optimizeStarted } = useContext(DataContext); // Access updateHeater, rooms, controlSignals, optimizeStarted from DataContext
 
   // Local state for form inputs
   const [name, setName] = useState(heater.name);
@@ -22,8 +22,7 @@ function EditHeaterForm({ heater, onClose }) {
   const [roomId, setRoomId] = useState(heater.roomId);
   const [isEnabled, setIsEnabled] = useState(heater.isEnabled);
 
-  // Assuming controlSignals are managed in DataContext and accessible via heater.id
-  const { controlSignals, optimizeStarted } = useContext(DataContext);
+  // Access control signals for this heater
   const heaterControlSignals = controlSignals[heater.id] || [];
 
   const handleSubmit = (e) => {
@@ -42,13 +41,18 @@ function EditHeaterForm({ heater, onClose }) {
     }
 
     // Update heater with new details
-    updateHeater({
+    const isUpdated = updateHeater({
       id: heater.id,
       name: name.trim(),
       capacity: parseFloat(capacity),
       roomId,
       isEnabled,
     });
+
+    if (!isUpdated) {
+      alert('Failed to update heater. Please check the console for details.');
+      return;
+    }
 
     // Close the modal
     onClose();
@@ -89,7 +93,7 @@ function EditHeaterForm({ heater, onClose }) {
             onChange={(e) => setCapacity(e.target.value)}
             placeholder="Enter Capacity in kW"
             required
-            min="0"
+            min="0.1"
             step="0.1"
           />
         </div>
@@ -122,27 +126,21 @@ function EditHeaterForm({ heater, onClose }) {
         </div>
 
         {/* Control Signals Display */}
-        <div className={styles.editHeaterForm}>
-            <h2>Edit Heating Device</h2>
-            <form>
-                {/* Existing form fields */}
-                <div className={styles.controlSignals}>
-                    <h3>Control Signals</h3>
-                    {optimizeStarted ? (
-                        heaterControlSignals.length > 0 ? (
-                            <ul>
-                                {heaterControlSignals.map((signal, index) => (
-                                    <li key={index}>Hour {index + 1}: {signal}</li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p>No control signals generated for this heater yet.</p>
-                        )
-                    ) : (
-                        <p>Start optimization to get control signals.</p>
-                    )}
-                </div>
-            </form>
+        <div className={styles.controlSignals}>
+          <h3>Control Signals</h3>
+          {optimizeStarted ? (
+            heaterControlSignals.length > 0 ? (
+              <ul>
+                {heaterControlSignals.map((signal, index) => (
+                  <li key={index}>Hour {index + 1}: {signal}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>No control signals generated for this heater yet.</p>
+            )
+          ) : (
+            <p>Start optimization to get control signals.</p>
+          )}
         </div>
 
         {/* Buttons */}

@@ -62,13 +62,13 @@ function FormElectricHeater({ fetchedDevices = [], onClose }) {
     const selectedDevice = fetchedDevices.find(device => device.entity_id === trimmedHeaterId);
     const heaterName = selectedDevice?.attributes?.friendly_name || trimmedHeaterId; // Fallback to heaterId if friendly_name is unavailable
 
-    // Add heating device with isEnabled set to true and include name
+    // Add heating device with isEnabled set to true in DataContext.js
     addElectricHeater({
       id: trimmedHeaterId, // Device ID
       name: heaterName, // Heater Name
       capacity: parsedCapacity, // Capacity in kW
       roomId: trimmedRoomId, // Associated Room ID
-      isEnabled: false, // Initialize isEnabled as true
+      // isEnabled is handled in DataContext.js
     });
 
     // Reset form

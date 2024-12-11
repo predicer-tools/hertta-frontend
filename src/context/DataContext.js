@@ -12,47 +12,69 @@ const DataContext = createContext();
 // DataProvider component to wrap around parts of the app that need access to the data
 export const DataProvider = ({ children }) => {
   // =====================
-  // Existing States
+  // States
   // =====================
 
   // State for Rooms
   const [rooms, setRooms] = useState(() => {
-    const storedRooms = JSON.parse(localStorage.getItem('rooms')) || [];
-    // Migrate existing rooms to include new fields and remove invalid exceptions
+    const storedRooms = JSON.parse(localStorage.getItem('rooms'));
+    if (!Array.isArray(storedRooms)) {
+      console.warn('Stored rooms data is not an array. Initializing with an empty array.');
+      return [];
+    }
+
+    // Migrate existing rooms to ensure consistency (remove exceptions and rename fields)
     const migratedRooms = storedRooms.map(room => {
+      if (!room) {
+        console.warn('Encountered an undefined room during migration. Skipping.');
+        return null;
+      }
+
       const {
-        defaultMaxTemp = room.maxTemp || 25,
-        defaultMinTemp = room.minTemp || 15,
-        exceptions = []
+        maxTemp = room.defaultMaxTemp || 25,
+        minTemp = room.defaultMinTemp || 15,
+        sensorId,
+        sensorState,
+        sensorUnit,
+        roomId,
+        roomWidth,
+        roomLength,
       } = room;
 
-      // Filter out exceptions that duplicate default temperatures
-      const filteredExceptions = exceptions.filter(ex => {
-        return !(ex.maxTemp === defaultMaxTemp && ex.minTemp === defaultMinTemp);
-      });
+      if (!roomId || !roomWidth || !roomLength || !sensorId) {
+        console.warn('Room missing required fields during migration:', room);
+        return null;
+      }
 
       return {
-        ...room,
-        defaultMaxTemp,
-        defaultMinTemp,
-        exceptions: filteredExceptions
+        roomId,
+        roomWidth,
+        roomLength,
+        maxTemp,
+        minTemp,
+        sensorId,
+        sensorState,
+        sensorUnit,
       };
-    });
+    }).filter(room => room !== null); // Remove any null entries resulting from invalid rooms
+
     return migratedRooms;
-  });
+  });  
 
   // State for Heaters
   const [heaters, setHeaters] = useState(() => {
-    return JSON.parse(localStorage.getItem('heaters')) || [];
+    const storedHeaters = JSON.parse(localStorage.getItem('heaters'));
+    return Array.isArray(storedHeaters) ? storedHeaters : [];
   });
 
   // State for Control Signals
   const [controlSignals, setControlSignals] = useState(() => {
-    return JSON.parse(localStorage.getItem('controlSignals')) || {};
+    const storedControlSignals = JSON.parse(localStorage.getItem('controlSignals'));
+    return storedControlSignals && typeof storedControlSignals === 'object' ? storedControlSignals : {};
   });
 
   // =====================
-  // Use the Hooks
+  // Hooks
   // =====================
 
   // Get config from ConfigContext
@@ -63,9 +85,9 @@ export const DataProvider = ({ children }) => {
   const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
 
   const currentWeather =
-  weatherData && Array.isArray(weatherData.weather_values) && weatherData.weather_values.length > 0
-    ? weatherData.weather_values[0]
-    : null;
+    weatherData && Array.isArray(weatherData.weather_values) && weatherData.weather_values.length > 0
+      ? weatherData.weather_values[0]
+      : null;
 
   console.log("Current Weather:", currentWeather);
 
@@ -79,37 +101,40 @@ export const DataProvider = ({ children }) => {
   const [lastOptimizedTime, setLastOptimizedTime] = useState(() => {
     return JSON.parse(localStorage.getItem('lastOptimizedTime')) || null;
   });
-  
+
+  // =====================
+  // Optimization Functions
+  // =====================
 
   const startOptimization = useCallback(() => {
     const now = new Date();
     console.log('Starting optimization at:', now);
-  
+
     if (!heaters || heaters.length === 0 || !fiPrices || fiPrices.length === 0) {
       const generatedControlSignals = generateControlSignals(heaters, []);
       setControlSignals(generatedControlSignals);
       setOptimizeStarted(true); // Set optimizeStarted to true
       setLastOptimizedTime(now);
-  
+
       // Persist data
       localStorage.setItem('controlSignals', JSON.stringify(generatedControlSignals));
       localStorage.setItem('optimizeStarted', JSON.stringify(true));
       localStorage.setItem('lastOptimizedTime', JSON.stringify(now));
-  
+
       console.log('Optimization completed with OFF signals at:', now);
       return;
     }
-  
+
     const generatedControlSignals = generateControlSignals(heaters, fiPrices);
     setControlSignals(generatedControlSignals);
     setOptimizeStarted(true); // Set optimizeStarted to true
     setLastOptimizedTime(now);
-  
+
     // Persist data
     localStorage.setItem('controlSignals', JSON.stringify(generatedControlSignals));
     localStorage.setItem('optimizeStarted', JSON.stringify(true));
     localStorage.setItem('lastOptimizedTime', JSON.stringify(now));
-  
+
     console.log('Optimization completed with generated signals at:', now);
   }, [heaters, fiPrices]);
 
@@ -118,7 +143,7 @@ export const DataProvider = ({ children }) => {
     setOptimizeStarted(false);
     setControlSignals({}); // Clear control signals or leave them as is
     setLastOptimizedTime(null);
-  
+
     // Persist the reset state
     localStorage.removeItem('controlSignals');
     localStorage.setItem('optimizeStarted', JSON.stringify(false));
@@ -127,37 +152,22 @@ export const DataProvider = ({ children }) => {
 
   useEffect(() => {
     if (!optimizeStarted || !lastOptimizedTime) return;
-  
+
     const intervalId = setInterval(() => {
       const now = new Date();
       const diffInMinutes = (now - new Date(lastOptimizedTime)) / (1000 * 60);
-  
+
       if (diffInMinutes >= 15) {
         console.log('Automatically triggering optimization.');
         startOptimization();
       }
     }, 60000); // Check every 60 seconds
-  
+
     return () => clearInterval(intervalId); // Cleanup on component unmount or optimizeStarted change
   }, [optimizeStarted, lastOptimizedTime, startOptimization]);
 
   // =====================
-  // Load Rooms Data from LocalStorage on Mount (Existing - Preserved)
-  // =====================
-
-  // Already handled in initial useState with potential migration
-
-  // =====================
-  // Load Heaters Data from LocalStorage on Mount (Existing - Preserved)
-  // =====================
-
-  useEffect(() => {
-    const storedHeaters = JSON.parse(localStorage.getItem('heaters')) || [];
-    setHeaters(storedHeaters);
-  }, []);
-
-  // =====================
-  // Persist Rooms Data to LocalStorage on Change (Updated)
+  // Persist Rooms Data to LocalStorage on Change (Already Handled in Initialization)
   // =====================
 
   useEffect(() => {
@@ -188,12 +198,11 @@ export const DataProvider = ({ children }) => {
       roomId,
       roomWidth,
       roomLength,
-      defaultMaxTemp,
-      defaultMinTemp,
+      maxTemp,
+      minTemp,
       sensorId,
       sensorState,
       sensorUnit,
-      exceptions = []
     } = room;
   
     // Validate required fields
@@ -201,8 +210,8 @@ export const DataProvider = ({ children }) => {
       !roomId ||
       !roomWidth ||
       !roomLength ||
-      defaultMaxTemp === undefined ||
-      defaultMinTemp === undefined ||
+      maxTemp === undefined ||
+      minTemp === undefined ||
       !sensorId
     ) {
       console.error('Missing required room fields.');
@@ -224,12 +233,11 @@ export const DataProvider = ({ children }) => {
       roomId,
       roomWidth,
       roomLength,
-      defaultMaxTemp,
-      defaultMinTemp,
+      maxTemp,
+      minTemp,
       sensorId,
       sensorState,
       sensorUnit,
-      exceptions
     };
 
     setRooms((prevRooms) => {
@@ -250,6 +258,51 @@ export const DataProvider = ({ children }) => {
     setRooms((prevRooms) => prevRooms.filter((room) => room.roomId !== roomId));
     // Also delete heaters associated with this room
     setHeaters((prevHeaters) => prevHeaters.filter((heater) => heater.roomId !== roomId));
+  }, []);
+
+  /**
+   * Updates an existing room's details.
+   * @param {Object} updatedRoom - The room object with updated details.
+   * @returns {boolean} - Returns true if update is successful, false otherwise.
+   */
+  const updateRoomFunc = useCallback((updatedRoom) => {
+    const {
+      roomId,
+      roomWidth,
+      roomLength,
+      maxTemp,
+      minTemp,
+      sensorId,
+      sensorState,
+      sensorUnit,
+    } = updatedRoom;
+  
+    // Validation: Ensure required fields are present
+    if (
+      !roomId ||
+      !roomWidth ||
+      !roomLength ||
+      maxTemp === undefined ||
+      minTemp === undefined ||
+      !sensorId
+    ) {
+      console.error('Missing required room fields.');
+      return false;
+    }
+  
+    setRooms((prevRooms) => {
+      const roomExists = prevRooms.some((room) => room.roomId === roomId);
+      if (!roomExists) {
+        console.error(`Room with ID "${roomId}" does not exist.`);
+        return prevRooms;
+      }
+  
+      return prevRooms.map((room) =>
+        room.roomId === roomId ? { ...room, ...updatedRoom } : room
+      );
+    });
+  
+    return true;
   }, []);
 
   // =====================
@@ -285,6 +338,8 @@ export const DataProvider = ({ children }) => {
       return;
     }
 
+    console.log('Adding heater:', heater);
+
     setHeaters((prevHeaters) => [
       ...prevHeaters,
       {
@@ -315,80 +370,26 @@ export const DataProvider = ({ children }) => {
     );
   }, []);
 
-  // =====================
-  // Function to Update a Heater (Existing - Preserved)
-  // =====================
-
   /**
    * Updates an existing heater's details.
    * @param {Object} updatedHeater - The heater object with updated details.
+   * @returns {boolean} - Returns true if update is successful, false otherwise.
    */
   const updateHeaterFunc = useCallback((updatedHeater) => {
+    console.log('Updating heater:', updatedHeater);
+    const heaterExists = heaters.some((heater) => heater.id === updatedHeater.id);
+    if (!heaterExists) {
+      console.error(`Heater with ID "${updatedHeater.id}" does not exist.`);
+      return false;
+    }
+
     setHeaters((prevHeaters) =>
       prevHeaters.map((heater) =>
         heater.id === updatedHeater.id ? { ...heater, ...updatedHeater } : heater
       )
     );
-  }, []);
-
-  // =====================
-  // Function to Update a Room (Updated)
-  // =====================
-
-  /**
-   * Updates an existing room's details.
-   * @param {Object} updatedRoom - The room object with updated details.
-   * @returns {boolean} - Returns true if update is successful, false otherwise.
-   */
-  const updateRoomFunc = useCallback((updatedRoom) => {
-    const {
-      roomId,
-      roomWidth,
-      roomLength,
-      defaultMaxTemp,
-      defaultMinTemp,
-      sensorId,
-      sensorState,
-      sensorUnit,
-      exceptions
-    } = updatedRoom;
-
-    // Validate required fields
-    if (
-      !roomId ||
-      !roomWidth ||
-      !roomLength ||
-      defaultMaxTemp === undefined ||
-      defaultMinTemp === undefined ||
-      !sensorId
-    ) {
-      console.error('Missing required room fields.');
-      return false;
-    }
-
-    // Validation: Ensure no exception has the same temp as default
-  for (let i = 0; i < exceptions.length; i++) {
-    const ex = exceptions[i];
-    if (ex.maxTemp === defaultMaxTemp && ex.minTemp === defaultMinTemp) {
-      console.error(`Exception ${i + 1} has the same maxTemp and minTemp as the room's defaults.`);
-      return false; // Prevent adding or updating this exception
-    }
-  }
-
-    setRooms((prevRooms) => {
-      const roomExists = prevRooms.some((room) => room.roomId === roomId);
-      if (!roomExists) {
-        console.error(`Room with ID "${roomId}" does not exist.`);
-        return prevRooms;
-      }
-
-      return prevRooms.map((room) =>
-        room.roomId === roomId ? { ...room, ...updatedRoom } : room
-      );
-    });
-
-    return true;
-  }, []);
+    return true; // Indicate successful update
+  }, [heaters]);
 
   // =====================
   // Function to Reset All Data (Existing - Preserved)
@@ -417,50 +418,54 @@ export const DataProvider = ({ children }) => {
   }, []);
 
   // =====================
+  // Define Context Value
+  // =====================
+
+  const contextValue = {
+    // Rooms State and Functions
+    rooms,
+    setRooms,
+    addRoom,
+    deleteRoom,
+    updateRoom: updateRoomFunc,
+
+    // Heaters State and Functions
+    heaters,
+    setHeaters,
+    addElectricHeater,
+    deleteHeater,
+    toggleHeaterEnabled,
+    updateHeater: updateHeaterFunc,
+
+    // Electricity Prices
+    fiPrices,
+    fiPricesLoading,
+    fiPricesError,
+
+    // Control Signals
+    controlSignals,
+    setControlSignals,
+    optimizeStarted,
+    startOptimization,
+    stopOptimization,
+    lastOptimizedTime,
+
+    // Weather Data (from useWeatherData hook)
+    weatherData,
+    weatherLoading,
+    weatherError,
+    currentWeather,
+
+    // Reset
+    resetData,
+  };
+
+  // =====================
   // Provider's Value
   // =====================
 
   return (
-    <DataContext.Provider
-      value={{
-        // Rooms State and Functions
-        rooms,
-        setRooms,
-        addRoom,
-        deleteRoom,
-        updateRoom: updateRoomFunc,
-
-        // Heaters State and Functions
-        heaters,
-        setHeaters,
-        addElectricHeater,
-        deleteHeater,
-        toggleHeaterEnabled,
-        updateHeater: updateHeaterFunc,
-
-        // Electricity Prices
-        fiPrices,
-        fiPricesLoading,
-        fiPricesError,
-
-        // Control Signals
-        controlSignals,
-        setControlSignals,
-        optimizeStarted,
-        startOptimization,
-        stopOptimization,
-        lastOptimizedTime,
-
-        // Weather Data (from useWeatherData hook)
-        weatherData,
-        weatherLoading,
-        weatherError,
-        currentWeather,
-
-        // Reset
-        resetData,
-      }}
-    >
+    <DataContext.Provider value={contextValue}>
       {children}
     </DataContext.Provider>
   );

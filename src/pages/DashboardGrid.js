@@ -19,7 +19,6 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Button from '@mui/material/Button';
 import ElectricityPricesTable from '../components/Table/ElectricityPricesTable';
 import Box from '@mui/material/Box';
-import { getCurrentTempLimits } from '../utils/tempUtils';
 import Switch from '@mui/material/Switch';
 
 
@@ -29,20 +28,15 @@ function DashboardGrid() {
         rooms,
         heaters,
 
-        updateRoom,
-        updateElectricHeater,
         toggleHeaterEnabled,
 
         fiPrices,
-        fiPricesLoading,
-        fiPricesError,
 
         weatherData,
         weatherLoading,
         weatherError,
         currentWeather,
 
-        controlSignals, // Access control signals
         optimizeStarted,
         startOptimization, // Use startOptimization from DataContext
         stopOptimization,
@@ -265,13 +259,13 @@ function DashboardGrid() {
                                     }}
                                 >
                                     <Typography variant="subtitle1">
-                                        <strong>Current temperature limits:</strong>
+                                        <strong>Temperature limits:</strong>
                                     </Typography>
                                     <Typography variant="body2">
-                                        <strong>Max:</strong> {getCurrentTempLimits(room).maxTemp} °C
+                                        <strong>Max:</strong> {room.maxTemp} °C
                                     </Typography>
                                     <Typography variant="body2">
-                                        <strong>Min:</strong> {getCurrentTempLimits(room).minTemp} °C
+                                        <strong>Min:</strong> {room.minTemp} °C
                                     </Typography>
                                 </Box>
 

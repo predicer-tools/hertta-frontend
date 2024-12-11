@@ -10,7 +10,6 @@ import EditHeaterForm from '../forms/EditHeaterForm'; // Import EditHeaterForm
 import EditRoomForm from '../forms/EditRoomForm'; // Import EditRoomForm
 import useWeatherData from '../hooks/useWeatherData';
 import WeatherDataTable from '../components/Table/WeatherDataTable';
-import TemperatureCalendar from '../components/TemperatureCalendar';
 
 
 function DataTable() {
@@ -111,6 +110,49 @@ function DataTable() {
         </table>
       </div>
 
+      
+      {/* Heating Devices Table */}
+      <h3>Heating Devices</h3>
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Heater ID</th>
+              <th>Name</th>
+              <th>Capacity (kW)</th>
+              <th>Room</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {heaters.length > 0 ? heaters.map((heater, index) => {
+              // Find the associated room's name
+              const associatedRoom = rooms.find(room => room.roomId === heater.roomId);
+              const roomName = associatedRoom ? associatedRoom.roomId : 'Unassigned';
+
+              return (
+                <tr key={index}>
+                  <td>{heater.id}</td>
+                  <td>{heater.name}</td>
+                  <td>{heater.capacity.toFixed(2)} kW</td>
+                  <td>{roomName}</td>
+                  <td>{heater.isEnabled ? 'Enabled' : 'Disabled'}</td>
+                  <td>
+                    <button className={styles.editButton} onClick={() => openHeaterEditModal(heater)}>Edit</button>
+                    <button className={styles.deleteButton} onClick={() => deleteHeater(heater.id)}>Delete</button>
+                  </td>
+                </tr>
+              );
+            }) : (
+              <tr>
+                <td colSpan="6">No heating devices available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
     {/* Control Signals Table */}
     <h3>Control Signals</h3>
     <div className={styles.tableWrapper}>
@@ -189,53 +231,6 @@ function DataTable() {
       <h1>Weather App</h1>
       <WeatherDataTable weatherData={weatherData} />
     </div>
-
-    <div>
-      <h1>Weather App</h1>
-      <TemperatureCalendar />
-    </div>
-
-      {/* Heating Devices Table */}
-      <h3>Heating Devices</h3>
-      <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Heater ID</th>
-              <th>Name</th>
-              <th>Capacity (kW)</th>
-              <th>Room</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {heaters.length > 0 ? heaters.map((heater, index) => {
-              // Find the associated room's name
-              const associatedRoom = rooms.find(room => room.roomId === heater.roomId);
-              const roomName = associatedRoom ? associatedRoom.roomId : 'Unassigned';
-
-              return (
-                <tr key={index}>
-                  <td>{heater.id}</td>
-                  <td>{heater.name}</td>
-                  <td>{heater.capacity.toFixed(2)} kW</td>
-                  <td>{roomName}</td>
-                  <td>{heater.isEnabled ? 'Enabled' : 'Disabled'}</td>
-                  <td>
-                    <button className={styles.editButton} onClick={() => openHeaterEditModal(heater)}>Edit</button>
-                    <button className={styles.deleteButton} onClick={() => deleteHeater(heater.id)}>Delete</button>
-                  </td>
-                </tr>
-              );
-            }) : (
-              <tr>
-                <td colSpan="6">No heating devices available</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
 
       {/* Sensors Table */}
       <h3>Home Assistant Sensors</h3>
