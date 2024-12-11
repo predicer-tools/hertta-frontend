@@ -183,36 +183,32 @@ function DashboardGrid() {
 
                         {/* Electricity Grid Information */}
                         <Grid2 xs={12} md={6}>
-                        <Paper
-                            sx={{ 
-                            padding: 2, 
-                            cursor: 'pointer', 
-                            minHeight: '200px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            overflow: 'auto', // Allow scrolling if content overflows
-                            }}
+                        <Tooltip title="Click to view electricity prices" arrow>
+                            <ClickablePaper
                             onClick={handleOpenElectricityModal}
-                            aria-label="View Electricity Prices"
-                            elevation={2}
-                        >
-                            <Typography variant="h5" component="h2" gutterBottom>
-                            Electricity Grid
-                            </Typography>
-                            {/* Current Electricity Price */}
-                            {firstFiPrice ? (
-                            <Typography variant="body1" gutterBottom>
-                                <strong>Current Price:</strong> {firstFiPrice.finalPrice} c/kWh
-                            </Typography>
-                            ) : (
-                            <Typography variant="body1" gutterBottom>
-                                No current electricity price data available.
-                            </Typography>
-                            )}
-                        </Paper>
+                            ariaLabel="View Electricity Prices"
+                            >
+                            <div className="header">
+                                <Typography variant="h5" component="h2" gutterBottom>
+                                Electricity Grid
+                                </Typography>
+                            </div>
+                            <div className="content">
+                                {/* Current Electricity Price */}
+                                {firstFiPrice ? (
+                                <Typography variant="body1" gutterBottom>
+                                    <strong>Current Price:</strong> {firstFiPrice.finalPrice} c/kWh
+                                </Typography>
+                                ) : (
+                                <Typography variant="body1" gutterBottom>
+                                    No current electricity price data available.
+                                </Typography>
+                                )}
+                            </div>
+                            </ClickablePaper>
+                        </Tooltip>
                         </Grid2>
                     </Grid2>
-
                     {/* Rooms */}
                     <Grid2 container spacing={2}>
                         {rooms.map((room) => (
