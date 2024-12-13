@@ -1,4 +1,4 @@
-// src/components/ProcessGroupSection.jsx
+// src/graphql/ProcessGroupSection.jsx
 
 import React, { useState } from 'react';
 import { GRAPHQL_ENDPOINT, CREATE_PROCESS_GROUP_MUTATION } from '../graphql/queries';

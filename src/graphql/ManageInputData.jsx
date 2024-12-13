@@ -1,4 +1,4 @@
-// src/pages/ManageInputData.jsx
+// src/graphql/ManageInputData.jsx
 
 import React from 'react';
 import ClearInputDataSection from './ClearInputDataSection';
@@ -6,6 +6,8 @@ import InputDataSetupSection from './InputDataSetupSection';
 import MarketSection from './MarketSection';
 import NodeSection from './NodeSection';
 import ProcessGroupSection from './ProcessGroupSection';
+import RiskSection from './RiskSection';
+import ScenarioSection from './ScenarioSection';
 
 const ManageInputData = () => {
   return (
@@ -16,6 +18,8 @@ const ManageInputData = () => {
       <MarketSection />
       <NodeSection />
       <ProcessGroupSection />
+      <RiskSection />
+      <ScenarioSection />
     </div>
   );
 };

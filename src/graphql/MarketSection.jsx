@@ -1,4 +1,4 @@
-// src/components/MarketSection.jsx
+// src/graphql/MarketSection.jsx
 
 import React, { useState } from 'react';
 import { GRAPHQL_ENDPOINT, CREATE_MARKET_MUTATION } from '../graphql/queries';

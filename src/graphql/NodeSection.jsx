@@ -1,11 +1,10 @@
-// src/components/NodeSection.jsx
+// src/graphql/NodeSection.jsx
 
 import React, { useState } from 'react';
 import { GRAPHQL_ENDPOINT, CREATE_NODE_MUTATION, SET_NODE_STATE_MUTATION } from '../graphql/queries';
 
 const NodeSection = () => {
   const [nodeStatus, setNodeStatus] = useState(null);
-  const [stateStatus, setStateStatus] = useState(null);
 
   const electricitygrid = {
     name: "electricitygrid",
@@ -16,7 +15,7 @@ const NodeSection = () => {
     inflow: null
   };
 
-  const predefinedState = {
+  const electricitygrid_state = {
     inMax: 0.0,
     outMax: 0.0,
     stateLossProportional: 0.0,
@@ -29,72 +28,104 @@ const NodeSection = () => {
     residualValue: 0.0
   };
 
-  const handleCreateNode = async () => {
-    setNodeStatus('Processing...');
-    try {
-      const response = await fetch(GRAPHQL_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: CREATE_NODE_MUTATION,
-          variables: { node: electricitygrid },
-        }),
-      });
+  const outside = {
+    name: "outside",
+    isCommodity: false,
+    isMarket: false,
+    isRes: false,
+    cost: null,
+    inflow: null
+  };
 
-      const result = await response.json();
-      if (result.data.createNode.errors.length > 0) {
-        const errorMessages = result.data.createNode.errors
-          .map((err) => `${err.field}: ${err.message}`)
-          .join(', ');
-        setNodeStatus(`Validation Errors: ${errorMessages}`);
-      } else {
-        setNodeStatus('Node created successfully.');
+  const outside_state = {
+    inMax: 1e10,
+    outMax: 1e10,
+    stateLossProportional: 0.0,
+    stateMin: 238.15,
+    stateMax: 308.15,
+    initialState: 0.0,
+    isScenarioIndependent: false,
+    isTemp: true,
+    tEConversion: 1e9,
+    residualValue: 0.0
+  };
+
+  const createNode = async (node) => {
+    const response = await fetch(GRAPHQL_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: CREATE_NODE_MUTATION,
+        variables: { node },
+      }),
+    });
+    const result = await response.json();
+    return result.data.createNode;
+  };
+
+  const setNodeState = async (nodeName, state) => {
+    const response = await fetch(GRAPHQL_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: SET_NODE_STATE_MUTATION,
+        variables: { nodeName, state },
+      }),
+    });
+    const result = await response.json();
+    return result.data.setNodeState;
+  };
+
+  const handleCreateNodesAndStates = async () => {
+    setNodeStatus('Processing...');
+
+    try {
+      // 1. Create electricitygrid node
+      const gridResult = await createNode(electricitygrid);
+      if (gridResult.errors.length > 0) {
+        const errorMessages = gridResult.errors.map((err) => `${err.field}: ${err.message}`).join(', ');
+        setNodeStatus(`Validation Errors (electricitygrid): ${errorMessages}`);
+        return;
       }
+
+      // 2. Create outside node
+      const outsideResult = await createNode(outside);
+      if (outsideResult.errors.length > 0) {
+        const errorMessages = outsideResult.errors.map((err) => `${err.field}: ${err.message}`).join(', ');
+        setNodeStatus(`Validation Errors (outside): ${errorMessages}`);
+        return;
+      }
+
+      // 3. Set state for electricitygrid
+      const gridStateResult = await setNodeState(electricitygrid.name, electricitygrid_state);
+      if (gridStateResult.errors.length > 0) {
+        const errorMessages = gridStateResult.errors.map((err) => `${err.field}: ${err.message}`).join(', ');
+        setNodeStatus(`State Errors (electricitygrid): ${errorMessages}`);
+        return;
+      }
+
+      // 4. Set state for outside
+      const outsideStateResult = await setNodeState(outside.name, outside_state);
+      if (outsideStateResult.errors.length > 0) {
+        const errorMessages = outsideStateResult.errors.map((err) => `${err.field}: ${err.message}`).join(', ');
+        setNodeStatus(`State Errors (outside): ${errorMessages}`);
+        return;
+      }
+
+      setNodeStatus('Both nodes (electricitygrid, outside) created and states set successfully.');
     } catch (error) {
       setNodeStatus(`Error: ${error.message}`);
     }
   };
 
-  const handleSetNodeState = async () => {
-    setStateStatus('Processing...');
-    try {
-      const response = await fetch(GRAPHQL_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: SET_NODE_STATE_MUTATION,
-          variables: { nodeName: electricitygrid.name, state: predefinedState },
-        }),
-      });
-
-      const result = await response.json();
-      if (result.data.setNodeState.errors.length > 0) {
-        const errorMessages = result.data.setNodeState.errors
-          .map((err) => `${err.field}: ${err.message}`)
-          .join(', ');
-        setStateStatus(`Validation Errors: ${errorMessages}`);
-      } else {
-        setStateStatus('State set successfully.');
-      }
-    } catch (error) {
-      setStateStatus(`Error: ${error.message}`);
-    }
-  };
-
   return (
     <section style={styles.section}>
-      <h2>Create Predefined Node</h2>
-      <button onClick={handleCreateNode} style={styles.button}>
-        Add Predefined Node
+      <h2>Create Predefined Nodes and Set States</h2>
+      <p>This will create "electricitygrid" and "outside" nodes and set their states.</p>
+      <button onClick={handleCreateNodesAndStates} style={styles.button}>
+        Add Predefined Nodes & States
       </button>
       {nodeStatus && <p>{nodeStatus}</p>}
-
-      <h2>Set Predefined State to the Node</h2>
-      <p>This will set a predefined state to the node "Node1".</p>
-      <button onClick={handleSetNodeState} style={styles.button}>
-        Set Predefined State
-      </button>
-      {stateStatus && <p>{stateStatus}</p>}
     </section>
   );
 };

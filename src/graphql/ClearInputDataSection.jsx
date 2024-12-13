@@ -1,4 +1,4 @@
-// src/components/ClearInputDataSection.jsx
+// src/graphql/ClearInputDataSection.jsx
 
 import React, { useState } from 'react';
 import { GRAPHQL_ENDPOINT, CLEAR_INPUT_DATA_MUTATION } from '../graphql/queries';

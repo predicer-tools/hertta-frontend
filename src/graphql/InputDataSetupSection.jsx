@@ -1,4 +1,4 @@
-// src/components/InputDataSetupSection.jsx
+// src/graphql/InputDataSetupSection.jsx
 
 import React, { useState } from 'react';
 import { GRAPHQL_ENDPOINT, UPDATE_INPUT_DATA_SETUP_MUTATION } from '../graphql/queries';
