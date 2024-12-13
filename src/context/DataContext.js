@@ -5,12 +5,15 @@ import useWeatherData from '../hooks/useWeatherData';
 import useElectricityData from '../hooks/useElectricityData';
 import ConfigContext from './ConfigContext'; // Import ConfigContext
 import { generateControlSignals } from '../utils/controlData';
+import { createRoomNodes } from '../graphql/nodeCreation';
 
 // Create the DataContext
 const DataContext = createContext();
 
 // DataProvider component to wrap around parts of the app that need access to the data
 export const DataProvider = ({ children }) => {
+
+  
   // =====================
   // States
   // =====================
@@ -78,7 +81,7 @@ export const DataProvider = ({ children }) => {
   // =====================
 
   // Get config from ConfigContext
-  const { config } = useContext(ConfigContext);
+  const { config, materials } = useContext(ConfigContext);
   const location = config.location;
 
   // Integrate the new weather data hook (location comes from ConfigContext)
@@ -246,8 +249,12 @@ export const DataProvider = ({ children }) => {
       console.log('Updated Rooms:', updatedRooms);
       return updatedRooms;
     });
-    return true; // Indicate successful addition
-  }, [rooms]);
+
+    // Call createRoomNodes right after the room is added
+    createRoomNodes(newRoom, config, materials);
+
+    return true; 
+  }, [rooms, config, materials]);
 
   /**
    * Deletes a room from the rooms state based on roomId.
