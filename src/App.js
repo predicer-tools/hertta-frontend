@@ -8,7 +8,7 @@ import InputData from './pages/InputData';
 import DataTable from './pages/DataTable';
 import ConfigContext from './context/ConfigContext';
 import DashboardGrid from './pages/DashboardGrid';
-import ManageInputData from './ManageInputData';
+import ManageInputData from './graphql/ManageInputData';
 import EditConfigPage from './pages/EditConfigPage';
 
 function App() {
