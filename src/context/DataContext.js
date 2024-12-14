@@ -6,6 +6,7 @@ import useElectricityData from '../hooks/useElectricityData';
 import ConfigContext from './ConfigContext'; // Import ConfigContext
 import { generateControlSignals } from '../utils/controlData';
 import { createRoomNodes } from '../graphql/nodeCreation';
+import { createRoomNodeDiffusions } from '../graphql/nodeDiffusionCreation';
 
 // Create the DataContext
 const DataContext = createContext();
@@ -231,7 +232,6 @@ export const DataProvider = ({ children }) => {
       return false; // Indicate failure to add
     }
 
-    // Construct new room object
     const newRoom = {
       roomId,
       roomWidth,
@@ -250,10 +250,12 @@ export const DataProvider = ({ children }) => {
       return updatedRooms;
     });
 
-    // Call createRoomNodes right after the room is added
-    createRoomNodes(newRoom, config, materials);
+    // Automatically create nodes, states, and diffusions after the room is added
+    createRoomNodes(newRoom, config, materials)      // Ensure this function encapsulates logic from RoomNodesSection
+      .then(() => createRoomNodeDiffusions(newRoom))
+      .catch(error => console.error('Error creating nodes or diffusions:', error));
 
-    return true; 
+    return true;
   }, [rooms, config, materials]);
 
   /**
