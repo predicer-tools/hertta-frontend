@@ -13,6 +13,7 @@ import {
   CREATE_NODE_GROUP_MUTATION,
   CREATE_NODE_DELAY_MUTATION,
   CREATE_NODE_HISTORY_MUTATION,
+  CREATE_MARKET_MUTATION,
 } from './queries';
 
 const GraphQLActions = () => {
@@ -85,6 +86,26 @@ const GraphQLActions = () => {
     isTemp: false,
     tEConversion: 1.0,
     residualValue: 5000.0,
+  };
+
+  // Example Market Data (adjust these values to your needs)
+  const newMarket = {
+    name: 'npe',
+    mType: 'ENERGY',       // Must match MarketType enum: ENERGY or RESERVE
+    node: 'NodeAlpha',     // This node must already exist in your system
+    processGroup: 'p1',    // This process group must already exist in your system
+    direction: 'UP_DOWN',  // MarketDirection enum: UP, DOWN, UP_DOWN
+    realisation: 1.2,      // Example float
+    reserveType: '',       // Provide a valid reserve type if needed, else an empty string
+    isBid: true,
+    isLimited: false,
+    minBid: 10.0,
+    maxBid: 100.0,
+    fee: 5.0,
+    price: 30.0,
+    upPrice: 35.0,
+    downPrice: 25.0,
+    reserveActivationPrice: 45.0,
   };
 
   // Define the new process group object
@@ -362,6 +383,36 @@ const newNodeGroup = {
     },
   });
 
+    // Mutation hook for creating a new Market
+    const [
+        createMarket,
+        { data: createMarketData, loading: createMarketLoading, error: createMarketError }
+      ] = useMutation(CREATE_MARKET_MUTATION, {
+        variables: { market: newMarket },
+        onCompleted: (response) => {
+          if (response.createMarket.errors.length === 0) {
+            alert('Market created successfully!');
+            // Optionally, trigger a refetch or update cache here
+          } else {
+            // Handle validation errors
+            const errorMessages = response.createMarket.errors
+              .map((err) => `${err.field}: ${err.message}`)
+              .join('\n');
+            alert(`Validation Errors:\n${errorMessages}`);
+          }
+        },
+        onError: (mutationError) => {
+          // Handle unexpected or network errors
+          console.error('Create Market Mutation Error:', mutationError);
+          alert('An unexpected error occurred while creating the market.');
+        },
+      });
+
+    // Handler for creating a new Market
+    const handleCreateMarket = () => {
+        createMarket();
+    };
+
   // Handler for updating input data setup
   const handleUpdateInputDataSetup = () => {
     updateInputDataSetup();
@@ -596,6 +647,38 @@ const handleCreateNodeGroup = () => {
             <ul>
               {createNodeHistoryData.createNodeHistory.errors.map((err, index) => (
                 <li key={index}>{`${err.field}: ${err.message}`}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+            {/* Create New Market Section */}
+            <div style={styles.actionSection}>
+        <h3>Create New Market</h3>
+        <button
+          onClick={handleCreateMarket}
+          disabled={createMarketLoading}
+          style={styles.button}
+        >
+          {createMarketLoading ? 'Creating...' : 'Create New Market'}
+        </button>
+
+        {createMarketError && (
+          <p style={styles.error}>Error: {createMarketError.message}</p>
+        )}
+
+        {createMarketData && createMarketData.createMarket.errors.length === 0 && (
+          <p style={styles.success}>Market created successfully!</p>
+        )}
+
+        {createMarketData && createMarketData.createMarket.errors.length > 0 && (
+          <div style={styles.error}>
+            <h4>Validation Errors:</h4>
+            <ul>
+              {createMarketData.createMarket.errors.map((err, index) => (
+                <li key={index}>
+                  {err.field}: {err.message}
+                </li>
               ))}
             </ul>
           </div>
