@@ -12,6 +12,7 @@ import {
   CREATE_TOPOLOGY_MUTATION, // Import the new mutation
   CREATE_NODE_GROUP_MUTATION,
   CREATE_NODE_DELAY_MUTATION,
+  CREATE_NODE_HISTORY_MUTATION,
 } from './queries';
 
 const GraphQLActions = () => {
@@ -114,6 +115,8 @@ const newNodeGroup = {
     minDelayFlow: 1.0,     // Minimum possible flow during the delay
     maxDelayFlow: 5.0,     // Maximum possible flow during the delay
   };
+
+  const nodeNameForHistory = '';
 
   // useMutation hook for updating input data setup
   const [updateInputDataSetup, { data: updateData, loading: updateLoading, error: updateError }] = useMutation(
@@ -333,6 +336,32 @@ const newNodeGroup = {
         },
       });
 
+        // Mutation hook for creating a new node history
+  const [
+    createNodeHistory,
+    { data: createNodeHistoryData, loading: createNodeHistoryLoading, error: createNodeHistoryError },
+  ] = useMutation(CREATE_NODE_HISTORY_MUTATION, {
+    variables: { nodeName: nodeNameForHistory },
+    onCompleted: (response) => {
+      // The response from the server is in response.createNodeHistory with an "errors" array
+      if (response.createNodeHistory.errors.length === 0) {
+        alert(`Node history created successfully for node "${nodeNameForHistory}"!`);
+        // Optionally refetch or update the cache
+      } else {
+        // If the "errors" array has items, we handle validation errors:
+        const errorMessages = response.createNodeHistory.errors
+          .map((err) => `${err.field}: ${err.message}`)
+          .join('\n');
+        alert(`Validation Errors:\n${errorMessages}`);
+      }
+    },
+    onError: (mutationError) => {
+      // Handle unexpected or network errors
+      console.error('Create Node History Mutation Error:', mutationError);
+      alert('An unexpected error occurred while creating node history.');
+    },
+  });
+
   // Handler for updating input data setup
   const handleUpdateInputDataSetup = () => {
     updateInputDataSetup();
@@ -377,6 +406,11 @@ const handleCreateNodeGroup = () => {
     const handleCreateNodeDelay = () => {
         createNodeDelay();
     };
+
+// Handler for creating node history
+  const handleCreateNodeHistory = () => {
+    createNodeHistory();
+  };
 
   return (
     <div style={styles.container}>
@@ -526,6 +560,41 @@ const handleCreateNodeGroup = () => {
             <h4>Validation Errors:</h4>
             <ul>
               {createNodeDelayData.createNodeDelay.errors.map((err, index) => (
+                <li key={index}>{`${err.field}: ${err.message}`}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+            {/* Create Node History Section */}
+            <div style={styles.actionSection}>
+        <h3>Create Node History</h3>
+        <button
+          onClick={handleCreateNodeHistory}
+          disabled={createNodeHistoryLoading}
+          style={styles.button}
+        >
+          {createNodeHistoryLoading ? 'Creating...' : `Create History for "${nodeNameForHistory}"`}
+        </button>
+
+        {/* Network or unexpected error */}
+        {createNodeHistoryError && (
+          <p style={styles.error}>Error: {createNodeHistoryError.message}</p>
+        )}
+
+        {/* Check if creation was successful */}
+        {createNodeHistoryData && createNodeHistoryData.createNodeHistory.errors.length === 0 && (
+          <p style={styles.success}>
+            Node history created successfully for node "{nodeNameForHistory}"!
+          </p>
+        )}
+
+        {/* Validation errors from backend */}
+        {createNodeHistoryData && createNodeHistoryData.createNodeHistory.errors.length > 0 && (
+          <div style={styles.error}>
+            <h4>Validation Errors:</h4>
+            <ul>
+              {createNodeHistoryData.createNodeHistory.errors.map((err, index) => (
                 <li key={index}>{`${err.field}: ${err.message}`}</li>
               ))}
             </ul>
