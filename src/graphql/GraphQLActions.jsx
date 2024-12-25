@@ -11,6 +11,7 @@ import {
   CREATE_PROCESS_GROUP_MUTATION,
   CREATE_TOPOLOGY_MUTATION, // Import the new mutation
   CREATE_NODE_GROUP_MUTATION,
+  CREATE_NODE_DELAY_MUTATION,
 } from './queries';
 
 const GraphQLActions = () => {
@@ -104,6 +105,14 @@ const newNodeGroup = {
     initialLoad: 50.0,
     initialFlow: 20.0,
     capTs: 1.0,
+  };
+
+  const newNodeDelay = {
+    fromNode: 'NodeAlpha',  // Name of an existing node in your DB
+    toNode: 'NodeBeta',     // Name of another existing node in your DB
+    delay: 3.0,            // Example: 3.0 time units of delay
+    minDelayFlow: 1.0,     // Minimum possible flow during the delay
+    maxDelayFlow: 5.0,     // Maximum possible flow during the delay
   };
 
   // useMutation hook for updating input data setup
@@ -300,6 +309,30 @@ const newNodeGroup = {
     }
   );
 
+    // Mutation hook for creating a new node delay
+    const [
+        createNodeDelay, 
+        { data: createNodeDelayData, loading: createNodeDelayLoading, error: createNodeDelayError }
+      ] = useMutation(CREATE_NODE_DELAY_MUTATION, {
+        variables: { delay: newNodeDelay },
+        onCompleted: (response) => {
+          if (response.createNodeDelay.errors.length === 0) {
+            alert('Node Delay created successfully!');
+          } else {
+            // If there were validation errors, list them
+            const errorMessages = response.createNodeDelay.errors
+              .map((err) => `${err.field}: ${err.message}`)
+              .join('\n');
+            alert(`Validation Errors:\n${errorMessages}`);
+          }
+        },
+        onError: (mutationError) => {
+          // Handle unexpected or network errors
+          console.error('Create Node Delay Mutation Error:', mutationError);
+          alert('An unexpected error occurred while creating the Node Delay.');
+        },
+      });
+
   // Handler for updating input data setup
   const handleUpdateInputDataSetup = () => {
     updateInputDataSetup();
@@ -339,6 +372,11 @@ const handleCreateNodeGroup = () => {
   const handleCreateTopology = () => {
     createTopology();
   };
+
+    // Handler for creating a Node Delay
+    const handleCreateNodeDelay = () => {
+        createNodeDelay();
+    };
 
   return (
     <div style={styles.container}>
@@ -455,6 +493,40 @@ const handleCreateNodeGroup = () => {
                 <li key={index}>
                   {err.field}: {err.message}
                 </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      
+      {/* Create New Node Delay Section */}
+      <div style={styles.actionSection}>
+        <h3>Create Node Delay</h3>
+        <button
+          onClick={handleCreateNodeDelay}
+          disabled={createNodeDelayLoading}
+          style={styles.button}
+        >
+          {createNodeDelayLoading ? 'Creating...' : 'Create Node Delay'}
+        </button>
+
+        {/* Network or unexpected error */}
+        {createNodeDelayError && (
+          <p style={styles.error}>Error: {createNodeDelayError.message}</p>
+        )}
+
+        {/* Successful creation */}
+        {createNodeDelayData && createNodeDelayData.createNodeDelay.errors.length === 0 && (
+          <p style={styles.success}>Node Delay created successfully!</p>
+        )}
+
+        {/* Validation errors from backend */}
+        {createNodeDelayData && createNodeDelayData.createNodeDelay.errors.length > 0 && (
+          <div style={styles.error}>
+            <h4>Validation Errors:</h4>
+            <ul>
+              {createNodeDelayData.createNodeDelay.errors.map((err, index) => (
+                <li key={index}>{`${err.field}: ${err.message}`}</li>
               ))}
             </ul>
           </div>
