@@ -3,6 +3,12 @@ schema {
   mutation: Mutation       
 }
 
+enum ConstraintFactorType {
+  FLOW
+  STATE
+  ONLINE
+}
+
 enum ConstraintType {      
   LESS_THAN
   EQUAL
@@ -15,12 +21,6 @@ enum Conversion {
   MARKET
 }
 
-enum ConversionFactorType {
-  FLOW
-  STATE
-  ONLINE
-}
-
 enum JobState {
   QUEUED
   IN_PROGRESS
@@ -28,7 +28,7 @@ enum JobState {
   FINISHED
 }
 
-enum MarketDirection {     
+enum MarketDirection {
   UP
   DOWN
   UP_DOWN
@@ -39,7 +39,7 @@ enum MarketType {
   RESERVE
 }
 
-input DurationInput {      
+input DurationInput {
   hours: Int!
   minutes: Int!
   seconds: Int!
@@ -106,6 +106,14 @@ input NewNode {
   inflow: Float
 }
 
+input NewNodeDelay {
+  fromNode: String!
+  toNode: String!
+  delay: Float!
+  minDelayFlow: Float!
+  maxDelayFlow: Float!
+}
+
 input NewProcess {
   name: String!
   conversion: Conversion!
@@ -129,6 +137,12 @@ input NewProcess {
 input NewRisk {
   parameter: String!
   value: Float!
+}
+
+input NewSeries {
+  scenario: String!
+  durations: [DurationInput!]!
+  values: [Float!]!
 }
 
 input NewTopology {
@@ -193,9 +207,13 @@ input TimeLineUpdate {
 scalar DateTime
 
 type ConFactor {
-  varType: ConversionFactorType!
+  varType: ConstraintFactorType!
   varTuple: VariableId!
   data: Float!
+}
+
+type Constant {
+  value: Float!
 }
 
 type ControlSignal {
@@ -216,6 +234,15 @@ type Duration {
   hours: Int!
   minutes: Int!
   seconds: Int!
+}
+
+type ElectricityPriceOutcome {
+  time: [DateTime!]!
+  price: [Float!]!
+}
+
+type Forecast {
+  name: String!
 }
 
 type GenConstraint {
@@ -295,9 +322,9 @@ type Market {
   minBid: Float!
   maxBid: Float!
   fee: Float!
-  price: Float
-  upPrice: Float
-  downPrice: Float
+  price: Forecastable
+  upPrice: Forecastable
+  downPrice: Forecastable
   reserveActivationPrice: Float
   fixed: [MarketFix!]!
 }
@@ -309,7 +336,7 @@ type MarketFix {
 
 type MaybeError {
   "Error message; if null, the operation succeeded."
-  error: String
+  message: String
 }
 
 "Optimization model."
@@ -321,12 +348,16 @@ type Model {
 type Mutation {
   "Start optimization job. Return job ID."
   startOptimization: Int!
+  "Start electricity price fetch job. Return job ID."
+  startElectricityPriceFetch: Int!
   "Start weather forecast job. Return job ID."
   startWeatherForecastFetch: Int!
   "Update model's time line."
   updateTimeLine(timeLineInput: TimeLineUpdate!): ValidationErrors!
   "Create new scenario."
   createScenario(name: String!, weight: Float!): MaybeError!
+  "Delete a scenario and all items that depend on that scenario."
+  deleteScenario(name: String!): MaybeError!
   "Save the model on disk."
   saveModel: MaybeError!
   "Clear input data from model."
@@ -337,12 +368,16 @@ type Mutation {
   createNodeGroup(name: String!): MaybeError!
   "Create new process group."
   createProcessGroup(name: String!): MaybeError!
+  deleteGroup(name: String!): MaybeError!
   "Create new process."
   createProcess(process: NewProcess!): ValidationErrors!
   "Add process to process group."
   addProcessToGroup(processName: String!, groupName: String!): MaybeError!
+  "Delete a process and all items that depend on that process."
+  deleteProcess(name: String!): MaybeError!
   "Create new topology and add it to process."
   createTopology(topology: NewTopology!, sourceNodeName: String, processName: String!, sinkNodeName: String): ValidationErrors!
+  deleteTopology(sourceNodeName: String, processName: String!, sinkNodeName: String): MaybeError!
   "Create new node."
   createNode(node: NewNode!): ValidationErrors!
   "Add node to node group."
@@ -351,20 +386,38 @@ type Mutation {
   setNodeState(state: StateInput, nodeName: String!): ValidationErrors!
   "Update state of a node. The state has to be set."
   updateNodeState(state: StateUpdate!, nodeName: String!): ValidationErrors!
+  connectNodeInflowToTemperatureForecast(nodeName: String!, forecastName: String!): MaybeError!
+  "Delete a node and all items that depend on that node."
+  deleteNode(name: String!): MaybeError!
   "Create new diffusion between nodes."
   createNodeDiffusion(fromNode: String!, toNode: String!, coefficient: Float!): ValidationErrors!
+  deleteNodeDiffusion(fromNode: String!, toNode: String!): MaybeError!
+  createNodeDelay(delay: NewNodeDelay!): ValidationErrors!
+  deleteNodeDelay(fromNode: String!, toNode: String!): MaybeError!
+  createNodeHistory(nodeName: String!): ValidationErrors!
+  deleteNodeHistory(nodeName: String!): MaybeError!
+  addStepToNodeHistory(nodeName: String!, step: NewSeries!): ValidationErrors!
+  clearNodeHistorySteps(nodeName: String!): MaybeError!
   "Create new market."
   createMarket(market: NewMarket!): ValidationErrors!
+  "Connects market's normal, up and down prices to electricity price forecast."
+  connectMarketPricesToForecast(marketName: String!, forecastName: String!): MaybeError!
+  deleteMarket(name: String!): MaybeError!
   "Create new risk."
   createRisk(risk: NewRisk!): ValidationErrors!
+  deleteRisk(parameter: String!): MaybeError!
   "Create new generic constraint."
   createGenConstraint(constraint: NewGenConstraint!): ValidationErrors!
+  deleteGenConstraint(name: String!): MaybeError!
   "Create new flow constraint factor and add it to generic constraint."
   createFlowConFactor(factor: Float!, constraintName: String!, processName: String!, sourceOrSinkNodeName: String!): ValidationErrors!
+  deleteFlowConFactor(constraintName: String!, processName: String!, sourceOrSinkNodeName: String!): MaybeError!
   "Create new state constraint factor and add it to generic constraint."
   createStateConFactor(factor: Float!, constraintName: String!, nodeName: String!): ValidationErrors!
+  deleteStateConFactor(constraintName: String!, nodeName: String!): MaybeError!
   "Create new online constraint factor and add it to generic constraint."
   createOnlineConFactor(factor: Float!, constraintName: String!, processName: String!): ValidationErrors!
+  deleteOnlineConFactor(constraintName: String!, processName: String!): MaybeError!
   updateSettings(settingsInput: SettingsInput!): SettingsResult!
 }
 
@@ -376,7 +429,7 @@ type Node {
   isRes: Boolean!
   state: State
   cost: Float
-  inflow: Float
+  inflow: Forecastable
 }
 
 type NodeDiffusion {
@@ -392,7 +445,7 @@ type NodeGroup {
 
 type NodeHistory {
   node: Node!
-  steps: Float!
+  steps: [Series!]!
 }
 
 type OptimizationOutcome {
@@ -451,6 +504,7 @@ type Query {
   "Return all groups the given process is member of."
   groupsForProcess(name: String!): [ProcessGroup!]!
   process(name: String!): Process!
+  conFactorsForProcess(name: String!): [ConFactor!]!
   scenario(name: String!): Scenario!
   jobStatus(jobId: Int!): JobStatus!
   jobOutcome(jobId: Int!): JobOutcome!
@@ -472,6 +526,12 @@ type Scenario {
   name: String!
   "Scenario weight."
   weight: Float!
+}
+
+type Series {
+  scenario: String!
+  durations: [Duration!]!
+  values: [Float!]!
 }
 
 "General Hertta settings."
@@ -525,7 +585,9 @@ type WeatherForecastOutcome {
   temperature: [Float!]!
 }
 
-union JobOutcome = OptimizationOutcome | WeatherForecastOutcome
+union Forecastable = Constant | Forecast
+
+union JobOutcome = ElectricityPriceOutcome | OptimizationOutcome | WeatherForecastOutcome
 
 union NodeOrProcess = Node | Process
 

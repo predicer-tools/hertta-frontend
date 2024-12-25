@@ -9,6 +9,9 @@ import NodeSection from './NodeSection';
 import ProcessGroupSection from './ProcessGroupSection';
 import RiskSection from './RiskSection';
 import ScenarioSection from './ScenarioSection';
+import AddedModel from './AddedModel'; // Import the new AddedModel component
+import AddProcess from "./AddProcess";
+import { useQuery, gql } from '@apollo/client';
 
 const GRAPHQL_ENDPOINT = 'http://localhost:3030/graphql'; // Adjust if needed
 
@@ -151,6 +154,10 @@ const ManageInputData = () => {
       <ProcessGroupSection />
       <RiskSection />
       <ScenarioSection />
+      <AddProcess />
+
+      {/* Added Model Section */}
+      <AddedModel /> {/* Added this component here */}
 
       {/* Display Current Nodes */}
       <h2>Current Nodes (from GraphQL Response)</h2>

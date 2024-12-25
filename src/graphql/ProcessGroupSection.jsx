@@ -1,7 +1,7 @@
 // src/graphql/ProcessGroupSection.jsx
 
 import React, { useState } from 'react';
-import { GRAPHQL_ENDPOINT, CREATE_PROCESS_GROUP_MUTATION } from '../graphql/queries';
+import { GRAPHQL_ENDPOINT, CREATE_PROCESS_GROUP_MUTATION } from './queries_old';
 
 const ProcessGroupSection = () => {
   const [groupStatus, setGroupStatus] = useState(null);

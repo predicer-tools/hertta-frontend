@@ -43,6 +43,14 @@ function Sidebar({ isOpen }) {
               Manage Input Data
             </NavLink>
           </li>
+          <li className={styles.navItem}>
+            <NavLink
+              to="/input-data-setup"
+              className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+            >
+              Manage Input Data
+            </NavLink>
+          </li>
           {/* Add more navigation links as needed */}
         </ul>
       </nav>

@@ -1,6 +1,6 @@
 // src/graphql/nodeDiffusionCreation.js
 
-import { GRAPHQL_ENDPOINT, CREATE_NODE_DIFFUSION_MUTATION } from './queries';
+import { GRAPHQL_ENDPOINT, CREATE_NODE_DIFFUSION_MUTATION } from './queries_old';
 
 // Constants for diffusion calculations
 const frac_windows = 0.1;

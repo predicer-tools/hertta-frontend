@@ -323,40 +323,38 @@ export const DataProvider = ({ children }) => {
    * Prevents adding heaters with duplicate IDs.
    * @param {Object} heater - The heater object to add.
    */
-  const addElectricHeater = useCallback((heater) => {
-    // Destructure heater object to ensure required fields are present
-    const {
-      id,
-      roomId,
-      // ... other heater fields
-    } = heater;
-
-    // Validate required fields
-    if (!id || !roomId) {
-      console.error('Missing required heater fields.');
-      return;
-    }
-
-    // Check for duplicate heater ID
-    const isDuplicateHeater = heaters.find(
-      (existingHeater) => existingHeater.id.toLowerCase() === id.toLowerCase()
-    );
-
-    if (isDuplicateHeater) {
-      console.error(`Heater with ID "${id}" already exists.`);
-      return;
-    }
-
-    console.log('Adding heater:', heater);
-
-    setHeaters((prevHeaters) => [
-      ...prevHeaters,
-      {
-        ...heater,
-        isEnabled: true, // Initialize isEnabled as true
-      },
-    ]);
-  }, [heaters]);
+  const addElectricHeater = useCallback(
+    async (heater) => {
+      const { id, roomId, capacity } = heater;
+  
+      // Validate required fields
+      if (!id || !roomId || !capacity) {
+        console.error('Missing required heater fields.');
+        return;
+      }
+  
+      // Check for duplicate heater ID
+      const isDuplicateHeater = heaters.find(
+        (existingHeater) => existingHeater.id.toLowerCase() === id.toLowerCase()
+      );
+  
+      if (isDuplicateHeater) {
+        console.error(`Heater with ID "${id}" already exists.`);
+        return;
+      }
+  
+      console.log('Adding heater:', heater);
+  
+      setHeaters((prevHeaters) => [
+        ...prevHeaters,
+        {
+          ...heater,
+          isEnabled: true, // Initialize isEnabled as true
+        },
+      ]);
+    },
+    [heaters]
+  );
 
   /**
    * Deletes an electric heater from the heaters state based on heaterId.

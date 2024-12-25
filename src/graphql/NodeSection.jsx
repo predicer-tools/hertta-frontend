@@ -7,7 +7,7 @@ import {
   CREATE_NODE_MUTATION,
   SET_NODE_STATE_MUTATION,
   CREATE_NODE_DIFFUSION_MUTATION, // Ensure this is imported
-} from './queries'; // Corrected import path
+} from './queries_old'; // Corrected import path
 
 const NodeSection = () => {
   const [nodeStatus, setNodeStatus] = useState(null);
