@@ -14,6 +14,9 @@ import {
   CREATE_NODE_DELAY_MUTATION,
   CREATE_NODE_HISTORY_MUTATION,
   CREATE_MARKET_MUTATION,
+  CREATE_NODE_DIFFUSION_MUTATION,
+  CREATE_RISK_MUTATION,
+  CREATE_GEN_CONSTRAINT_MUTATION,
 } from './queries';
 
 const GraphQLActions = () => {
@@ -138,6 +141,25 @@ const newNodeGroup = {
   };
 
   const nodeNameForHistory = '';
+
+  const newDiffusion = {
+    fromNode: 'NodeAlpha',
+    toNode: 'NodeBeta',
+    coefficient: 0.05, // Example diffusion coefficient
+  };
+
+  const newRisk = {
+    parameter: 'PriceVolatility', // Example parameter name
+    value: 0.15,                  // Example float value for risk
+  };
+
+  const newGenConstraint = {
+    name: 'ConstraintAlpha',
+    gcType: 'LESS_THAN',   // Must be one of: LESS_THAN, EQUAL, GREATER_THAN
+    isSetpoint: false,
+    penalty: 1000.0,
+    constant: 50.0,
+  };
 
   // useMutation hook for updating input data setup
   const [updateInputDataSetup, { data: updateData, loading: updateLoading, error: updateError }] = useMutation(
@@ -408,6 +430,84 @@ const newNodeGroup = {
         },
       });
 
+        // Mutation hook for creating a node diffusion
+  const [
+    createNodeDiffusion,
+    { data: createNodeDiffusionData, loading: createNodeDiffusionLoading, error: createNodeDiffusionError },
+  ] = useMutation(CREATE_NODE_DIFFUSION_MUTATION, {
+    variables: newDiffusion, // The mutation requires { fromNode, toNode, coefficient }
+    onCompleted: (response) => {
+      // The response has an "errors" array under createNodeDiffusion
+      if (response.createNodeDiffusion.errors.length === 0) {
+        alert('Node diffusion created successfully!');
+        // Optionally refetch or update cache here
+      } else {
+        // Validation errors returned from the server
+        const errorMessages = response.createNodeDiffusion.errors
+          .map((err) => `${err.field}: ${err.message}`)
+          .join('\n');
+        alert(`Validation Errors:\n${errorMessages}`);
+      }
+    },
+    onError: (mutationError) => {
+      // Handle unexpected or network errors
+      console.error('Create Node Diffusion Mutation Error:', mutationError);
+      alert('An unexpected error occurred while creating node diffusion.');
+    },
+  });
+
+    // useMutation hook for creating a new risk
+    const [
+        createRisk,
+        { data: createRiskData, loading: createRiskLoading, error: createRiskError }
+      ] = useMutation(CREATE_RISK_MUTATION, {
+        variables: { risk: newRisk },
+        onCompleted: (response) => {
+          // If there are no validation errors, the creation was successful
+          if (response.createRisk.errors.length === 0) {
+            alert('Risk created successfully!');
+            // Optionally, trigger a refetch or update cache here
+          } else {
+            // Handle validation errors
+            const errorMessages = response.createRisk.errors
+              .map((err) => `${err.field}: ${err.message}`)
+              .join('\n');
+            alert(`Validation Errors:\n${errorMessages}`);
+          }
+        },
+        onError: (mutationError) => {
+          // Handle unexpected errors (e.g., network issues)
+          console.error('Create Risk Mutation Error:', mutationError);
+          alert('An unexpected error occurred while creating the risk.');
+        },
+      });
+
+        // Mutation hook for creating a new generic constraint
+  const [
+    createGenConstraint,
+    { data: createGenConstraintData, loading: createGenConstraintLoading, error: createGenConstraintError },
+  ] = useMutation(CREATE_GEN_CONSTRAINT_MUTATION, {
+    variables: { constraint: newGenConstraint },
+    onCompleted: (response) => {
+      // The response from the server is in response.createGenConstraint with an "errors" array
+      if (response.createGenConstraint.errors.length === 0) {
+        alert('Generic Constraint created successfully!');
+        // Optionally refetch or update cache here
+      } else {
+        // Handle validation errors
+        const errorMessages = response.createGenConstraint.errors
+          .map((err) => `${err.field}: ${err.message}`)
+          .join('\n');
+        alert(`Validation Errors:\n${errorMessages}`);
+      }
+    },
+    onError: (mutationError) => {
+      // Handle unexpected or network errors
+      console.error('Create Generic Constraint Mutation Error:', mutationError);
+      alert('An unexpected error occurred while creating the generic constraint.');
+    },
+  });
+
     // Handler for creating a new Market
     const handleCreateMarket = () => {
         createMarket();
@@ -461,6 +561,21 @@ const handleCreateNodeGroup = () => {
 // Handler for creating node history
   const handleCreateNodeHistory = () => {
     createNodeHistory();
+  };
+
+// Button handler
+const handleCreateNodeDiffusion = () => {
+    createNodeDiffusion();
+};
+
+// Handler for creating a new risk
+const handleCreateRisk = () => {
+createRisk();
+};
+
+  // Handler for creating a generic constraint
+  const handleCreateGenConstraint = () => {
+    createGenConstraint();
   };
 
   return (
@@ -618,7 +733,7 @@ const handleCreateNodeGroup = () => {
         )}
       </div>
             {/* Create Node History Section */}
-            <div style={styles.actionSection}>
+    <div style={styles.actionSection}>
         <h3>Create Node History</h3>
         <button
           onClick={handleCreateNodeHistory}
@@ -684,6 +799,103 @@ const handleCreateNodeGroup = () => {
           </div>
         )}
       </div>
+      {/* Create Node Diffusion Section */}
+      <div style={styles.actionSection}>
+        <h3>Create Node Diffusion</h3>
+        <button
+          onClick={handleCreateNodeDiffusion}
+          disabled={createNodeDiffusionLoading}
+          style={styles.button}
+        >
+          {createNodeDiffusionLoading ? 'Creating...' : 'Create Node Diffusion'}
+        </button>
+
+        {createNodeDiffusionError && (
+          <p style={styles.error}>Error: {createNodeDiffusionError.message}</p>
+        )}
+
+        {/* Successful creation */}
+        {createNodeDiffusionData && createNodeDiffusionData.createNodeDiffusion.errors.length === 0 && (
+          <p style={styles.success}>Node diffusion created successfully!</p>
+        )}
+
+        {/* Validation errors */}
+        {createNodeDiffusionData && createNodeDiffusionData.createNodeDiffusion.errors.length > 0 && (
+          <div style={styles.error}>
+            <h4>Validation Errors:</h4>
+            <ul>
+              {createNodeDiffusionData.createNodeDiffusion.errors.map((err, index) => (
+                <li key={index}>{`${err.field}: ${err.message}`}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+            {/* Create New Risk Section */}
+            <div style={styles.actionSection}>
+        <h3>Create New Risk</h3>
+        <button onClick={handleCreateRisk} disabled={createRiskLoading} style={styles.button}>
+          {createRiskLoading ? 'Creating...' : 'Create New Risk'}
+        </button>
+
+        {/* Show network error if any */}
+        {createRiskError && (
+          <p style={styles.error}>Error: {createRiskError.message}</p>
+        )}
+
+        {/* Successful creation */}
+        {createRiskData && createRiskData.createRisk.errors.length === 0 && (
+          <p style={styles.success}>Risk created successfully!</p>
+        )}
+
+        {/* Validation errors */}
+        {createRiskData && createRiskData.createRisk.errors.length > 0 && (
+          <div style={styles.error}>
+            <h4>Validation Errors:</h4>
+            <ul>
+              {createRiskData.createRisk.errors.map((err, index) => (
+                <li key={index}>{`${err.field}: ${err.message}`}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      {/* Create Generic Constraint Section */}
+      <div style={styles.actionSection}>
+        <h3>Create Generic Constraint</h3>
+        <button
+          onClick={handleCreateGenConstraint}
+          disabled={createGenConstraintLoading}
+          style={styles.button}
+        >
+          {createGenConstraintLoading ? 'Creating...' : 'Create Generic Constraint'}
+        </button>
+
+        {/* Network or unexpected error */}
+        {createGenConstraintError && (
+          <p style={styles.error}>Error: {createGenConstraintError.message}</p>
+        )}
+
+        {/* Successful creation */}
+        {createGenConstraintData &&
+          createGenConstraintData.createGenConstraint.errors.length === 0 && (
+            <p style={styles.success}>Generic Constraint created successfully!</p>
+          )}
+
+        {/* Validation errors from backend */}
+        {createGenConstraintData &&
+          createGenConstraintData.createGenConstraint.errors.length > 0 && (
+            <div style={styles.error}>
+              <h4>Validation Errors:</h4>
+              <ul>
+                {createGenConstraintData.createGenConstraint.errors.map((err, index) => (
+                  <li key={index}>{`${err.field}: ${err.message}`}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+      </div>
+
     </div>
   );
 };
