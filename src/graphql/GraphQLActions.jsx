@@ -21,7 +21,9 @@ import {
   CREATE_STATE_CON_FACTOR_MUTATION,
   CREATE_ONLINE_CON_FACTOR_MUTATION,
   ADD_PROCESS_TO_GROUP_MUTATION,
-  ADD_NODE_TO_GROUP_MUTATION, 
+  ADD_NODE_TO_GROUP_MUTATION,
+  START_ELECTRICITY_PRICE_FETCH_MUTATION,
+  START_WEATHER_FORECAST_FETCH_MUTATION, 
 } from './queries';
 
 const GraphQLActions = () => {
@@ -656,6 +658,36 @@ const newNodeGroup = {
         },
       });
 
+      const [
+        startElectricityPriceFetch,
+        { data: electricityPriceFetchData, loading: electricityPriceFetchLoading, error: electricityPriceFetchError }
+      ] = useMutation(START_ELECTRICITY_PRICE_FETCH_MUTATION, {
+        onCompleted: (response) => {
+          // This mutation returns an Int (the job ID).
+          // Example: "startElectricityPriceFetch: Int!"
+          alert(`Electricity price fetch started. Job ID: ${response.startElectricityPriceFetch}`);
+        },
+        onError: (mutationError) => {
+          console.error('Start Electricity Price Fetch Mutation Error:', mutationError);
+          alert('An unexpected error occurred while starting the electricity price fetch job.');
+        },
+      });
+
+      const [
+        startWeatherForecastFetch,
+        { data: weatherForecastFetchData, loading: weatherForecastFetchLoading, error: weatherForecastFetchError },
+      ] = useMutation(START_WEATHER_FORECAST_FETCH_MUTATION, {
+        onCompleted: (response) => {
+          // This mutation returns an Int (the job ID) when successful.
+          // Example: "startWeatherForecastFetch: Int!"
+          alert(`Weather forecast fetch started. Job ID: ${response.startWeatherForecastFetch}`);
+        },
+        onError: (mutationError) => {
+          console.error('Start Weather Forecast Fetch Mutation Error:', mutationError);
+          alert('An unexpected error occurred while starting the weather forecast job.');
+        },
+      });
+
 
     // Handler for creating a new Market
     const handleCreateMarket = () => {
@@ -749,6 +781,14 @@ const handleCreateFlowConFactor = () => {
 
       const handleAddNodeToGroup = () => {
         addNodeToGroup();
+      };
+
+      const handleStartElectricityPriceFetch = () => {
+        startElectricityPriceFetch();
+      };
+
+      const handleStartWeatherForecastFetch = () => {
+        startWeatherForecastFetch();
       };
 
   return (
@@ -1222,6 +1262,51 @@ const handleCreateFlowConFactor = () => {
         {/* Server reported an error */}
         {addNodeToGroupData && addNodeToGroupData.addNodeToGroup.message && (
           <p style={styles.error}>Error: {addNodeToGroupData.addNodeToGroup.message}</p>
+        )}
+      </div>
+      <div style={styles.actionSection}>
+        <h3>Start Electricity Price Fetch</h3>
+        <button
+          onClick={handleStartElectricityPriceFetch}
+          disabled={electricityPriceFetchLoading}
+          style={styles.button}
+        >
+          {electricityPriceFetchLoading ? 'Starting...' : 'Start Electricity Price Fetch'}
+        </button>
+
+        {/* If there's an unexpected error (network, etc.) */}
+        {electricityPriceFetchError && (
+          <p style={styles.error}>Error: {electricityPriceFetchError.message}</p>
+        )}
+
+        {/* Show the returned job ID if desired */}
+        {electricityPriceFetchData && (
+          <p style={styles.success}>
+            Job started with ID: {electricityPriceFetchData.startElectricityPriceFetch}
+          </p>
+        )}
+      </div>
+
+      <div style={styles.actionSection}>
+        <h3>Start Weather Forecast Fetch</h3>
+        <button
+          onClick={handleStartWeatherForecastFetch}
+          disabled={weatherForecastFetchLoading}
+          style={styles.button}
+        >
+          {weatherForecastFetchLoading ? 'Starting...' : 'Start Weather Forecast Fetch'}
+        </button>
+
+        {/* If there's an unexpected error (network or otherwise) */}
+        {weatherForecastFetchError && (
+          <p style={styles.error}>Error: {weatherForecastFetchError.message}</p>
+        )}
+
+        {/* Show the returned job ID on success, if desired */}
+        {weatherForecastFetchData && (
+          <p style={styles.success}>
+            Weather forecast fetch job started with ID: {weatherForecastFetchData.startWeatherForecastFetch}
+          </p>
         )}
       </div>
       
