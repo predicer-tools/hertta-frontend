@@ -23,7 +23,8 @@ import {
   ADD_PROCESS_TO_GROUP_MUTATION,
   ADD_NODE_TO_GROUP_MUTATION,
   START_ELECTRICITY_PRICE_FETCH_MUTATION,
-  START_WEATHER_FORECAST_FETCH_MUTATION, 
+  START_WEATHER_FORECAST_FETCH_MUTATION,
+  UPDATE_NODE_STATE_MUTATION, 
 } from './queries';
 
 const GraphQLActions = () => {
@@ -77,6 +78,8 @@ const GraphQLActions = () => {
     cost: 50000.0,
     inflow: 100.0,
   };
+
+  const targetNodeName = newNode.name;
 
   // Define the new scenario object
   const newScenario = {
@@ -187,6 +190,18 @@ const newNodeGroup = {
     processName: 'Process Alpha',      // Must be a valid process name
   };
 
+  const updatedNodeState = {
+    inMax: 75.0,        // e.g., new max inflow
+    outMax: 60.0,       // e.g., new max outflow
+    stateLossProportional: 0.02, // updated state loss
+    stateMax: 200.0,    // new maximum state
+    stateMin: 20.0,     // new minimum state
+    initialState: 40.0, // new initial state
+    isScenarioIndependent: true,
+    isTemp: false,
+    tEConversion: 1.1,
+    residualValue: 999.0,
+  };
 
   // useMutation hook for updating input data setup
   const [updateInputDataSetup, { data: updateData, loading: updateLoading, error: updateError }] = useMutation(
@@ -688,6 +703,33 @@ const newNodeGroup = {
         },
       });
 
+      const [
+        updateNodeState,
+        { data: updateNodeStateData, loading: updateNodeStateLoading, error: updateNodeStateError },
+      ] = useMutation(UPDATE_NODE_STATE_MUTATION, {
+        variables: {
+          nodeName: targetNodeName,
+          state: updatedNodeState,
+        },
+        onCompleted: (response) => {
+          // The mutation returns an object with an "errors" array
+          if (response.updateNodeState.errors.length === 0) {
+            alert(`Node "${targetNodeName}" state updated successfully!`);
+          } else {
+            // If there's any validation error, show them
+            const errorMessages = response.updateNodeState.errors
+              .map((err) => `${err.field}: ${err.message}`)
+              .join('\n');
+            alert(`Validation Errors:\n${errorMessages}`);
+          }
+        },
+        onError: (mutationError) => {
+          // For unexpected or network errors
+          console.error('Update Node State Mutation Error:', mutationError);
+          alert('An unexpected error occurred while updating the node state.');
+        },
+      });
+
 
     // Handler for creating a new Market
     const handleCreateMarket = () => {
@@ -789,6 +831,10 @@ const handleCreateFlowConFactor = () => {
 
       const handleStartWeatherForecastFetch = () => {
         startWeatherForecastFetch();
+      };
+
+      const handleUpdateNodeState = () => {
+        updateNodeState();
       };
 
   return (
@@ -1307,6 +1353,41 @@ const handleCreateFlowConFactor = () => {
           <p style={styles.success}>
             Weather forecast fetch job started with ID: {weatherForecastFetchData.startWeatherForecastFetch}
           </p>
+        )}
+      </div>
+            {/* Update Node State Section */}
+            <div style={styles.actionSection}>
+        <h3>Update Node State</h3>
+        <button
+          onClick={handleUpdateNodeState}
+          disabled={updateNodeStateLoading}
+          style={styles.button}
+        >
+          {updateNodeStateLoading ? 'Updating...' : `Update "${targetNodeName}" State`}
+        </button>
+
+        {/* Show any network/unexpected error */}
+        {updateNodeStateError && (
+          <p style={styles.error}>Error: {updateNodeStateError.message}</p>
+        )}
+
+        {/* On success, if there are no validation errors */}
+        {updateNodeStateData && updateNodeStateData.updateNodeState.errors.length === 0 && (
+          <p style={styles.success}>
+            Node "{targetNodeName}" state updated successfully!
+          </p>
+        )}
+
+        {/* If there are validation errors */}
+        {updateNodeStateData && updateNodeStateData.updateNodeState.errors.length > 0 && (
+          <div style={styles.error}>
+            <h4>Validation Errors:</h4>
+            <ul>
+              {updateNodeStateData.updateNodeState.errors.map((err, index) => (
+                <li key={index}>{`${err.field}: ${err.message}`}</li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
       
