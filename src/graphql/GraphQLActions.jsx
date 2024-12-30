@@ -17,6 +17,10 @@ import {
   CREATE_NODE_DIFFUSION_MUTATION,
   CREATE_RISK_MUTATION,
   CREATE_GEN_CONSTRAINT_MUTATION,
+  CREATE_FLOW_CON_FACTOR_MUTATION,
+  CREATE_STATE_CON_FACTOR_MUTATION,
+  CREATE_ONLINE_CON_FACTOR_MUTATION,
+  ADD_PROCESS_TO_GROUP_MUTATION, 
 } from './queries';
 
 const GraphQLActions = () => {
@@ -160,6 +164,26 @@ const newNodeGroup = {
     penalty: 1000.0,
     constant: 50.0,
   };
+
+  const newFlowConFactor = {
+    factor: 1.25,                // The factor value
+    constraintName: 'ConstraintAlpha',    // Must be an existing generic constraint's name
+    processName: 'Process Alpha', // Must be an existing process's name
+    sourceOrSinkNodeName: 'Node Alpha',   // The node name used as a source or sink in that process
+  };
+
+  const newStateConFactor = {
+    factor: 2.5,                 // The factor value
+    constraintName: 'ConstraintAlpha', // Must match an existing constraint
+    nodeName: 'NodeAlpha',       // Must be a valid node name
+  };
+
+  const newOnlineConFactor = {
+    factor: 3.0,                // Example factor value
+    constraintName: 'ConstraintAlpha', // Must be an existing constraint name
+    processName: 'Process Alpha',      // Must be a valid process name
+  };
+
 
   // useMutation hook for updating input data setup
   const [updateInputDataSetup, { data: updateData, loading: updateLoading, error: updateError }] = useMutation(
@@ -508,6 +532,106 @@ const newNodeGroup = {
     },
   });
 
+    // Mutation hook for creating a new flow constraint factor
+    const [
+        createFlowConFactor,
+        { data: createFlowConFactorData, loading: createFlowConFactorLoading, error: createFlowConFactorError },
+      ] = useMutation(CREATE_FLOW_CON_FACTOR_MUTATION, {
+        variables: newFlowConFactor,
+        onCompleted: (response) => {
+          if (response.createFlowConFactor.errors.length === 0) {
+            alert('Flow Constraint Factor created successfully!');
+            // Optionally, trigger a refetch or update cache here
+          } else {
+            // If the "errors" array has items, handle validation errors
+            const errorMessages = response.createFlowConFactor.errors
+              .map((err) => `${err.field}: ${err.message}`)
+              .join('\n');
+            alert(`Validation Errors:\n${errorMessages}`);
+          }
+        },
+        onError: (mutationError) => {
+          // Handle unexpected or network errors
+          console.error('Create Flow Con Factor Mutation Error:', mutationError);
+          alert('An unexpected error occurred while creating the Flow Constraint Factor.');
+        },
+      });
+
+        // Mutation hook for creating a new State Constraint Factor
+  const [
+    createStateConFactor,
+    { data: createStateConFactorData, loading: createStateConFactorLoading, error: createStateConFactorError },
+  ] = useMutation(CREATE_STATE_CON_FACTOR_MUTATION, {
+    variables: newStateConFactor,
+    onCompleted: (response) => {
+      if (response.createStateConFactor.errors.length === 0) {
+        alert('State Constraint Factor created successfully!');
+        // Optionally, trigger a refetch or update cache here
+      } else {
+        // Handle validation errors
+        const errorMessages = response.createStateConFactor.errors
+          .map((err) => `${err.field}: ${err.message}`)
+          .join('\n');
+        alert(`Validation Errors:\n${errorMessages}`);
+      }
+    },
+    onError: (mutationError) => {
+      // Handle unexpected or network errors
+      console.error('Create State Con Factor Mutation Error:', mutationError);
+      alert('An unexpected error occurred while creating the State Constraint Factor.');
+    },
+  });
+
+    // Mutation hook for creating a new Online Constraint Factor
+    const [
+        createOnlineConFactor,
+        { data: createOnlineConFactorData, loading: createOnlineConFactorLoading, error: createOnlineConFactorError },
+      ] = useMutation(CREATE_ONLINE_CON_FACTOR_MUTATION, {
+        variables: newOnlineConFactor,
+        onCompleted: (response) => {
+          if (response.createOnlineConFactor.errors.length === 0) {
+            alert('Online Constraint Factor created successfully!');
+            // Optionally, trigger a refetch or update the cache here
+          } else {
+            // If there are validation errors, display them
+            const errorMessages = response.createOnlineConFactor.errors
+              .map((err) => `${err.field}: ${err.message}`)
+              .join('\n');
+            alert(`Validation Errors:\n${errorMessages}`);
+          }
+        },
+        onError: (mutationError) => {
+          // Handle unexpected or network errors
+          console.error('Create Online Con Factor Mutation Error:', mutationError);
+          alert('An unexpected error occurred while creating the Online Constraint Factor.');
+        },
+      });
+
+      const [
+        addProcessToGroup,
+        { data: addProcessToGroupData, loading: addProcessToGroupLoading, error: addProcessToGroupError },
+      ] = useMutation(ADD_PROCESS_TO_GROUP_MUTATION, {
+        variables: {
+          processName: newProcess.name,
+          groupName: newProcessGroup.name,
+        },
+        onCompleted: (response) => {
+          // The mutation returns maybeError with a 'message' field
+          if (!response.addProcessToGroup.message) {
+            // No message means success
+            alert(`Process "${newProcess.name}" added to group "${newProcessGroup.name}" successfully!`);
+          } else {
+            // If there's a message, display it as an error
+            alert(`Error: ${response.addProcessToGroup.message}`);
+          }
+        },
+        onError: (mutationError) => {
+          console.error('Add Process to Group Mutation Error:', mutationError);
+          alert('An unexpected error occurred while adding the process to the group.');
+        },
+      });
+
+
     // Handler for creating a new Market
     const handleCreateMarket = () => {
         createMarket();
@@ -577,6 +701,26 @@ createRisk();
   const handleCreateGenConstraint = () => {
     createGenConstraint();
   };
+
+// Handler for creating a Flow Constraint Factor
+const handleCreateFlowConFactor = () => {
+    createFlowConFactor();
+    };
+
+      // Handler function to create a State Constraint Factor
+  const handleCreateStateConFactor = () => {
+    createStateConFactor();
+  };
+
+    // Handler function to create an Online Constraint Factor
+    const handleCreateOnlineConFactor = () => {
+        createOnlineConFactor();
+      };
+
+      // Handler function for the button
+      const handleAddProcessToGroup = () => {
+        addProcessToGroup();
+      };
 
   return (
     <div style={styles.container}>
@@ -894,6 +1038,134 @@ createRisk();
               </ul>
             </div>
           )}
+      </div>
+      {/* Create Flow Constraint Factor Section */}
+      <div style={styles.actionSection}>
+        <h3>Create Flow Constraint Factor</h3>
+        <button
+          onClick={handleCreateFlowConFactor}
+          disabled={createFlowConFactorLoading}
+          style={styles.button}
+        >
+          {createFlowConFactorLoading ? 'Creating...' : 'Create Flow Con Factor'}
+        </button>
+
+        {/* Network or unexpected error */}
+        {createFlowConFactorError && (
+          <p style={styles.error}>Error: {createFlowConFactorError.message}</p>
+        )}
+
+        {/* Successful creation */}
+        {createFlowConFactorData &&
+          createFlowConFactorData.createFlowConFactor.errors.length === 0 && (
+            <p style={styles.success}>Flow Constraint Factor created successfully!</p>
+          )}
+
+        {/* Validation errors from backend */}
+        {createFlowConFactorData &&
+          createFlowConFactorData.createFlowConFactor.errors.length > 0 && (
+            <div style={styles.error}>
+              <h4>Validation Errors:</h4>
+              <ul>
+                {createFlowConFactorData.createFlowConFactor.errors.map((err, index) => (
+                  <li key={index}>{`${err.field}: ${err.message}`}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+      </div>
+       {/* Create State Constraint Factor Section */}
+       <div style={styles.actionSection}>
+        <h3>Create State Constraint Factor</h3>
+        <button
+          onClick={handleCreateStateConFactor}
+          disabled={createStateConFactorLoading}
+          style={styles.button}
+        >
+          {createStateConFactorLoading ? 'Creating...' : 'Create State Con Factor'}
+        </button>
+
+        {createStateConFactorError && (
+          <p style={styles.error}>Error: {createStateConFactorError.message}</p>
+        )}
+
+        {/* Successful creation */}
+        {createStateConFactorData && createStateConFactorData.createStateConFactor.errors.length === 0 && (
+          <p style={styles.success}>State Constraint Factor created successfully!</p>
+        )}
+
+        {/* Validation errors */}
+        {createStateConFactorData && createStateConFactorData.createStateConFactor.errors.length > 0 && (
+          <div style={styles.error}>
+            <h4>Validation Errors:</h4>
+            <ul>
+              {createStateConFactorData.createStateConFactor.errors.map((err, index) => (
+                <li key={index}>{`${err.field}: ${err.message}`}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      {/* Create Online Constraint Factor Section */}
+      <div style={styles.actionSection}>
+        <h3>Create Online Constraint Factor</h3>
+        <button
+          onClick={handleCreateOnlineConFactor}
+          disabled={createOnlineConFactorLoading}
+          style={styles.button}
+        >
+          {createOnlineConFactorLoading ? 'Creating...' : 'Create Online Con Factor'}
+        </button>
+
+        {createOnlineConFactorError && (
+          <p style={styles.error}>Error: {createOnlineConFactorError.message}</p>
+        )}
+
+        {/* Successful creation */}
+        {createOnlineConFactorData &&
+          createOnlineConFactorData.createOnlineConFactor.errors.length === 0 && (
+            <p style={styles.success}>Online Constraint Factor created successfully!</p>
+          )}
+
+        {/* Validation errors */}
+        {createOnlineConFactorData &&
+          createOnlineConFactorData.createOnlineConFactor.errors.length > 0 && (
+            <div style={styles.error}>
+              <h4>Validation Errors:</h4>
+              <ul>
+                {createOnlineConFactorData.createOnlineConFactor.errors.map((err, index) => (
+                  <li key={index}>{`${err.field}: ${err.message}`}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+      </div>
+      {/* Add Process to Group Section */}
+      <div style={styles.actionSection}>
+        <h3>Add Process to Group</h3>
+        <button 
+          onClick={handleAddProcessToGroup} 
+          disabled={addProcessToGroupLoading} 
+          style={styles.button}
+        >
+          {addProcessToGroupLoading ? 'Adding...' : 'Add Process to Group'}
+        </button>
+
+        {addProcessToGroupError && (
+          <p style={styles.error}>Error: {addProcessToGroupError.message}</p>
+        )}
+        
+        {/* Successful addition */}
+        {addProcessToGroupData && !addProcessToGroupData.addProcessToGroup.message && (
+          <p style={styles.success}>
+            Process "{newProcess.name}" added to group "{newProcessGroup.name}" successfully!
+          </p>
+        )}
+
+        {/* Error/Validation message from server */}
+        {addProcessToGroupData && addProcessToGroupData.addProcessToGroup.message && (
+          <p style={styles.error}>Error: {addProcessToGroupData.addProcessToGroup.message}</p>
+        )}
       </div>
 
     </div>
