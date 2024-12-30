@@ -20,7 +20,8 @@ import {
   CREATE_FLOW_CON_FACTOR_MUTATION,
   CREATE_STATE_CON_FACTOR_MUTATION,
   CREATE_ONLINE_CON_FACTOR_MUTATION,
-  ADD_PROCESS_TO_GROUP_MUTATION, 
+  ADD_PROCESS_TO_GROUP_MUTATION,
+  ADD_NODE_TO_GROUP_MUTATION, 
 } from './queries';
 
 const GraphQLActions = () => {
@@ -631,6 +632,30 @@ const newNodeGroup = {
         },
       });
 
+      const [
+        addNodeToGroup,
+        { data: addNodeToGroupData, loading: addNodeToGroupLoading, error: addNodeToGroupError },
+      ] = useMutation(ADD_NODE_TO_GROUP_MUTATION, {
+        variables: {
+          nodeName: newNode.name,
+          groupName: newNodeGroup.name,
+        },
+        onCompleted: (response) => {
+          // The mutation returns maybeError with a 'message' field
+          if (!response.addNodeToGroup.message) {
+            // Success -> no message
+            alert(`Node "${newNode.name}" successfully added to group "${newNodeGroup.name}"!`);
+          } else {
+            // If there's a message, it's an error or validation issue
+            alert(`Error: ${response.addNodeToGroup.message}`);
+          }
+        },
+        onError: (mutationError) => {
+          console.error('Add Node to Group Mutation Error:', mutationError);
+          alert('An unexpected error occurred while adding the node to the group.');
+        },
+      });
+
 
     // Handler for creating a new Market
     const handleCreateMarket = () => {
@@ -720,6 +745,10 @@ const handleCreateFlowConFactor = () => {
       // Handler function for the button
       const handleAddProcessToGroup = () => {
         addProcessToGroup();
+      };
+
+      const handleAddNodeToGroup = () => {
+        addNodeToGroup();
       };
 
   return (
@@ -1167,6 +1196,35 @@ const handleCreateFlowConFactor = () => {
           <p style={styles.error}>Error: {addProcessToGroupData.addProcessToGroup.message}</p>
         )}
       </div>
+            {/* Add Node to Group Section */}
+            <div style={styles.actionSection}>
+        <h3>Add Node to Group</h3>
+        <button
+          onClick={handleAddNodeToGroup}
+          disabled={addNodeToGroupLoading}
+          style={styles.button}
+        >
+          {addNodeToGroupLoading ? 'Adding...' : 'Add Node to Group'}
+        </button>
+
+        {/* Network/Unexpected Error */}
+        {addNodeToGroupError && (
+          <p style={styles.error}>Error: {addNodeToGroupError.message}</p>
+        )}
+
+        {/* Success: no message means success */}
+        {addNodeToGroupData && !addNodeToGroupData.addNodeToGroup.message && (
+          <p style={styles.success}>
+            Node "{newNode.name}" added to group "{newNodeGroup.name}" successfully!
+          </p>
+        )}
+
+        {/* Server reported an error */}
+        {addNodeToGroupData && addNodeToGroupData.addNodeToGroup.message && (
+          <p style={styles.error}>Error: {addNodeToGroupData.addNodeToGroup.message}</p>
+        )}
+      </div>
+      
 
     </div>
   );
