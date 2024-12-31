@@ -24,7 +24,12 @@ import {
   ADD_NODE_TO_GROUP_MUTATION,
   START_ELECTRICITY_PRICE_FETCH_MUTATION,
   START_WEATHER_FORECAST_FETCH_MUTATION,
-  UPDATE_NODE_STATE_MUTATION, 
+  UPDATE_NODE_STATE_MUTATION,
+  CONNECT_NODE_INFLOW_TO_TEMPERATURE_FORECAST_MUTATION,
+  CONNECT_MARKET_PRICES_TO_FORECAST_MUTATION,
+  CLEAR_INPUT_DATA_MUTATION,
+  SAVE_MODEL_MUTATION,
+
 } from './queries';
 
 const GraphQLActions = () => {
@@ -202,6 +207,10 @@ const newNodeGroup = {
     tEConversion: 1.1,
     residualValue: 999.0,
   };
+
+  const temperatureForecastName = 'TemperatureForecastAlpha';
+  const marketForecastName = 'MyMarketForecast';
+  const marketName = newMarket.name;
 
   // useMutation hook for updating input data setup
   const [updateInputDataSetup, { data: updateData, loading: updateLoading, error: updateError }] = useMutation(
@@ -730,6 +739,101 @@ const newNodeGroup = {
         },
       });
 
+        // 1) Define the mutation hook
+  const [
+    connectNodeInflowToTemperatureForecast,
+    { data: connectForecastData, loading: connectForecastLoading, error: connectForecastError },
+  ] = useMutation(CONNECT_NODE_INFLOW_TO_TEMPERATURE_FORECAST_MUTATION, {
+    variables: {
+      nodeName: newNode.name,  // 'Node Alpha'
+      forecastName: temperatureForecastName, // 'TemperatureForecastAlpha'
+    },
+    onCompleted: (response) => {
+      // The mutation returns MaybeError with a "message" field
+      if (!response.connectNodeInflowToTemperatureForecast.message) {
+        // No message means success
+        alert(`Node "${newNode.name}" inflow connected to forecast "${temperatureForecastName}" successfully!`);
+      } else {
+        // If there's a message, treat it as an error
+        alert(`Error: ${response.connectNodeInflowToTemperatureForecast.message}`);
+      }
+    },
+    onError: (mutationError) => {
+      // Handle unexpected or network errors
+      console.error('Connect Node Inflow to Temperature Forecast Error:', mutationError);
+      alert('An unexpected error occurred while connecting node inflow to the temperature forecast.');
+    },
+  });
+  
+  const [
+    connectMarketPricesToForecast,
+    { data: connectMarketData, loading: connectMarketLoading, error: connectMarketError },
+  ] = useMutation(CONNECT_MARKET_PRICES_TO_FORECAST_MUTATION, {
+    variables: {
+      marketName: marketName,
+      forecastName: marketForecastName,
+    },
+    onCompleted: (response) => {
+      // The mutation returns MaybeError with a "message" field
+      if (!response.connectMarketPricesToForecast.message) {
+        // no message means success
+        alert(`Market "${marketName}" prices connected to forecast "${marketForecastName}" successfully!`);
+      } else {
+        // If there's a message, treat it as an error
+        alert(`Error: ${response.connectMarketPricesToForecast.message}`);
+      }
+    },
+    onError: (mutationError) => {
+      // Handle unexpected or network errors
+      console.error('Connect Market Prices to Forecast Error:', mutationError);
+      alert('An unexpected error occurred while connecting the market prices to the forecast.');
+    },
+  });
+
+  const [
+    clearInputData,
+    { data: clearData, loading: clearLoading, error: clearError },
+  ] = useMutation(CLEAR_INPUT_DATA_MUTATION, {
+    onCompleted: (response) => {
+      // The mutation returns MaybeError with a "message" field
+      if (!response.clearInputData.message) {
+        // No message means success
+        alert('All input data has been cleared from the model successfully!');
+        // Optionally, trigger a refetch or update your cache
+      } else {
+        // If there's a message, treat it as an error
+        alert(`Error: ${response.clearInputData.message}`);
+      }
+    },
+    onError: (mutationError) => {
+      // Handle unexpected or network errors
+      console.error('Clear Input Data Mutation Error:', mutationError);
+      alert('An unexpected error occurred while clearing the input data.');
+    },
+  });
+
+  const [
+    saveModel,
+    { data: saveModelData, loading: saveModelLoading, error: saveModelError },
+  ] = useMutation(SAVE_MODEL_MUTATION, {
+    onCompleted: (response) => {
+      // The mutation returns MaybeError with a "message" field
+      if (!response.saveModel.message) {
+        // No message = success
+        alert('Model saved successfully on disk!');
+        // Optionally, trigger a refetch or update the cache
+      } else {
+        // If there's a message, treat it as an error
+        alert(`Error: ${response.saveModel.message}`);
+      }
+    },
+    onError: (mutationError) => {
+      // Handle unexpected or network errors
+      console.error('Save Model Mutation Error:', mutationError);
+      alert('An unexpected error occurred while saving the model on disk.');
+    },
+  });
+
 
     // Handler for creating a new Market
     const handleCreateMarket = () => {
@@ -836,6 +940,18 @@ const handleCreateFlowConFactor = () => {
       const handleUpdateNodeState = () => {
         updateNodeState();
       };
+
+      const handleConnectNodeInflow = () => {
+        connectNodeInflowToTemperatureForecast();
+      };
+
+      const handleConnectMarketPrices = () => {
+        connectMarketPricesToForecast();
+      };
+
+      const handleClearInputData = () => {
+  clearInputData(); // Just call the mutate function
+};
 
   return (
     <div style={styles.container}>
@@ -1390,6 +1506,117 @@ const handleCreateFlowConFactor = () => {
           </div>
         )}
       </div>
+            {/* Connect Node Inflow to Temperature Forecast Section */}
+            <div style={styles.actionSection}>
+        <h3>Connect Node Inflow to Temperature Forecast</h3>
+        <button
+          onClick={handleConnectNodeInflow}
+          disabled={connectForecastLoading}
+          style={styles.button}
+        >
+          {connectForecastLoading ? 'Connecting...' : `Connect "${newNode.name}" to "${temperatureForecastName}"`}
+        </button>
+
+        {/* If there's a network/unexpected error */}
+        {connectForecastError && (
+          <p style={styles.error}>Error: {connectForecastError.message}</p>
+        )}
+
+        {/* If successful and no message from the server => success */}
+        {connectForecastData && !connectForecastData.connectNodeInflowToTemperatureForecast.message && (
+          <p style={styles.success}>
+            Node "{newNode.name}" inflow connected to forecast "{temperatureForecastName}" successfully!
+          </p>
+        )}
+
+        {/* If the server returned an error message */}
+        {connectForecastData && connectForecastData.connectNodeInflowToTemperatureForecast.message && (
+          <p style={styles.error}>
+            Error: {connectForecastData.connectNodeInflowToTemperatureForecast.message}
+          </p>
+        )}
+      </div>
+      <div style={styles.actionSection}>
+  <h3>Connect Market Prices to Forecast</h3>
+  <button
+    onClick={handleConnectMarketPrices}
+    disabled={connectMarketLoading}
+    style={styles.button}
+  >
+    {connectMarketLoading
+      ? 'Connecting...'
+      : `Connect "${marketName}" to "${marketForecastName}"`}
+  </button>
+
+  {/* If there's a network/unexpected error */}
+  {connectMarketError && (
+    <p style={styles.error}>Error: {connectMarketError.message}</p>
+  )}
+
+  {/* If successful and no message from the server => success */}
+  {connectMarketData && !connectMarketData.connectMarketPricesToForecast.message && (
+    <p style={styles.success}>
+      Market "{marketName}" connected to forecast "{marketForecastName}" successfully!
+    </p>
+  )}
+
+  {/* If the server returned an error message */}
+  {connectMarketData && connectMarketData.connectMarketPricesToForecast.message && (
+    <p style={styles.error}>
+      Error: {connectMarketData.connectMarketPricesToForecast.message}
+    </p>
+  )}
+</div>
+<div style={styles.actionSection}>
+  <h3>Clear Input Data</h3>
+  <button
+    onClick={handleClearInputData}
+    disabled={clearLoading}
+    style={styles.button}
+  >
+    {clearLoading ? 'Clearing...' : 'Clear All Input Data'}
+  </button>
+
+  {/* If there's a network/unexpected error */}
+  {clearError && (
+    <p style={styles.error}>Error: {clearError.message}</p>
+  )}
+
+  {/* If the server response had no message => success */}
+  {clearData && !clearData.clearInputData.message && (
+    <p style={styles.success}>All input data cleared successfully!</p>
+  )}
+
+  {/* If there's a server error message */}
+  {clearData && clearData.clearInputData.message && (
+    <p style={styles.error}>Error: {clearData.clearInputData.message}</p>
+  )}
+</div>
+<div style={styles.actionSection}>
+  <h3>Save Model on Disk</h3>
+  <button
+    onClick={() => saveModel()}       // Call the mutate function
+    disabled={saveModelLoading}
+    style={styles.button}
+  >
+    {saveModelLoading ? 'Saving...' : 'Save Model to Disk'}
+  </button>
+
+  {/* If there's an unexpected error (e.g. network) */}
+  {saveModelError && (
+    <p style={styles.error}>Error: {saveModelError.message}</p>
+  )}
+
+  {/* If the server returns no message => success */}
+  {saveModelData && !saveModelData.saveModel.message && (
+    <p style={styles.success}>Model saved successfully on disk!</p>
+  )}
+
+  {/* If the server returns a message => error */}
+  {saveModelData && saveModelData.saveModel.message && (
+    <p style={styles.error}>Error: {saveModelData.saveModel.message}</p>
+  )}
+</div>
       
 
     </div>
