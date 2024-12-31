@@ -1,7 +1,7 @@
 // src/graphql/GraphQLActions.jsx
 
-import React from 'react';
-import { useMutation } from '@apollo/client';
+import React, { useState } from 'react';
+import { useMutation, useQuery } from '@apollo/client';
 import {
   UPDATE_INPUT_DATA_SETUP_MUTATION,
   CREATE_PROCESS_MUTATION,
@@ -29,6 +29,8 @@ import {
   CONNECT_MARKET_PRICES_TO_FORECAST_MUTATION,
   CLEAR_INPUT_DATA_MUTATION,
   SAVE_MODEL_MUTATION,
+  START_OPTIMIZATION_MUTATION,
+  JOB_STATUS_QUERY,
 
 } from './queries';
 
@@ -834,6 +836,34 @@ const newNodeGroup = {
     },
   });
 
+  // Step 1: Keep local React state for job ID
+  const [optimizationJobId, setOptimizationJobId] = useState(null);
+
+  // The mutation for startOptimization
+  const [startOptimization, { data: optimizationData, loading: optimizationLoading, error: optimizationError }] = 
+    useMutation(START_OPTIMIZATION_MUTATION, {
+      onCompleted: (response) => {
+        // response.startOptimization is your job ID
+        const jobId = response.startOptimization;
+        alert(`Optimization started! Job ID: ${jobId}`);
+        setOptimizationJobId(jobId);  // <-- store the jobId in state
+      },
+      onError: (mutationError) => {
+        console.error('Start Optimization Mutation Error:', mutationError);
+        alert('An unexpected error occurred while starting optimization.');
+      },
+    });
+
+    // If you want to poll every 2 seconds:
+const { data: jobStatusData, loading: jobStatusLoading, error: jobStatusError } = useQuery(
+    JOB_STATUS_QUERY,
+    {
+      skip: !optimizationJobId,        // Don’t run until we have a job ID
+      variables: { jobId: optimizationJobId },
+      pollInterval: 2000,              // Poll every 2 seconds
+    }
+  );
+
 
     // Handler for creating a new Market
     const handleCreateMarket = () => {
@@ -1617,6 +1647,28 @@ const handleCreateFlowConFactor = () => {
     <p style={styles.error}>Error: {saveModelData.saveModel.message}</p>
   )}
 </div>
+<button onClick={() => startOptimization()}>
+  {optimizationLoading ? 'Starting...' : 'Start Optimization'}
+</button>
+
+{optimizationJobId && (
+  <div style={styles.actionSection}>
+    <h3>Job Status for ID: {optimizationJobId}</h3>
+
+    {jobStatusLoading && <p>Checking job status...</p>}
+    {jobStatusError && <p style={styles.error}>Error: {jobStatusError.message}</p>}
+
+    {/* If data is loaded, show the job state */}
+    {jobStatusData?.jobStatus && (
+      <>
+        <p>State: {jobStatusData.jobStatus.state}</p>
+        {jobStatusData.jobStatus.message && (
+          <p>Message: {jobStatusData.jobStatus.message}</p>
+        )}
+      </>
+    )}
+  </div>
+)}
       
 
     </div>
