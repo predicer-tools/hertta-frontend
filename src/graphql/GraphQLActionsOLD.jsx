@@ -2,8 +2,6 @@
 
 import React, { useState } from 'react';
 import { useMutation, useQuery } from '@apollo/client';
-import Modal from '../components/Modal/Modal';
-import InputSetupModal from '../components/Modal/InputSetupModal'; 
 import {
   UPDATE_INPUT_DATA_SETUP_MUTATION,
   CREATE_PROCESS_MUTATION,
@@ -55,40 +53,6 @@ const GraphQLActions = () => {
     useRampDummyVariables: true,
     nodeDummyVariableCost: 100000.0,
     rampDummyVariableCost: 100000.0,
-  };
-
-  const [isInputSetupModalOpen, setIsInputSetupModalOpen] = useState(false);
-
-
-const openInputSetupModal = () => setIsInputSetupModalOpen(true);
-const closeInputSetupModal = () => setIsInputSetupModalOpen(false);
-
-  // 2) State mirroring your setupUpdate object
-  const [inputSetupForm, setInputSetupForm] = useState({
-    containsReserves: true,
-    containsOnline: false,
-    containsStates: false,
-    containsPiecewiseEff: false,
-    containsRisk: false,
-    containsDiffusion: true,
-    containsDelay: false,
-    containsMarkets: true,
-    reserveRealization: true,
-    useMarketBids: true,
-    commonTimesteps: 0,
-    commonScenarioName: 'ALL',
-    useNodeDummyVariables: true,
-    useRampDummyVariables: true,
-    nodeDummyVariableCost: 100000.0,
-    rampDummyVariableCost: 100000.0,
-  });
-
-  const handleInputSetupChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setInputSetupForm((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
   };
 
   // Define the new process object
@@ -274,14 +238,6 @@ const newNodeGroup = {
       },
     }
   );
-
-  const handleSubmitInputSetup = (e) => {
-    e.preventDefault();
-    // Trigger the mutation with updated values
-    updateInputDataSetup({
-      variables: { setupUpdate: { ...inputSetupForm } },
-    });
-  };
 
   // useMutation hook for creating a new process
   const [createProcess, { data: createData, loading: createLoading, error: createError }] = useMutation(
@@ -908,26 +864,6 @@ const { data: jobStatusData, loading: jobStatusLoading, error: jobStatusError } 
     }
   );
 
-  const [processForm, setProcessForm] = useState({
-    name: '',
-    conversion: 'UNIT', // Default enum value
-    isCfFix: false,
-    isOnline: true,
-    isRes: false,
-    eff: 0.85,
-    loadMin: 0.0,
-    loadMax: 1.0,
-    startCost: 5000.0,
-    minOnline: 5.0,
-    maxOnline: 120.0,
-    minOffline: 2.0,
-    maxOffline: 50.0,
-    initialState: true,
-    isScenarioIndependent: false,
-    cf: 1.2,
-    effTs: 0.75,
-  });
-
 
     // Handler for creating a new Market
     const handleCreateMarket = () => {
@@ -1045,84 +981,34 @@ const handleCreateFlowConFactor = () => {
 
       const handleClearInputData = () => {
   clearInputData(); // Just call the mutate function
-    };
-
-    // Handle form input changes
-    const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setProcessForm({
-          ...processForm,
-          [name]: type === 'checkbox' ? checked : value,
-        });
-      };
-    
-      // Handler for creating a process using form data
-      const handleFormSubmit = (e) => {
-        e.preventDefault();
-        createProcess({ variables: { process: processForm } });
-      };
-
+};
 
   return (
     <div style={styles.container}>
       <h2>GraphQL Actions</h2>
 
-            {/* Add New Process Section */}
-            <div style={styles.actionSection}>
-        <h3>Add New Process</h3>
-        <form onSubmit={handleFormSubmit} style={styles.form}>
-          <div style={styles.formGroup}>
-            <label>Process Name:</label>
-            <input
-              type="text"
-              name="name"
-              value={processForm.name}
-              onChange={handleInputChange}
-              required
-              style={styles.input}
-            />
-          </div>
-          <div style={styles.formGroup}>
-            <label>Conversion:</label>
-            <select
-              name="conversion"
-              value={processForm.conversion}
-              onChange={handleInputChange}
-              style={styles.select}
-            >
-              <option value="UNIT">UNIT</option>
-              <option value="ENERGY">ENERGY</option>
-              {/* Add more options based on your enum */}
-            </select>
-          </div>
-          <div style={styles.formGroup}>
-            <label>Efficiency:</label>
-            <input
-              type="number"
-              name="eff"
-              value={processForm.eff}
-              onChange={handleInputChange}
-              step="0.01"
-              style={styles.input}
-            />
-          </div>
-          {/* Add similar input fields for other parameters */}
-          <button type="submit" disabled={createLoading} style={styles.button}>
-            {createLoading ? 'Creating...' : 'Create Process'}
-          </button>
-        </form>
+      {/* Update Input Data Setup Section */}
+      <div style={styles.actionSection}>
+        <h3>Update Input Data Setup</h3>
+        <button onClick={handleUpdateInputDataSetup} disabled={updateLoading} style={styles.button}>
+          {updateLoading ? 'Updating...' : 'Update Input Data Setup'}
+        </button>
+        {updateError && <p style={styles.error}>Error: {updateError.message}</p>}
+        {updateData && updateData.updateInputDataSetup.errors.length === 0 && (
+          <p style={styles.success}>Input Data Setup updated successfully!</p>
+        )}
+      </div>
+
+      {/* Create New Process Section */}
+      <div style={styles.actionSection}>
+        <h3>Create New Process</h3>
+        <button onClick={handleCreateProcess} disabled={createLoading} style={styles.button}>
+          {createLoading ? 'Creating...' : 'Create New Process'}
+        </button>
         {createError && <p style={styles.error}>Error: {createError.message}</p>}
         {createData && createData.createProcess.errors.length === 0 && (
           <p style={styles.success}>Process created successfully!</p>
         )}
-      </div>
-
-      {/* A button to open the “Add / Update Input Setup” modal */}
-      <div style={styles.actionSection}>
-        <h3>Add / Update Input Setup</h3>
-        <button onClick={openInputSetupModal} style={styles.button}>
-          {updateLoading ? 'Saving...' : 'Add Input Setup'}
-        </button>
       </div>
 
       {/* Create New Node Section */}
@@ -1782,18 +1668,8 @@ const handleCreateFlowConFactor = () => {
       </>
     )}
   </div>
-  
 )}
-      {/* The Input Setup Modal */}
-      <InputSetupModal
-        isOpen={isInputSetupModalOpen}
-        onClose={closeInputSetupModal}
-        loading={updateLoading}
-        error={updateError}
-        values={inputSetupForm}
-        onChange={handleInputSetupChange}
-        onSubmit={handleSubmitInputSetup}
-      />
+      
 
     </div>
   );

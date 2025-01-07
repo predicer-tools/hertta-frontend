@@ -4,11 +4,11 @@
   border: 1px solid #aaa;
   padding: 12px;
   border-radius: 6px;
-  background-color: #fff; /* Default background */
+  background-color: #fff; 
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   cursor: pointer;
   transition: background-color 0.3s, transform 0.3s;
-  outline: none; /* Remove default outline */
+  outline: none; 
 }
 
 .clickableHeater:hover {
@@ -16,7 +16,7 @@
 }
 
 .clickableHeater:focus {
-  outline: 2px solid #1976d2; /* Custom focus outline */
+  outline: 2px solid #1976d2;
 }
 
 .heaterName {
@@ -34,11 +34,11 @@
 
 /* State-based background colors */
 .on {
-  background-color: #d4edda; /* Light green */
+  background-color: #d4edda; 
 }
 
 .off {
-  background-color: #f8f9fa; /* Light grey */
+  background-color: #f8f9fa; 
 }
 
 /* State text colors */

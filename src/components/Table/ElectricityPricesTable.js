@@ -34,7 +34,7 @@ const ElectricityPricesTable = ({ fiPrices, loading, error }) => {
         <tbody>
           {fiPrices.map((entry, index) => (
             <tr key={index}>
-              <td>{entry.timestampLocal}</td> {/* Use pre-formatted Finnish timestamp */}
+              <td>{entry.timestampLocal}</td>
               <td>{entry.finalPrice}</td>
             </tr>
           ))}

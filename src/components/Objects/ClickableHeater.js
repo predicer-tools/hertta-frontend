@@ -34,7 +34,7 @@ function ClickableHeater({ heater, onClick }) {
 
   return (
     <div
-      className={`${styles.clickableHeater} ${stateClass}`} // Apply both classes
+      className={`${styles.clickableHeater} ${stateClass}`}
       onClick={() => onClick(heater)}
       tabIndex={0}
       role="button"

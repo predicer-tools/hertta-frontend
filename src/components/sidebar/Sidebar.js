@@ -51,11 +51,9 @@ function Sidebar({ isOpen }) {
               Manage Input Data
             </NavLink>
           </li>
-          {/* Add more navigation links as needed */}
         </ul>
       </nav>
       <div className={styles.resetContainer}>
-        {/* Replace LogoutButton with ResetButton */}
         <ResetButton />
       </div>
     </div>

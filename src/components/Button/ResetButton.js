@@ -8,10 +8,9 @@ import DataContext from '../../context/DataContext';
 import ConfigContext from '../../context/ConfigContext';
 import { makeStyles } from '@mui/styles';
 
-// Optional: Custom styling using makeStyles
 const useStyles = makeStyles({
   resetButton: {
-    // Add custom styles if needed
+   
   },
 });
 
@@ -57,7 +56,7 @@ function ResetButton() {
         color="secondary"
         onClick={handleReset}
         className={classes.resetButton}
-        sx={{ margin: 2 }} // Using MUI's sx prop for spacing
+        sx={{ margin: 2 }}
       >
         Reset All Data
       </Button>
