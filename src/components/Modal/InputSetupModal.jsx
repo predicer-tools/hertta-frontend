@@ -1,6 +1,18 @@
+// src/components/Modal/InputSetupModal.jsx
+
 import React from 'react';
 import Modal from './Modal'; // Adjust path to your actual Modal component
 
+/**
+ * Props:
+ * @param {boolean} isOpen - Whether the modal is open/visible
+ * @param {function} onClose - Function to close the modal (sets isOpen=false)
+ * @param {boolean} loading - Whether a mutation is in progress (shows 'Saving...' on the button)
+ * @param {object} error - Any GraphQL or network errors
+ * @param {object} values - The entire input setup object
+ * @param {function} onChange - Handler for updating form fields in the parent state
+ * @param {function} onSubmit - Handler for final submission (e.g. calls updateInputDataSetup)
+ */
 const InputSetupModal = ({
   isOpen,
   onClose,
@@ -14,7 +26,7 @@ const InputSetupModal = ({
     <Modal isOpen={isOpen} onClose={onClose}>
       <h2>Input Setup</h2>
 
-      {/* If there's an unexpected error from the mutation */}
+      {/* If there's a mutation/network error, display it */}
       {error && <p style={styles.error}>Error: {error.message}</p>}
 
       <form onSubmit={onSubmit} style={styles.form}>
@@ -229,6 +241,7 @@ const InputSetupModal = ({
           </label>
         </div>
 
+        {/* Submit Button */}
         <button type="submit" style={styles.button}>
           {loading ? 'Saving...' : 'Save'}
         </button>
@@ -239,7 +252,7 @@ const InputSetupModal = ({
 
 export default InputSetupModal;
 
-// Example styling (customize to your liking)
+// ---------- STYLES -------------
 const styles = {
   form: {
     display: 'flex',
@@ -252,7 +265,7 @@ const styles = {
   button: {
     padding: '10px 20px',
     background: '#2196F3',
-    color: 'white',
+    color: '#fff',
     border: 'none',
     borderRadius: '5px',
     cursor: 'pointer',

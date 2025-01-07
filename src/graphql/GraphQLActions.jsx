@@ -3,7 +3,10 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery } from '@apollo/client';
 import Modal from '../components/Modal/Modal';
-import InputSetupModal from '../components/Modal/InputSetupModal'; 
+import InputSetupModal from '../components/Modal/InputSetupModal';
+import ProcessModal from '../components/Modal/ProcessModal';
+import NodeModal from '../components/Modal/NodeModal';
+
 import {
   UPDATE_INPUT_DATA_SETUP_MUTATION,
   CREATE_PROCESS_MUTATION,
@@ -38,30 +41,18 @@ import {
 
 const GraphQLActions = () => {
   // Define the setupUpdate object
-  const setupUpdate = {
-    containsReserves: true,
-    containsOnline: false,
-    containsStates: false,
-    containsPiecewiseEff: false,
-    containsRisk: false,
-    containsDiffusion: true,
-    containsDelay: false,
-    containsMarkets: true,
-    reserveRealization: true,
-    useMarketBids: true,
-    commonTimesteps: 0,
-    commonScenarioName: 'ALL',
-    useNodeDummyVariables: true,
-    useRampDummyVariables: true,
-    nodeDummyVariableCost: 100000.0,
-    rampDummyVariableCost: 100000.0,
-  };
 
   const [isInputSetupModalOpen, setIsInputSetupModalOpen] = useState(false);
+  const openInputSetupModal = () => setIsInputSetupModalOpen(true);
+  const closeInputSetupModal = () => setIsInputSetupModalOpen(false);
 
+  const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
+  const openProcessModal = () => setIsProcessModalOpen(true);
+  const closeProcessModal = () => setIsProcessModalOpen(false);
 
-const openInputSetupModal = () => setIsInputSetupModalOpen(true);
-const closeInputSetupModal = () => setIsInputSetupModalOpen(false);
+  const [isNodeModalOpen, setIsNodeModalOpen] = useState(false);
+  const openNodeModal = () => setIsNodeModalOpen(true);
+  const closeNodeModal = () => setIsNodeModalOpen(false);
 
   // 2) State mirroring your setupUpdate object
   const [inputSetupForm, setInputSetupForm] = useState({
@@ -83,18 +74,18 @@ const closeInputSetupModal = () => setIsInputSetupModalOpen(false);
     rampDummyVariableCost: 100000.0,
   });
 
-  const handleInputSetupChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setInputSetupForm((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
+  const [nodeForm, setNodeForm] = useState({
+    name: '',
+    isCommodity: false,
+    isMarket: true,
+    isRes: false,
+    cost: 0.0,
+    inflow: 0.0,
+  });
 
-  // Define the new process object
-  const newProcess = {
-    name: 'Process Alpha',
-    conversion: 'UNIT', // Ensure this matches the enum in your schema
+  const [processForm, setProcessForm] = useState({
+    name: '',
+    conversion: 'UNIT', // Default enum value
     isCfFix: false,
     isOnline: true,
     isRes: false,
@@ -110,6 +101,30 @@ const closeInputSetupModal = () => setIsInputSetupModalOpen(false);
     isScenarioIndependent: false,
     cf: 1.2,
     effTs: 0.75,
+  });
+
+  const handleInputSetupChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setInputSetupForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleProcessFormChange = (e) => {
+    const { name, type, checked, value } = e.target;
+    setProcessForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleNodeFormChange = (e) => {
+    const { name, type, checked, value } = e.target;
+    setNodeForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
   };
 
   // Define the new node object
@@ -251,29 +266,19 @@ const newNodeGroup = {
   const marketName = newMarket.name;
 
   // useMutation hook for updating input data setup
-  const [updateInputDataSetup, { data: updateData, loading: updateLoading, error: updateError }] = useMutation(
-    UPDATE_INPUT_DATA_SETUP_MUTATION,
-    {
-      variables: { setupUpdate },
-      onCompleted: (response) => {
-        if (response.updateInputDataSetup.errors.length === 0) {
-          alert('Input Data Setup updated successfully!');
-          // Optionally, trigger a refetch or update cache here
-        } else {
-          // Handle validation errors
-          const errorMessages = response.updateInputDataSetup.errors
-            .map((err) => `${err.field}: ${err.message}`)
-            .join('\n');
-          alert(`Errors:\n${errorMessages}`);
-        }
-      },
-      onError: (mutationError) => {
-        // Handle unexpected errors (e.g., network issues)
-        console.error('Update Mutation Error:', mutationError);
-        alert('An unexpected error occurred while updating Input Data Setup.');
-      },
-    }
-  );
+  const [updateInputDataSetup, { data: updateData, loading: updateLoading, error: updateError }] =
+  useMutation(UPDATE_INPUT_DATA_SETUP_MUTATION, {
+    onCompleted: (response) => {
+      if (response.updateInputDataSetup.errors.length === 0) {
+        alert('Input Data Setup updated successfully!');
+      } else {
+        // handle validation errors
+      }
+    },
+    onError: (mutationError) => {
+      // handle unexpected errors
+    },
+  });
 
   const handleSubmitInputSetup = (e) => {
     e.preventDefault();
@@ -287,11 +292,9 @@ const newNodeGroup = {
   const [createProcess, { data: createData, loading: createLoading, error: createError }] = useMutation(
     CREATE_PROCESS_MUTATION,
     {
-      variables: { process: newProcess },
       onCompleted: (response) => {
         if (response.createProcess.errors.length === 0) {
           alert('Process created successfully!');
-          // Optionally, trigger a refetch or update cache here
         } else {
           // Handle validation errors
           const errorMessages = response.createProcess.errors
@@ -308,30 +311,43 @@ const newNodeGroup = {
     }
   );
 
-  // useMutation hook for creating a new node
-  const [createNode, { data: createNodeData, loading: createNodeLoading, error: createNodeError }] = useMutation(
-    CREATE_NODE_MUTATION,
-    {
-      variables: { node: newNode },
-      onCompleted: (response) => {
-        if (response.createNode.errors.length === 0) {
-          alert('Node created successfully!');
-          // Optionally, trigger a refetch or update cache here
-        } else {
-          // Handle validation errors
-          const errorMessages = response.createNode.errors
-            .map((err) => `${err.field}: ${err.message}`)
-            .join('\n');
-          alert(`Errors:\n${errorMessages}`);
-        }
-      },
-      onError: (mutationError) => {
-        // Handle unexpected errors (e.g., network issues)
-        console.error('Create Node Mutation Error:', mutationError);
-        alert('An unexpected error occurred while creating the node.');
-      },
-    }
-  );
+  const handleProcessFormSubmit = (e) => {
+    e.preventDefault();
+    createProcess({ variables: { process: processForm } });
+    // Optionally close the modal after creating
+    closeProcessModal();
+  };
+
+  const [createNode, {
+    data: createNodeData,
+    loading: createNodeLoading,
+    error: createNodeError,
+  }] = useMutation(CREATE_NODE_MUTATION, {
+    onCompleted: (response) => {
+      if (response.createNode.errors.length === 0) {
+        alert('Node created successfully!');
+        // Optionally refetch or do more logic here
+      } else {
+        // Handle validation errors
+        const errorMessages = response.createNode.errors
+          .map((err) => `${err.field}: ${err.message}`)
+          .join('\n');
+        alert(`Errors:\n${errorMessages}`);
+      }
+    },
+    onError: (mutationError) => {
+      console.error('Create Node Mutation Error:', mutationError);
+      alert('An unexpected error occurred while creating the node.');
+    },
+  });
+
+  const handleNodeFormSubmit = (e) => {
+    e.preventDefault();
+    // Pass user-defined node fields to mutation
+    createNode({ variables: { node: nodeForm } });
+    // Close modal after submission
+    closeNodeModal();
+  };
 
   // useMutation hook for creating a new scenario
   const [createScenario, { data: createScenarioData, loading: createScenarioLoading, error: createScenarioError }] = useMutation(
@@ -685,14 +701,14 @@ const newNodeGroup = {
         { data: addProcessToGroupData, loading: addProcessToGroupLoading, error: addProcessToGroupError },
       ] = useMutation(ADD_PROCESS_TO_GROUP_MUTATION, {
         variables: {
-          processName: newProcess.name,
-          groupName: newProcessGroup.name,
+            processName: processForm.name,   // or your chosen variable
+            groupName: newProcessGroup.name,
         },
         onCompleted: (response) => {
           // The mutation returns maybeError with a 'message' field
           if (!response.addProcessToGroup.message) {
             // No message means success
-            alert(`Process "${newProcess.name}" added to group "${newProcessGroup.name}" successfully!`);
+            alert(`Process "${processForm.name}" added to group "${newProcessGroup.name}" successfully!`);
           } else {
             // If there's a message, display it as an error
             alert(`Error: ${response.addProcessToGroup.message}`);
@@ -908,36 +924,11 @@ const { data: jobStatusData, loading: jobStatusLoading, error: jobStatusError } 
     }
   );
 
-  const [processForm, setProcessForm] = useState({
-    name: '',
-    conversion: 'UNIT', // Default enum value
-    isCfFix: false,
-    isOnline: true,
-    isRes: false,
-    eff: 0.85,
-    loadMin: 0.0,
-    loadMax: 1.0,
-    startCost: 5000.0,
-    minOnline: 5.0,
-    maxOnline: 120.0,
-    minOffline: 2.0,
-    maxOffline: 50.0,
-    initialState: true,
-    isScenarioIndependent: false,
-    cf: 1.2,
-    effTs: 0.75,
-  });
-
 
     // Handler for creating a new Market
     const handleCreateMarket = () => {
         createMarket();
     };
-
-  // Handler for updating input data setup
-  const handleUpdateInputDataSetup = () => {
-    updateInputDataSetup();
-  };
 
   // Handler for creating a new process
   const handleCreateProcess = () => {
@@ -1067,56 +1058,6 @@ const handleCreateFlowConFactor = () => {
     <div style={styles.container}>
       <h2>GraphQL Actions</h2>
 
-            {/* Add New Process Section */}
-            <div style={styles.actionSection}>
-        <h3>Add New Process</h3>
-        <form onSubmit={handleFormSubmit} style={styles.form}>
-          <div style={styles.formGroup}>
-            <label>Process Name:</label>
-            <input
-              type="text"
-              name="name"
-              value={processForm.name}
-              onChange={handleInputChange}
-              required
-              style={styles.input}
-            />
-          </div>
-          <div style={styles.formGroup}>
-            <label>Conversion:</label>
-            <select
-              name="conversion"
-              value={processForm.conversion}
-              onChange={handleInputChange}
-              style={styles.select}
-            >
-              <option value="UNIT">UNIT</option>
-              <option value="ENERGY">ENERGY</option>
-              {/* Add more options based on your enum */}
-            </select>
-          </div>
-          <div style={styles.formGroup}>
-            <label>Efficiency:</label>
-            <input
-              type="number"
-              name="eff"
-              value={processForm.eff}
-              onChange={handleInputChange}
-              step="0.01"
-              style={styles.input}
-            />
-          </div>
-          {/* Add similar input fields for other parameters */}
-          <button type="submit" disabled={createLoading} style={styles.button}>
-            {createLoading ? 'Creating...' : 'Create Process'}
-          </button>
-        </form>
-        {createError && <p style={styles.error}>Error: {createError.message}</p>}
-        {createData && createData.createProcess.errors.length === 0 && (
-          <p style={styles.success}>Process created successfully!</p>
-        )}
-      </div>
-
       {/* A button to open the “Add / Update Input Setup” modal */}
       <div style={styles.actionSection}>
         <h3>Add / Update Input Setup</h3>
@@ -1125,17 +1066,27 @@ const handleCreateFlowConFactor = () => {
         </button>
       </div>
 
-      {/* Create New Node Section */}
+      <div style={styles.actionSection}>
+        <h3>Create New Process</h3>
+        <button onClick={openProcessModal} style={styles.button}>
+          Add New Process
+        </button>
+      </div>
+
+      {/* Node Section */}
       <div style={styles.actionSection}>
         <h3>Create New Node</h3>
-        <button onClick={handleCreateNode} disabled={createNodeLoading} style={styles.button}>
-          {createNodeLoading ? 'Creating...' : 'Create New Node'}
+        {/* Instead of calling createNode() directly, let's open the modal */}
+        <button onClick={openNodeModal} style={styles.button}>
+          Add New Node
         </button>
-        {createNodeError && <p style={styles.error}>Error: {createNodeError.message}</p>}
-        {createNodeData && createNodeData.createNode.errors.length === 0 && (
-          <p style={styles.success}>Node created successfully!</p>
-        )}
       </div>
+
+      {/* Show success/error messages from createNode if desired */}
+      {createNodeError && <p style={styles.error}>Error: {createNodeError.message}</p>}
+      {createNodeData && createNodeData.createNode.errors.length === 0 && (
+        <p style={styles.success}>Node created successfully!</p>
+      )}
 
       {/* Create New Scenario Section */}
       <div style={styles.actionSection}>
@@ -1533,7 +1484,7 @@ const handleCreateFlowConFactor = () => {
         {/* Successful addition */}
         {addProcessToGroupData && !addProcessToGroupData.addProcessToGroup.message && (
           <p style={styles.success}>
-            Process "{newProcess.name}" added to group "{newProcessGroup.name}" successfully!
+            Process "{processForm.name}" added to group "{newProcessGroup.name}" successfully!
           </p>
         )}
 
@@ -1793,6 +1744,27 @@ const handleCreateFlowConFactor = () => {
         values={inputSetupForm}
         onChange={handleInputSetupChange}
         onSubmit={handleSubmitInputSetup}
+      />
+            {/* The Process Modal */}
+            <ProcessModal
+        isOpen={isProcessModalOpen}
+        onClose={closeProcessModal}
+        onSubmit={handleProcessFormSubmit}
+        processForm={processForm}
+        onChange={handleProcessFormChange}
+        loading={createLoading}
+        error={createError}
+      />
+
+            {/* The Node Modal */}
+            <NodeModal
+        isOpen={isNodeModalOpen}
+        onClose={closeNodeModal}
+        onSubmit={handleNodeFormSubmit}
+        nodeForm={nodeForm}
+        onChange={handleNodeFormChange}
+        loading={createNodeLoading}
+        error={createNodeError}
       />
 
     </div>
