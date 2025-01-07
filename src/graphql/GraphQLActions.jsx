@@ -6,6 +6,7 @@ import Modal from '../components/Modal/Modal';
 import InputSetupModal from '../components/Modal/InputSetupModal';
 import ProcessModal from '../components/Modal/ProcessModal';
 import NodeModal from '../components/Modal/NodeModal';
+import MarketModal from '../components/Modal/MarketModal';
 
 import {
   UPDATE_INPUT_DATA_SETUP_MUTATION,
@@ -53,6 +54,11 @@ const GraphQLActions = () => {
   const [isNodeModalOpen, setIsNodeModalOpen] = useState(false);
   const openNodeModal = () => setIsNodeModalOpen(true);
   const closeNodeModal = () => setIsNodeModalOpen(false);
+
+  const [isMarketModalOpen, setIsMarketModalOpen] = useState(false);
+const openMarketModal = () => setIsMarketModalOpen(true);
+const closeMarketModal = () => setIsMarketModalOpen(false);
+
 
   // 2) State mirroring your setupUpdate object
   const [inputSetupForm, setInputSetupForm] = useState({
@@ -103,6 +109,26 @@ const GraphQLActions = () => {
     effTs: 0.75,
   });
 
+  // Market form state
+const [marketForm, setMarketForm] = useState({
+    name: '',
+    mType: 'ENERGY',   // default
+    node: 'NodeAlpha', // for example
+    processGroup: 'p1',
+    direction: 'UP_DOWN',
+    realisation: 1.2,
+    reserveType: '',
+    isBid: true,
+    isLimited: false,
+    minBid: 10.0,
+    maxBid: 100.0,
+    fee: 5.0,
+    price: 30.0,
+    upPrice: 35.0,
+    downPrice: 25.0,
+    reserveActivationPrice: 45.0,
+  });
+
   const handleInputSetupChange = (e) => {
     const { name, value, type, checked } = e.target;
     setInputSetupForm((prev) => ({
@@ -126,6 +152,15 @@ const GraphQLActions = () => {
       [name]: type === 'checkbox' ? checked : value,
     }));
   };
+
+  const handleMarketFormChange = (e) => {
+    const { name, type, checked, value } = e.target;
+    setMarketForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+  
 
   // Define the new node object
   const newNode = {
@@ -523,7 +558,6 @@ const newNodeGroup = {
         createMarket,
         { data: createMarketData, loading: createMarketLoading, error: createMarketError }
       ] = useMutation(CREATE_MARKET_MUTATION, {
-        variables: { market: newMarket },
         onCompleted: (response) => {
           if (response.createMarket.errors.length === 0) {
             alert('Market created successfully!');
@@ -542,6 +576,13 @@ const newNodeGroup = {
           alert('An unexpected error occurred while creating the market.');
         },
       });
+
+      const handleMarketFormSubmit = (e) => {
+        e.preventDefault();
+        createMarket({ variables: { market: marketForm } });
+        closeMarketModal();
+      };
+      
 
         // Mutation hook for creating a node diffusion
   const [
@@ -1241,11 +1282,10 @@ const handleCreateFlowConFactor = () => {
             <div style={styles.actionSection}>
         <h3>Create New Market</h3>
         <button
-          onClick={handleCreateMarket}
-          disabled={createMarketLoading}
+          onClick={openMarketModal}
           style={styles.button}
         >
-          {createMarketLoading ? 'Creating...' : 'Create New Market'}
+            Add New Market
         </button>
 
         {createMarketError && (
@@ -1766,6 +1806,16 @@ const handleCreateFlowConFactor = () => {
         loading={createNodeLoading}
         error={createNodeError}
       />
+
+        <MarketModal
+        isOpen={isMarketModalOpen}
+        onClose={closeMarketModal}
+        onSubmit={handleMarketFormSubmit}
+        marketForm={marketForm}
+        onChange={handleMarketFormChange}
+        loading={createMarketLoading}
+        error={createMarketError}
+        />
 
     </div>
   );
