@@ -7,6 +7,7 @@ import InputSetupModal from '../components/Modal/InputSetupModal';
 import ProcessModal from '../components/Modal/ProcessModal';
 import NodeModal from '../components/Modal/NodeModal';
 import MarketModal from '../components/Modal/MarketModal';
+import StateModal from '../components/Modal/StateModal';
 
 import {
   UPDATE_INPUT_DATA_SETUP_MUTATION,
@@ -37,6 +38,7 @@ import {
   SAVE_MODEL_MUTATION,
   START_OPTIMIZATION_MUTATION,
   JOB_STATUS_QUERY,
+  GET_NODE_NAMES,
 
 } from './queries';
 
@@ -58,6 +60,10 @@ const GraphQLActions = () => {
   const [isMarketModalOpen, setIsMarketModalOpen] = useState(false);
 const openMarketModal = () => setIsMarketModalOpen(true);
 const closeMarketModal = () => setIsMarketModalOpen(false);
+
+const [isStateModalOpen, setIsStateModalOpen] = useState(false);
+const openStateModal = () => setIsStateModalOpen(true);
+const closeStateModal = () => setIsStateModalOpen(false);
 
 
   // 2) State mirroring your setupUpdate object
@@ -129,6 +135,19 @@ const [marketForm, setMarketForm] = useState({
     reserveActivationPrice: 45.0,
   });
 
+  const [stateForm, setStateForm] = useState({
+    inMax: 50.0,
+    outMax: 30.0,
+    stateLossProportional: 0.05,
+    stateMin: 10.0,
+    stateMax: 100.0,
+    initialState: 20.0,
+    isScenarioIndependent: false,
+    isTemp: false,
+    tEConversion: 1.0,
+    residualValue: 5000.0,
+  });
+
   const handleInputSetupChange = (e) => {
     const { name, value, type, checked } = e.target;
     setInputSetupForm((prev) => ({
@@ -158,6 +177,14 @@ const [marketForm, setMarketForm] = useState({
     setMarketForm((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleStateFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setStateForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : parseFloat(value),
     }));
   };
   
@@ -299,6 +326,9 @@ const newNodeGroup = {
   const temperatureForecastName = 'TemperatureForecastAlpha';
   const marketForecastName = 'MyMarketForecast';
   const marketName = newMarket.name;
+
+  const { data: nodeData, loading: nodeLoading, error: nodeError } = useQuery(GET_NODE_NAMES);
+  const nodes = nodeData?.model?.inputData?.nodes || [];
 
   // useMutation hook for updating input data setup
   const [updateInputDataSetup, { data: updateData, loading: updateLoading, error: updateError }] =
@@ -815,32 +845,41 @@ const newNodeGroup = {
         },
       });
 
-      const [
-        updateNodeState,
-        { data: updateNodeStateData, loading: updateNodeStateLoading, error: updateNodeStateError },
-      ] = useMutation(UPDATE_NODE_STATE_MUTATION, {
-        variables: {
-          nodeName: targetNodeName,
-          state: updatedNodeState,
-        },
-        onCompleted: (response) => {
-          // The mutation returns an object with an "errors" array
-          if (response.updateNodeState.errors.length === 0) {
-            alert(`Node "${targetNodeName}" state updated successfully!`);
-          } else {
-            // If there's any validation error, show them
-            const errorMessages = response.updateNodeState.errors
-              .map((err) => `${err.field}: ${err.message}`)
-              .join('\n');
-            alert(`Validation Errors:\n${errorMessages}`);
-          }
-        },
-        onError: (mutationError) => {
-          // For unexpected or network errors
-          console.error('Update Node State Mutation Error:', mutationError);
-          alert('An unexpected error occurred while updating the node state.');
-        },
-      });
+      const [updateNodeState, { data: updateNodeStateData, loading: updateNodeStateLoading, error: updateNodeStateError }] = useMutation(
+        UPDATE_NODE_STATE_MUTATION,
+        {
+          onCompleted: (response) => {
+            if (response.updateNodeState.errors.length === 0) {
+              alert(`Node "${targetNodeName}" state updated successfully!`);
+              closeStateModal(); // Close the modal on success
+              // Optionally, trigger a refetch or update cache here
+            } else {
+              // If there's any validation error, show them
+              const errorMessages = response.updateNodeState.errors
+                .map((err) => `${err.field}: ${err.message}`)
+                .join('\n');
+              alert(`Validation Errors:\n${errorMessages}`);
+            }
+          },
+          onError: (mutationError) => {
+            // Handle unexpected or network errors
+            console.error('Update Node State Mutation Error:', mutationError);
+            alert('An unexpected error occurred while updating the node state.');
+          },
+        }
+      );
+    
+      // 5. Handle form submission from the StateModal
+      const handleStateFormSubmit = (e) => {
+        e.preventDefault();
+        // Trigger the mutation with updated values
+        updateNodeState({
+          variables: {
+            nodeName: targetNodeName, // Ensure this is the correct node name
+            state: stateForm,
+          },
+        });
+      };
 
         // 1) Define the mutation hook
   const [
@@ -984,11 +1023,6 @@ const { data: jobStatusData, loading: jobStatusLoading, error: jobStatusError } 
   // Handler for creating a new scenario
   const handleCreateScenario = () => {
     createScenario();
-  };
-
-  // Handler for setting node state
-  const handleSetNodeState = () => {
-    setNodeState();
   };
 
   // Handler for creating a new process group
@@ -1144,16 +1178,13 @@ const handleCreateFlowConFactor = () => {
         )}
       </div>
 
-      {/* Set Node State Section */}
       <div style={styles.actionSection}>
-        <h3>Set Node State</h3>
-        <button onClick={handleSetNodeState} disabled={setNodeStateLoading} style={styles.button}>
-          {setNodeStateLoading ? 'Setting...' : 'Set Node State'}
+        <h3>Create and Assign State to Node</h3>
+        <button onClick={openStateModal} style={styles.button} disabled={nodeLoading || nodeError}>
+          Add New State
         </button>
-        {setNodeStateError && <p style={styles.error}>Error: {setNodeStateError.message}</p>}
-        {setNodeStateData && setNodeStateData.setNodeState.errors.length === 0 && (
-          <p style={styles.success}>Node state updated successfully!</p>
-        )}
+        {nodeLoading && <p>Loading nodes...</p>}
+        {nodeError && <p style={styles.error}>Error loading nodes: {nodeError.message}</p>}
       </div>
 
       {/* Create New Process Group Section */}
@@ -1606,41 +1637,6 @@ const handleCreateFlowConFactor = () => {
           </p>
         )}
       </div>
-            {/* Update Node State Section */}
-            <div style={styles.actionSection}>
-        <h3>Update Node State</h3>
-        <button
-          onClick={handleUpdateNodeState}
-          disabled={updateNodeStateLoading}
-          style={styles.button}
-        >
-          {updateNodeStateLoading ? 'Updating...' : `Update "${targetNodeName}" State`}
-        </button>
-
-        {/* Show any network/unexpected error */}
-        {updateNodeStateError && (
-          <p style={styles.error}>Error: {updateNodeStateError.message}</p>
-        )}
-
-        {/* On success, if there are no validation errors */}
-        {updateNodeStateData && updateNodeStateData.updateNodeState.errors.length === 0 && (
-          <p style={styles.success}>
-            Node "{targetNodeName}" state updated successfully!
-          </p>
-        )}
-
-        {/* If there are validation errors */}
-        {updateNodeStateData && updateNodeStateData.updateNodeState.errors.length > 0 && (
-          <div style={styles.error}>
-            <h4>Validation Errors:</h4>
-            <ul>
-              {updateNodeStateData.updateNodeState.errors.map((err, index) => (
-                <li key={index}>{`${err.field}: ${err.message}`}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
             {/* Connect Node Inflow to Temperature Forecast Section */}
             <div style={styles.actionSection}>
         <h3>Connect Node Inflow to Temperature Forecast</h3>
@@ -1752,6 +1748,19 @@ const handleCreateFlowConFactor = () => {
     <p style={styles.error}>Error: {saveModelData.saveModel.message}</p>
   )}
 </div>
+      {/* Section to Display Node Names */}
+      <div style={styles.actionSection}>
+        <h3>Node Names</h3>
+        {nodeLoading && <p>Loading node names...</p>}
+        {nodeError && <p style={styles.error}>Error: {nodeError.message}</p>}
+        {nodeData && (
+          <ul>
+            {nodeData.model.inputData.nodes.map((node, index) => (
+              <li key={index}>{node.name}</li>
+            ))}
+          </ul>
+        )}
+      </div>
 <button onClick={() => startOptimization()}>
   {optimizationLoading ? 'Starting...' : 'Start Optimization'}
 </button>
@@ -1816,6 +1825,12 @@ const handleCreateFlowConFactor = () => {
         loading={createMarketLoading}
         error={createMarketError}
         />
+
+        <StateModal
+        isOpen={isStateModalOpen}
+        onClose={closeStateModal}
+        nodes={nodes} // Pass node data
+      />
 
     </div>
   );

@@ -328,6 +328,18 @@ export const JOB_STATUS_QUERY = gql`
   }
 `;
 
+export const GET_NODE_NAMES = gql`
+  query GetNodeNames {
+    model {
+      inputData {
+        nodes {
+          name
+        }
+      }
+    }
+  }
+`;
+
 export default {
   UPDATE_INPUT_DATA_SETUP_MUTATION,
   CREATE_PROCESS_MUTATION,
@@ -359,4 +371,5 @@ export default {
 
   UPDATE_SETTINGS_MUTATION,
   JOB_STATUS_QUERY,
+  GET_NODE_NAMES,
 };
