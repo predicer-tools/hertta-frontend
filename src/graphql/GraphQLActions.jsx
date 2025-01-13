@@ -10,6 +10,7 @@ import MarketModal from '../components/Modal/MarketModal';
 import StateModal from '../components/Modal/StateModal';
 import AddScenarioModal from '../components/Modal/AddScenarioModal';
 import TopologyModal from '../components/Modal/TopologyModal';
+import NodeDelayModal from '../components/Modal/NodeDelayModal';
 
 import {
   UPDATE_INPUT_DATA_SETUP_MUTATION,
@@ -77,6 +78,10 @@ const closeStateModal = () => setIsStateModalOpen(false);
   const [isTopologyModalOpen, setIsTopologyModalOpen] = useState(false);
   const openTopologyModal = () => setIsTopologyModalOpen(true);
   const closeTopologyModal = () => setIsTopologyModalOpen(false);
+
+  const [isNodeDelayModalOpen, setIsNodeDelayModalOpen] = useState(false);
+  const openNodeDelayModal = () => setIsNodeDelayModalOpen(true);
+  const closeNodeDelayModal = () => setIsNodeDelayModalOpen(false);
 
 
   // 2) State mirroring your setupUpdate object
@@ -1241,39 +1246,14 @@ const handleCreateFlowConFactor = () => {
         </button>
       </div>
       
-      {/* Create New Node Delay Section */}
+      {/* Create Node Delay Section with Modal */}
       <div style={styles.actionSection}>
         <h3>Create Node Delay</h3>
-        <button
-          onClick={handleCreateNodeDelay}
-          disabled={createNodeDelayLoading}
-          style={styles.button}
-        >
-          {createNodeDelayLoading ? 'Creating...' : 'Create Node Delay'}
+        <button onClick={openNodeDelayModal} style={styles.button}>
+          Add Node Delay
         </button>
-
-        {/* Network or unexpected error */}
-        {createNodeDelayError && (
-          <p style={styles.error}>Error: {createNodeDelayError.message}</p>
-        )}
-
-        {/* Successful creation */}
-        {createNodeDelayData && createNodeDelayData.createNodeDelay.errors.length === 0 && (
-          <p style={styles.success}>Node Delay created successfully!</p>
-        )}
-
-        {/* Validation errors from backend */}
-        {createNodeDelayData && createNodeDelayData.createNodeDelay.errors.length > 0 && (
-          <div style={styles.error}>
-            <h4>Validation Errors:</h4>
-            <ul>
-              {createNodeDelayData.createNodeDelay.errors.map((err, index) => (
-                <li key={index}>{`${err.field}: ${err.message}`}</li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
+
             {/* Create Node History Section */}
     <div style={styles.actionSection}>
         <h3>Create Node History</h3>
@@ -1839,6 +1819,11 @@ const handleCreateFlowConFactor = () => {
     <TopologyModal
         isOpen={isTopologyModalOpen}
         onClose={closeTopologyModal}
+      />
+    {/* Node Delay Modal */}
+    <NodeDelayModal
+        isOpen={isNodeDelayModalOpen}
+        onClose={closeNodeDelayModal}
       />
 
     </div>
