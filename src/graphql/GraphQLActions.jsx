@@ -11,6 +11,7 @@ import StateModal from '../components/Modal/StateModal';
 import AddScenarioModal from '../components/Modal/AddScenarioModal';
 import TopologyModal from '../components/Modal/TopologyModal';
 import NodeDelayModal from '../components/Modal/NodeDelayModal';
+import NodeHistoryModal from '../components/Modal/NodeHistoryModal';
 
 import {
   UPDATE_INPUT_DATA_SETUP_MUTATION,
@@ -83,6 +84,10 @@ const closeStateModal = () => setIsStateModalOpen(false);
   const openNodeDelayModal = () => setIsNodeDelayModalOpen(true);
   const closeNodeDelayModal = () => setIsNodeDelayModalOpen(false);
 
+// New State for Node History Modal
+const [isNodeHistoryModalOpen, setIsNodeHistoryModalOpen] = useState(false);
+const openNodeHistoryModal = () => setIsNodeHistoryModalOpen(true);
+const closeNodeHistoryModal = () => setIsNodeHistoryModalOpen(false);
 
   // 2) State mirroring your setupUpdate object
   const [inputSetupForm, setInputSetupForm] = useState({
@@ -1253,41 +1258,12 @@ const handleCreateFlowConFactor = () => {
           Add Node Delay
         </button>
       </div>
-
-            {/* Create Node History Section */}
+    {/* Create Node History Section with Modal */}
     <div style={styles.actionSection}>
         <h3>Create Node History</h3>
-        <button
-          onClick={handleCreateNodeHistory}
-          disabled={createNodeHistoryLoading}
-          style={styles.button}
-        >
-          {createNodeHistoryLoading ? 'Creating...' : `Create History for "${nodeNameForHistory}"`}
+        <button onClick={openNodeHistoryModal} style={styles.button}>
+          Add Node History
         </button>
-
-        {/* Network or unexpected error */}
-        {createNodeHistoryError && (
-          <p style={styles.error}>Error: {createNodeHistoryError.message}</p>
-        )}
-
-        {/* Check if creation was successful */}
-        {createNodeHistoryData && createNodeHistoryData.createNodeHistory.errors.length === 0 && (
-          <p style={styles.success}>
-            Node history created successfully for node "{nodeNameForHistory}"!
-          </p>
-        )}
-
-        {/* Validation errors from backend */}
-        {createNodeHistoryData && createNodeHistoryData.createNodeHistory.errors.length > 0 && (
-          <div style={styles.error}>
-            <h4>Validation Errors:</h4>
-            <ul>
-              {createNodeHistoryData.createNodeHistory.errors.map((err, index) => (
-                <li key={index}>{`${err.field}: ${err.message}`}</li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
             {/* Create New Market Section */}
             <div style={styles.actionSection}>
@@ -1825,7 +1801,11 @@ const handleCreateFlowConFactor = () => {
         isOpen={isNodeDelayModalOpen}
         onClose={closeNodeDelayModal}
       />
-
+      {/* Node History Modal */}
+      <NodeHistoryModal
+        isOpen={isNodeHistoryModalOpen}
+        onClose={closeNodeHistoryModal}
+      />
     </div>
   );
 };
