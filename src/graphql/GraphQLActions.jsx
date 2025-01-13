@@ -8,6 +8,8 @@ import ProcessModal from '../components/Modal/ProcessModal';
 import NodeModal from '../components/Modal/NodeModal';
 import MarketModal from '../components/Modal/MarketModal';
 import StateModal from '../components/Modal/StateModal';
+import AddScenarioModal from '../components/Modal/AddScenarioModal';
+import TopologyModal from '../components/Modal/TopologyModal';
 
 import {
   UPDATE_INPUT_DATA_SETUP_MUTATION,
@@ -39,6 +41,8 @@ import {
   START_OPTIMIZATION_MUTATION,
   JOB_STATUS_QUERY,
   GET_NODE_NAMES,
+  GET_SCENARIOS,
+  
 
 } from './queries';
 
@@ -64,6 +68,15 @@ const closeMarketModal = () => setIsMarketModalOpen(false);
 const [isStateModalOpen, setIsStateModalOpen] = useState(false);
 const openStateModal = () => setIsStateModalOpen(true);
 const closeStateModal = () => setIsStateModalOpen(false);
+
+  // State to manage the visibility of the AddScenarioModal
+  const [isAddScenarioModalOpen, setIsAddScenarioModalOpen] = useState(false);
+  const openAddScenarioModal = () => setIsAddScenarioModalOpen(true);
+  const closeAddScenarioModal = () => setIsAddScenarioModalOpen(false);
+
+  const [isTopologyModalOpen, setIsTopologyModalOpen] = useState(false);
+  const openTopologyModal = () => setIsTopologyModalOpen(true);
+  const closeTopologyModal = () => setIsTopologyModalOpen(false);
 
 
   // 2) State mirroring your setupUpdate object
@@ -241,15 +254,8 @@ const [marketForm, setMarketForm] = useState({
     reserveActivationPrice: 45.0,
   };
 
-  // Define the new process group object
-  const newProcessGroup = {
-    name: 'p1', // Set the process group name to "p1" as requested
-  };
-
-// Define the new node group object (you can customize the name):
-const newNodeGroup = {
-    name: 'NodeGroup Alpha',
-};
+  const [newProcessGroup, setNewProcessGroup] = useState({ name: '' });
+  const [newNodeGroup, setNewNodeGroup] = useState({ name: '' });
 
   // Define the new topology object
   const newTopology = {
@@ -329,6 +335,8 @@ const newNodeGroup = {
 
   const { data: nodeData, loading: nodeLoading, error: nodeError } = useQuery(GET_NODE_NAMES);
   const nodes = nodeData?.model?.inputData?.nodes || [];
+  const { data: scenarioData, loading: scenarioLoading, error: scenarioError } = useQuery(GET_SCENARIOS);
+  const scenarios = scenarioData?.model?.inputData?.scenarios || [];
 
   // useMutation hook for updating input data setup
   const [updateInputDataSetup, { data: updateData, loading: updateLoading, error: updateError }] =
@@ -461,47 +469,43 @@ const newNodeGroup = {
     }
   );
 
-  // useMutation hook for creating a new process group
   const [createProcessGroup, { data: createProcessGroupData, loading: createProcessGroupLoading, error: createProcessGroupError }] = useMutation(
     CREATE_PROCESS_GROUP_MUTATION,
     {
-      variables: { name: newProcessGroup.name }, // Name is set to "p1"
+      variables: { name: newProcessGroup.name },
       onCompleted: (response) => {
         if (!response.createProcessGroup.message) {
-          alert('Process group "p1" created successfully!');
-          // Optionally, trigger a refetch or update cache here
+          alert(`Process group "${newProcessGroup.name}" created successfully!`);
+          setNewProcessGroup({ name: '' }); // Reset the input field
         } else {
-          // Handle validation errors or other messages
           alert(`Error: ${response.createProcessGroup.message}`);
         }
       },
       onError: (mutationError) => {
-        // Handle unexpected errors (e.g., network issues)
         console.error('Create Process Group Mutation Error:', mutationError);
         alert('An unexpected error occurred while creating the process group.');
       },
     }
   );
-
-    // Use the mutation hook for creating a new node group
-    const [createNodeGroup, { data: createNodeGroupData, loading: createNodeGroupLoading, error: createNodeGroupError }] =
-    useMutation(CREATE_NODE_GROUP_MUTATION, {
+  
+  const [createNodeGroup, { data: createNodeGroupData, loading: createNodeGroupLoading, error: createNodeGroupError }] = useMutation(
+    CREATE_NODE_GROUP_MUTATION,
+    {
       variables: { name: newNodeGroup.name },
       onCompleted: (response) => {
         if (!response.createNodeGroup.message) {
           alert(`Node group "${newNodeGroup.name}" created successfully!`);
-          // Optionally, trigger a refetch or update cache here
+          setNewNodeGroup({ name: '' }); // Reset the input field
         } else {
-          // Handle validation errors or other messages
           alert(`Error: ${response.createNodeGroup.message}`);
         }
       },
       onError: (mutationError) => {
-        // Handle unexpected errors (e.g., network issues)
         console.error('Create Node Group Mutation Error:', mutationError);
         alert('An unexpected error occurred while creating the node group.');
       },
-    });
+    }
+  );
 
   // useMutation hook for creating a new topology
   const [createTopology, { data: createTopologyData, loading: createTopologyLoading, error: createTopologyError }] = useMutation(
@@ -767,54 +771,49 @@ const newNodeGroup = {
         },
       });
 
-      const [
-        addProcessToGroup,
-        { data: addProcessToGroupData, loading: addProcessToGroupLoading, error: addProcessToGroupError },
-      ] = useMutation(ADD_PROCESS_TO_GROUP_MUTATION, {
-        variables: {
-            processName: processForm.name,   // or your chosen variable
-            groupName: newProcessGroup.name,
-        },
-        onCompleted: (response) => {
-          // The mutation returns maybeError with a 'message' field
-          if (!response.addProcessToGroup.message) {
-            // No message means success
-            alert(`Process "${processForm.name}" added to group "${newProcessGroup.name}" successfully!`);
-          } else {
-            // If there's a message, display it as an error
-            alert(`Error: ${response.addProcessToGroup.message}`);
-          }
-        },
-        onError: (mutationError) => {
-          console.error('Add Process to Group Mutation Error:', mutationError);
-          alert('An unexpected error occurred while adding the process to the group.');
-        },
-      });
-
-      const [
-        addNodeToGroup,
-        { data: addNodeToGroupData, loading: addNodeToGroupLoading, error: addNodeToGroupError },
-      ] = useMutation(ADD_NODE_TO_GROUP_MUTATION, {
-        variables: {
-          nodeName: newNode.name,
-          groupName: newNodeGroup.name,
-        },
-        onCompleted: (response) => {
-          // The mutation returns maybeError with a 'message' field
-          if (!response.addNodeToGroup.message) {
-            // Success -> no message
-            alert(`Node "${newNode.name}" successfully added to group "${newNodeGroup.name}"!`);
-          } else {
-            // If there's a message, it's an error or validation issue
-            alert(`Error: ${response.addNodeToGroup.message}`);
-          }
-        },
-        onError: (mutationError) => {
-          console.error('Add Node to Group Mutation Error:', mutationError);
-          alert('An unexpected error occurred while adding the node to the group.');
-        },
-      });
-
+      const [addProcessToGroup, { data: addProcessToGroupData, loading: addProcessToGroupLoading, error: addProcessToGroupError }] = useMutation(
+        ADD_PROCESS_TO_GROUP_MUTATION,
+        {
+          variables: {
+            processName: processForm.name,
+            groupName: newProcessGroup.name, // Access the 'name' property
+          },
+          onCompleted: (response) => {
+            if (!response.addProcessToGroup.message) {
+              alert(`Process "${processForm.name}" added to group "${newProcessGroup.name}" successfully!`);
+            } else {
+              alert(`Error: ${response.addProcessToGroup.message}`);
+            }
+          },
+          onError: (mutationError) => {
+            console.error('Add Process to Group Mutation Error:', mutationError);
+            alert('An unexpected error occurred while adding the process to the group.');
+          },
+        }
+      );
+      
+      const [addNodeToGroup, { data: addNodeToGroupData, loading: addNodeToGroupLoading, error: addNodeToGroupError }] = useMutation(
+        ADD_NODE_TO_GROUP_MUTATION,
+        {
+          variables: {
+            nodeName: nodeForm.name,
+            groupName: newNodeGroup.name, // Access the 'name' property
+          },
+          onCompleted: (response) => {
+            if (!response.addNodeToGroup.message) {
+              alert(`Node "${nodeForm.name}" added to group "${newNodeGroup.name}" successfully!`);
+            } else {
+              alert(`Error: ${response.addNodeToGroup.message}`);
+            }
+          },
+          onError: (mutationError) => {
+            console.error('Add Node to Group Mutation Error:', mutationError);
+            alert('An unexpected error occurred while adding the node to the group.');
+          },
+        }
+      );
+      
+      
       const [
         startElectricityPriceFetch,
         { data: electricityPriceFetchData, loading: electricityPriceFetchLoading, error: electricityPriceFetchError }
@@ -1020,11 +1019,6 @@ const { data: jobStatusData, loading: jobStatusLoading, error: jobStatusError } 
     createNode();
   };
 
-  // Handler for creating a new scenario
-  const handleCreateScenario = () => {
-    createScenario();
-  };
-
   // Handler for creating a new process group
   const handleCreateProcessGroup = () => {
     createProcessGroup();
@@ -1163,19 +1157,11 @@ const handleCreateFlowConFactor = () => {
         <p style={styles.success}>Node created successfully!</p>
       )}
 
-      {/* Create New Scenario Section */}
       <div style={styles.actionSection}>
-        <h3>Create New Scenario</h3>
-        <button onClick={handleCreateScenario} disabled={createScenarioLoading} style={styles.button}>
-          {createScenarioLoading ? 'Creating...' : 'Create New Scenario'}
+        <h3>Add New Scenario</h3>
+        <button onClick={openAddScenarioModal} style={styles.button}>
+          Add Scenario
         </button>
-        {createScenarioError && <p style={styles.error}>Error: {createScenarioError.message}</p>}
-        {createScenarioData && !createScenarioData.createScenario.message && (
-          <p style={styles.success}>Scenario created successfully!</p>
-        )}
-        {createScenarioData && createScenarioData.createScenario.message && (
-          <p style={styles.error}>Error: {createScenarioData.createScenario.message}</p>
-        )}
       </div>
 
       <div style={styles.actionSection}>
@@ -1187,58 +1173,72 @@ const handleCreateFlowConFactor = () => {
         {nodeError && <p style={styles.error}>Error loading nodes: {nodeError.message}</p>}
       </div>
 
-      {/* Create New Process Group Section */}
       <div style={styles.actionSection}>
-        <h3>Create New Process Group</h3>
-        <button onClick={handleCreateProcessGroup} disabled={createProcessGroupLoading} style={styles.button}>
-          {createProcessGroupLoading ? 'Creating...' : 'Create Process Group "p1"'}
-        </button>
-        {createProcessGroupError && <p style={styles.error}>Error: {createProcessGroupError.message}</p>}
-        {createProcessGroupData && !createProcessGroupData.createProcessGroup.message && (
-          <p style={styles.success}>Process group "p1" created successfully!</p>
-        )}
-        {createProcessGroupData && createProcessGroupData.createProcessGroup.message && (
-          <p style={styles.error}>Error: {createProcessGroupData.createProcessGroup.message}</p>
-        )}
-      </div>
-
-    {/* Create New Node Group Section */}
-    <div style={styles.actionSection}>
         <h3>Create New Node Group</h3>
-        <button onClick={handleCreateNodeGroup} disabled={createNodeGroupLoading} style={styles.button}>
-          {createNodeGroupLoading ? 'Creating...' : `Create Node Group "${newNodeGroup.name}"`}
-        </button>
+        <form onSubmit={handleCreateNodeGroup} className={styles.form}>
+            <label className={styles.label}>
+            Group Name:
+            <input
+                type="text"
+                name="name"
+                value={newNodeGroup.name}
+                onChange={(e) => setNewNodeGroup({ ...newNodeGroup, name: e.target.value })}
+                required
+                className={styles.input}
+                placeholder="Enter Node Group Name"
+            />
+            </label>
+            <button type="submit" disabled={createNodeGroupLoading} style={styles.button}>
+            {createNodeGroupLoading ? 'Creating...' : 'Create Node Group'}
+            </button>
+        </form>
+
+        {/* Display Success or Error Messages */}
         {createNodeGroupError && <p style={styles.error}>Error: {createNodeGroupError.message}</p>}
         {createNodeGroupData && !createNodeGroupData.createNodeGroup.message && (
-          <p style={styles.success}>Node group "{newNodeGroup.name}" created successfully!</p>
+            <p style={styles.success}>Node group "{newNodeGroup.name}" created successfully!</p>
         )}
         {createNodeGroupData && createNodeGroupData.createNodeGroup.message && (
-          <p style={styles.error}>Error: {createNodeGroupData.createNodeGroup.message}</p>
+            <p style={styles.error}>Error: {createNodeGroupData.createNodeGroup.message}</p>
         )}
-    </div>
+        </div>
 
-      {/* Create New Topology Section */}
+        <div style={styles.actionSection}>
+        <h3>Create New Process Group</h3>
+        <form onSubmit={handleCreateProcessGroup} className={styles.form}>
+            <label className={styles.label}>
+            Group Name:
+            <input
+                type="text"
+                name="name"
+                value={newProcessGroup.name}
+                onChange={(e) => setNewProcessGroup({ ...newProcessGroup, name: e.target.value })}
+                required
+                className={styles.input}
+                placeholder="Enter Process Group Name"
+            />
+            </label>
+            <button type="submit" disabled={createProcessGroupLoading} style={styles.button}>
+            {createProcessGroupLoading ? 'Creating...' : 'Create Process Group'}
+            </button>
+        </form>
+
+        {/* Display Success or Error Messages */}
+        {createProcessGroupError && <p style={styles.error}>Error: {createProcessGroupError.message}</p>}
+        {createProcessGroupData && !createProcessGroupData.createProcessGroup.message && (
+            <p style={styles.success}>Process group "{newProcessGroup.name}" created successfully!</p>
+        )}
+        {createProcessGroupData && createProcessGroupData.createProcessGroup.message && (
+            <p style={styles.error}>Error: {createProcessGroupData.createProcessGroup.message}</p>
+        )}
+        </div>
+
+      {/* Add New Topology Section */}
       <div style={styles.actionSection}>
-        <h3>Create New Topology</h3>
-        <button onClick={handleCreateTopology} disabled={createTopologyLoading} style={styles.button}>
-          {createTopologyLoading ? 'Creating...' : 'Create New Topology'}
+        <h3>Add New Topology</h3>
+        <button onClick={openTopologyModal} style={styles.button}>
+          Add New Topology
         </button>
-        {createTopologyError && <p style={styles.error}>Error: {createTopologyError.message}</p>}
-        {createTopologyData && createTopologyData.createTopology.errors.length === 0 && (
-          <p style={styles.success}>Topology created successfully!</p>
-        )}
-        {createTopologyData && createTopologyData.createTopology.errors.length > 0 && (
-          <div style={styles.error}>
-            <h4>Validation Errors:</h4>
-            <ul>
-              {createTopologyData.createTopology.errors.map((err, index) => (
-                <li key={index}>
-                  {err.field}: {err.message}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
       
       {/* Create New Node Delay Section */}
@@ -1830,6 +1830,15 @@ const handleCreateFlowConFactor = () => {
         isOpen={isStateModalOpen}
         onClose={closeStateModal}
         nodes={nodes} // Pass node data
+      />
+        <AddScenarioModal
+        isOpen={isAddScenarioModalOpen}
+        onClose={closeAddScenarioModal}
+      />
+
+    <TopologyModal
+        isOpen={isTopologyModalOpen}
+        onClose={closeTopologyModal}
       />
 
     </div>

@@ -340,6 +340,32 @@ export const GET_NODE_NAMES = gql`
   }
 `;
 
+export const GET_SCENARIOS = gql`
+  query GetScenarios {
+    model {
+      inputData {
+        scenarios {
+          name
+          weight
+        }
+      }
+    }
+  }
+`;
+
+// New Query: Get Process Names
+export const GET_PROCESS_NAMES = gql`
+  query GetProcessNames {
+    model {
+      inputData {
+        processes {
+          name
+        }
+      }
+    }
+  }
+`;
+
 export default {
   UPDATE_INPUT_DATA_SETUP_MUTATION,
   CREATE_PROCESS_MUTATION,
@@ -368,8 +394,9 @@ export default {
   CLEAR_INPUT_DATA_MUTATION,
   SAVE_MODEL_MUTATION,
   START_OPTIMIZATION_MUTATION,
-
+  GET_SCENARIOS,
   UPDATE_SETTINGS_MUTATION,
   JOB_STATUS_QUERY,
   GET_NODE_NAMES,
+  GET_PROCESS_NAMES,
 };
