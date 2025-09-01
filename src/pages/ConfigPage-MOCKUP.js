@@ -1,14 +1,11 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import finlandLocations from '../utils/finlandLocations';
-import { materialInfo } from '../utils/materialInfo';
+import { materialInfo } from '../utils/materialInfo'; // Import materialInfo
 import styles from './ConfigPage.module.css';
 import ConfigContext from '../context/ConfigContext';
 import Modal from '../components/Modal/Modal';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-
-// Base URL for the Home Assistant API.  Replace with your actual HA IP/host.
-const HA_BASE_URL = process.env.REACT_APP_HA_BASE_URL;
 
 function ConfigPage() {
   const [country, setCountry] = useState('');
@@ -20,28 +17,20 @@ function ConfigPage() {
   const [isMaterialInfoOpen, setIsMaterialInfoOpen] = useState(false);
 
   const navigate = useNavigate();
+
   const { updateConfig, updateSensors, updateDevices } = useContext(ConfigContext);
 
-  // Helper to fetch all entity states and separate sensors/devices.
   const fetchHomeAssistantData = async () => {
-    const headers = {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    };
-
     try {
-      const response = await fetch(`${HA_BASE_URL}states`, { headers });
-      if (!response.ok) {
-        throw new Error('Failed to fetch entity states from Home Assistant.');
-      }
-      const states = await response.json();
+      const sensorsResponse = await fetch('http://localhost:5000/mock-homeassistant/sensors');
+      const devicesResponse = await fetch('http://localhost:5000/mock-homeassistant/devices');
 
-      // Filter sensors and other devices by domain prefix.
-      const sensors = states.filter((s) => s.entity_id.startsWith('sensor.'));
-      const devices = states.filter((s) =>
-        // pick some common device domains: light, switch, climate, etc.
-        /(light|switch|climate|fan|media_player)\./.test(s.entity_id)
-      );
+      if (!sensorsResponse.ok || !devicesResponse.ok) {
+        throw new Error('Failed to fetch data from Home Assistant.');
+      }
+
+      const sensors = await sensorsResponse.json();
+      const devices = await devicesResponse.json();
 
       updateSensors(sensors);
       updateDevices(devices);
@@ -51,7 +40,6 @@ function ConfigPage() {
     }
   };
 
-  // Form submission handler.
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -64,13 +52,15 @@ function ConfigPage() {
     setError(null);
 
     try {
-      // Ping the API root to ensure the API is reachable and the token works.
-      const pingResponse = await fetch(HA_BASE_URL, {
-        headers: { Authorization: `Bearer ${apiKey}` },
+      const response = await fetch('http://localhost:5000/mock-homeassistant/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey }),
       });
 
-      const pingResult = await pingResponse.json();
-      if (pingResponse.ok && pingResult.message === 'API running.') {
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         updateConfig({
           isConfigured: true,
           country: country.trim(),
@@ -82,7 +72,7 @@ function ConfigPage() {
         await fetchHomeAssistantData();
         navigate('/');
       } else {
-        throw new Error('Failed to connect to Home Assistant. Check your API key and URL.');
+        throw new Error(result.error || 'Unknown error occurred.');
       }
     } catch (err) {
       setError(err.message);
@@ -99,9 +89,8 @@ function ConfigPage() {
       <h1>Welcome to Hertta Add-on</h1>
       <p>Please complete the following configuration to get started.</p>
       <form onSubmit={handleSubmit} className={styles.configForm}>
-        {/* Country selection */}
         <div className={styles.formGroup}>
-          <label htmlFor="country">Country:</label><br />
+          <label htmlFor="country">Country:</label>
           <select
             id="country"
             value={country}
@@ -112,9 +101,9 @@ function ConfigPage() {
             <option value="Finland">Finland</option>
           </select>
         </div>
-        {/* Location selection */}
+
         <div className={styles.formGroup}>
-          <label htmlFor="location">Location:</label><br />
+          <label htmlFor="location">Location:</label>
           <select
             id="location"
             value={location}
@@ -124,23 +113,25 @@ function ConfigPage() {
           >
             <option value="">Select Location</option>
             {finlandLocations.map((loc, index) => (
-              <option key={index} value={loc}>{loc}</option>
+              <option key={index} value={loc}>
+                {loc}
+              </option>
             ))}
           </select>
         </div>
-        {/* API key input */}
+
         <div className={styles.formGroup}>
-          <label htmlFor="apiKey">Home Assistant API Key:</label><br />
+          <label htmlFor="apiKey">Home Assistant API Key:</label>
           <input
             type="text"
             id="apiKey"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your long‑lived access token"
+            placeholder="Enter your Home Assistant API Key"
             required
           />
         </div>
-        {/* Material selection */}
+
         <div className={styles.formGroup}>
           <label htmlFor="material">
             Select Material:
@@ -149,7 +140,7 @@ function ConfigPage() {
               style={{ marginLeft: '10px', cursor: 'pointer' }}
               aria-label="More info about materials"
             />
-          </label><br />
+          </label>
           <select
             id="material"
             value={selectedMaterial}
@@ -165,16 +156,13 @@ function ConfigPage() {
           </select>
         </div>
 
-        {/* Display errors */}
         {error && <p className={styles.errorMessage}>{error}</p>}
 
-        {/* Submit button */}
         <button type="submit" disabled={loading}>
           {loading ? 'Configuring...' : 'Save and Continue'}
         </button>
       </form>
 
-      {/* Modal for material info */}
       <Modal isOpen={isMaterialInfoOpen} onClose={handleCloseMaterialInfo}>
         <h2>Material Information</h2>
         <ul>

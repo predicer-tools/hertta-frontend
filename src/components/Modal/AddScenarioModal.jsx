@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import styles from './Modal.module.css'; // Create this CSS module for styling
 import { useMutation } from '@apollo/client';
-import { CREATE_SCENARIO_MUTATION, GET_SCENARIOS } from '../../graphql/queries';
+import { CREATE_SCENARIO_MUTATION, GET_SCENARIOS_QUERY } from '../../graphql/queries';
 
 const AddScenarioModal = ({
   isOpen,
@@ -16,7 +16,7 @@ const AddScenarioModal = ({
 
   // Mutation hook
   const [createScenario, { data, loading, error }] = useMutation(CREATE_SCENARIO_MUTATION, {
-    refetchQueries: [{ query: GET_SCENARIOS }], // Refetch scenarios after mutation
+    refetchQueries: [{ query: GET_SCENARIOS_QUERY }], // Refetch scenarios after mutation
     awaitRefetchQueries: true,
   });
 

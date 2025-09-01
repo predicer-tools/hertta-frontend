@@ -704,15 +704,6 @@ export const GET_SCENARIO_QUERY = gql`
   }
 `;
 
-export const GET_JOB_STATUS_QUERY = gql`
-  query JobStatus($jobId: Int!) {
-    jobStatus(jobId: $jobId) {
-      state
-      message
-    }
-  }
-`;
-
 export const GET_JOB_OUTCOME_QUERY = gql`
   query JobOutcome($jobId: Int!) {
     jobOutcome(jobId: $jobId) {
@@ -982,7 +973,8 @@ export const UPDATE_SETTINGS_MUTATION = gql`
   }
 `;
 
-export const CREATE_NODE_DELAY_MUTATION = `
+
+export const CREATE_NODE_DELAY_MUTATION = gql`
   mutation CreateNodeDelay($delay: NewNodeDelay!) {
     createNodeDelay(delay: $delay) {
       errors {
@@ -993,7 +985,7 @@ export const CREATE_NODE_DELAY_MUTATION = `
   }
 `;
 
-export const CREATE_NODE_HISTORY_MUTATION = `
+export const CREATE_NODE_HISTORY_MUTATION = gql`
   mutation CreateNodeHistory($nodeName: String!) {
     createNodeHistory(nodeName: $nodeName) {
       errors {
@@ -1004,7 +996,18 @@ export const CREATE_NODE_HISTORY_MUTATION = `
   }
 `;
 
-export const JOB_STATUS_QUERY = `
+export const JOB_STATUS_QUERY = gql`
+  query JobStatus($jobId: Int!) {
+    jobStatus(jobId: $jobId) {
+      state
+      message
+    }
+  }
+`;
+;
+
+
+export const GET_JOB_STATUS_QUERY = gql`
   query JobStatus($jobId: Int!) {
     jobStatus(jobId: $jobId) {
       state
@@ -1019,7 +1022,9 @@ export const START_ELECTRICITY_PRICE_FETCH_MUTATION = `
   }
 `;
 
-export const GET_NODE_NAMES = `
+// MUTATIONS
+// Query to get names of all nodes in the model's input data
+export const GET_NODE_NAMES_QUERY = gql`
   query GetNodeNames {
     model {
       inputData {
@@ -1031,7 +1036,8 @@ export const GET_NODE_NAMES = `
   }
 `;
 
-export const GET_SCENARIOS = `
+// Query to get names of all scenarios in the model's input data
+export const GET_SCENARIOS_QUERY = gql`
   query GetScenarios {
     model {
       inputData {
@@ -1043,7 +1049,8 @@ export const GET_SCENARIOS = `
   }
 `;
 
-export const GET_PROCESS_NAMES = `
+// Query to get names of all processes in the model's input data
+export const GET_PROCESS_NAMES_QUERY = gql`
   query GetProcessNames {
     model {
       inputData {

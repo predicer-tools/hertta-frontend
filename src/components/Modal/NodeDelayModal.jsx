@@ -3,11 +3,11 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
 import { useMutation, useQuery } from '@apollo/client';
-import { GET_NODE_NAMES, CREATE_NODE_DELAY_MUTATION } from '../../graphql/queries';
+import { GET_NODE_NAMES_QUERY, CREATE_NODE_DELAY_MUTATION } from '../../graphql/queries';
 
 const NodeDelayModal = ({ isOpen, onClose }) => {
   // Fetch existing nodes
-  const { data, loading, error } = useQuery(GET_NODE_NAMES);
+  const { data, loading, error } = useQuery(GET_NODE_NAMES_QUERY);
 
   // State for form inputs
   const [fromNode, setFromNode] = useState('');

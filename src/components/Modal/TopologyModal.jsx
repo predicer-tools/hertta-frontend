@@ -3,14 +3,14 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
 import { useMutation, useQuery } from '@apollo/client';
-import { GET_NODE_NAMES, GET_PROCESS_NAMES, CREATE_TOPOLOGY_MUTATION } from '../../graphql/queries';
+import { GET_NODE_NAMES_QUERY, GET_PROCESS_NAMES_QUERY, CREATE_TOPOLOGY_MUTATION } from '../../graphql/queries.js';
 
 const TopologyModal = ({ isOpen, onClose }) => {
   // Fetch existing nodes
-  const { data: nodeData, loading: nodesLoading, error: nodesError } = useQuery(GET_NODE_NAMES);
+  const { data: nodeData, loading: nodesLoading, error: nodesError } = useQuery(GET_NODE_NAMES_QUERY);
 
   // Fetch existing processes
-  const { data: processData, loading: processesLoading, error: processesError } = useQuery(GET_PROCESS_NAMES);
+  const { data: processData, loading: processesLoading, error: processesError } = useQuery(GET_PROCESS_NAMES_QUERY);
 
   // State for form inputs
   const [sourceNode, setSourceNode] = useState('');

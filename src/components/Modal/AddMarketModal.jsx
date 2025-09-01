@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
 import { useMutation, useQuery } from '@apollo/client';
-import { CREATE_MARKET_MUTATION, GET_NODE_NAMES } from '../../graphql/queries'; // Adjust the import path as needed
+import { CREATE_MARKET_MUTATION, GET_NODE_NAMES_QUERY } from '../../graphql/queries.js'; // Adjust the import path as needed
 
 const AddMarketModal = ({ isOpen, onClose }) => {
   // Initialize form state
@@ -27,7 +27,7 @@ const AddMarketModal = ({ isOpen, onClose }) => {
   });
 
   // Fetch existing nodes
-  const { data: nodeData, loading: nodeLoading, error: nodeError } = useQuery(GET_NODE_NAMES, {
+  const { data: nodeData, loading: nodeLoading, error: nodeError } = useQuery(GET_NODE_NAMES_QUERY, {
     skip: !isOpen, // Only fetch when the modal is open
   });
   const nodes = nodeData?.model?.inputData?.nodes || [];

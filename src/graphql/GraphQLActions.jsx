@@ -40,11 +40,11 @@ import {
   SAVE_MODEL_MUTATION,
   START_OPTIMIZATION_MUTATION,
   JOB_STATUS_QUERY,
-  GET_NODE_NAMES,
-  GET_SCENARIOS,
-  
+  GET_NODE_NAMES_QUERY,
+  GET_SCENARIOS_QUERY,
+  GET_PROCESS_NAMES_QUERY
 
-} from './queries';
+} from './queries.js';
 
 const GraphQLActions = () => {
   // Define the setupUpdate object
@@ -289,9 +289,9 @@ const closeMarketModal = () => setIsMarketModalOpen(false);
     residualValue: 999.0,
   };
 
-  const { data: nodeData, loading: nodeLoading, error: nodeError } = useQuery(GET_NODE_NAMES);
+  const { data: nodeData, loading: nodeLoading, error: nodeError } = useQuery(GET_NODE_NAMES_QUERY);
   const nodes = nodeData?.model?.inputData?.nodes || [];
-  const { data: scenarioData, loading: scenarioLoading, error: scenarioError } = useQuery(GET_SCENARIOS);
+  const { data: scenarioData, loading: scenarioLoading, error: scenarioError } = useQuery(GET_SCENARIOS_QUERY);
   const scenarios = scenarioData?.model?.inputData?.scenarios || [];
 
   // useMutation hook for updating input data setup
