@@ -35,22 +35,6 @@ function Sidebar({ isOpen }) {
               Configuration
             </NavLink>
           </li>
-          <li className={styles.navItem}>
-            <NavLink
-              to="/manage-input-data"
-              className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
-            >
-              Manage Input Data
-            </NavLink>
-          </li>
-          <li className={styles.navItem}>
-            <NavLink
-              to="/input-data-setup"
-              className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
-            >
-              Manage Input Data
-            </NavLink>
-          </li>
         </ul>
       </nav>
       <div className={styles.resetContainer}>

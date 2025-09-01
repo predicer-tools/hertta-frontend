@@ -1,7 +1,7 @@
 // src/graphql/ClearInputDataSection.jsx
 
 import React, { useState } from 'react';
-import { GRAPHQL_ENDPOINT, CLEAR_INPUT_DATA_MUTATION } from './queries_old';
+import { GRAPHQL_ENDPOINT, CLEAR_INPUT_DATA_MUTATION } from './queries';
 
 const ClearInputDataSection = () => {
   const [clearStatus, setClearStatus] = useState(null);

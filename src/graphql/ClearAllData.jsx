@@ -1,7 +1,7 @@
 // src/graphql/ClearAllData.jsx
 
 import React, { useState } from 'react';
-import { CLEAR_INPUT_DATA_MUTATION, GRAPHQL_ENDPOINT } from './queries_old';
+import { CLEAR_INPUT_DATA_MUTATION, GRAPHQL_ENDPOINT } from './queries';
 
 const ClearAllData = ({ onClearFrontendData, onRunNodeCreation }) => {
   const [status, setStatus] = useState('idle'); // 'idle', 'loading', 'success', 'error'

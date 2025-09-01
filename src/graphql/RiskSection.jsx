@@ -1,7 +1,7 @@
 // src/graphql/RiskSection.jsx
 
 import React, { useState } from 'react';
-import { GRAPHQL_ENDPOINT, CREATE_RISK_MUTATION } from './queries_old';
+import { GRAPHQL_ENDPOINT, CREATE_RISK_MUTATION } from './queries';
 
 const RiskSection = () => {
   const [riskStatus, setRiskStatus] = useState(null);

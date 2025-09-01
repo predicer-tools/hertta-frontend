@@ -3,9 +3,47 @@ schema {
   mutation: Mutation
 }
 
-enum GroupType {
-  NODE
-  PROCESS
+"Represents predefined clock options."
+enum Clock {
+  "Use the current hour truncated to the nearest hour." CURRENT_HOUR
+}
+
+enum ConstraintFactorType {
+  FLOW
+  STATE
+  ONLINE
+}
+
+enum ConstraintType {
+  LESS_THAN
+  EQUAL
+  GREATER_THAN
+}
+
+enum Conversion {
+  UNIT
+  TRANSFER
+  MARKET
+}
+
+enum JobState {
+  QUEUED
+  IN_PROGRESS
+  FAILED
+  FINISHED
+}
+
+enum MarketDirection {
+  UP
+  DOWN
+  UP_DOWN
+  RES_UP
+  RES_DOWN
+}
+
+enum MarketType {
+  ENERGY
+  RESERVE
 }
 
 input DurationInput {
@@ -14,21 +52,22 @@ input DurationInput {
   seconds: Int!
 }
 
-input InputDataSetupUpdate {
-  containsReserves: Boolean
-  containsOnline: Boolean
-  containsStates: Boolean
-  containsPiecewiseEff: Boolean
-  containsRisk: Boolean
-  containsDiffusion: Boolean
-  containsDelay: Boolean
-  containsMarkets: Boolean
-  reserveRealization: Boolean
-  useMarketBids: Boolean
-  commonTimesteps: Int
-  commonScenarioName: String
-  useNodeDummyVariables: Boolean
-  useRampDummyVariables: Boolean
+input ForecastValueInput {
+  scenario: String
+  constant: Float
+  series: [Float!]
+  forecast: String
+  fType: String
+}
+
+input InputDataSetupInput {
+  "Flag indicating whether market bids are used in the model." useMarketBids: Boolean
+  "Flag indicating whether reserves are used in the model. If set to false, no reserve functionalities are used." useReserves: Boolean
+  "Indicates whether reserves can be realised. If set to false, no realisation occurs." useReserveRealisation: Boolean
+  "Indicates if dummy variables should be used in the node balance equations." useNodeDummyVariables: Boolean
+  "Indicates if dummy variables should be used in the ramp balance equations." useRampDummyVariables: Boolean
+  "Indicates the length of a common start, where the parameters and variable values are equal across all scenarios. Default is 0." commonTimesteps: Int
+  "Name of the common start scenario, if it is used." commonScenarioName: String
   nodeDummyVariableCost: Float
   rampDummyVariableCost: Float
 }
@@ -41,29 +80,35 @@ input LocationInput {
 
 input NewGenConstraint {
   name: String!
-  gcType: String!
+  gcType: ConstraintType!
   isSetpoint: Boolean!
   penalty: Float!
-  constant: Float
+  constant: [ValueInput!]!
+}
+
+input NewInflowBlock {
+  name: String!
+  node: String!
+  data: [ValueInput!]!
 }
 
 input NewMarket {
   name: String!
-  mType: String!
+  mType: MarketType!
   node: String!
-  processgroup: String!
-  direction: String
-  realisation: Float
+  processGroup: String!
+  direction: MarketDirection
+  realisation: [ValueInput!]!
   reserveType: String
   isBid: Boolean!
   isLimited: Boolean!
   minBid: Float!
   maxBid: Float!
   fee: Float!
-  price: Float
-  upPrice: Float
-  downPrice: Float
-  reserveActivationPrice: Float
+  price: [ForecastValueInput!]!
+  upPrice: [ForecastValueInput!]!
+  downPrice: [ForecastValueInput!]!
+  reserveActivationPrice: [ValueInput!]!
 }
 
 input NewNode {
@@ -71,28 +116,47 @@ input NewNode {
   isCommodity: Boolean!
   isMarket: Boolean!
   isRes: Boolean!
-  cost: Float
-  inflow: Float
+  cost: [ValueInput!]!
+  inflow: [ForecastValueInput!]!
+}
+
+input NewNodeDelay {
+  fromNode: String!
+  toNode: String!
+  delay: Float!
+  minDelayFlow: Float!
+  maxDelayFlow: Float!
+}
+
+input NewNodeDiffusion {
+  fromNode: String!
+  toNode: String!
+  coefficient: [ValueInput!]!
 }
 
 input NewProcess {
+  "Name of the process." name: String!
+  "Indicates the type of the process. Options: Unit, Transfer, Market" conversion: Conversion!
+  "Indicates if the process has to match the capacity factor time series." isCfFix: Boolean!
+  "Indicates if the process is an online/offline unit." isOnline: Boolean!
+  "Indicates if the process participates in reserve markets" isRes: Boolean!
+  "Process efficiency (total output / total input)" eff: Float!
+  "Minimum load of the process as a fraction of total capacity. Only for online processes" loadMin: Float!
+  "Maximum load of the process as a fraction of total capacity. Only for online processes" loadMax: Float!
+  "Cost of starting the unit, only for online processes." startCost: Float!
+  "Minimum time the process has to be online after start up." minOnline: Float!
+  "Maximum time the process can be online." maxOnline: Float!
+  "Minimum time the process has to be offline during shut down." minOffline: Float!
+  "Maximum time the process can be offline." maxOffline: Float!
+  "Initial state of the online unit (0 = offline, 1 = online)." initialState: Boolean!
+  "If true, forces the online variable of the process to be equal in all scenarios." isScenarioIndependent: Boolean!
+  "Capacity factor time series for processes with cf functionality." cf: [ValueInput!]!
+  "Value time series of the efficiency of processes" effTs: [ValueInput!]!
+}
+
+input NewReserveType {
   name: String!
-  "Must be 'unit' or 'transport'." conversion: String!
-  isCfFix: Boolean!
-  isOnline: Boolean!
-  isRes: Boolean!
-  eff: Float!
-  loadMin: Float!
-  loadMax: Float!
-  startCost: Float!
-  minOnline: Float!
-  maxOnline: Float!
-  minOffline: Float!
-  maxOffline: Float!
-  initialState: Boolean!
-  isScenarioIndependent: Boolean!
-  cf: Float
-  effTs: Float
+  rampRate: Float!
 }
 
 input NewRisk {
@@ -100,21 +164,13 @@ input NewRisk {
   value: Float!
 }
 
-input NewTopology {
-  capacity: Float!
-  vomCost: Float!
-  rampUp: Float!
-  rampDown: Float!
-  initialLoad: Float!
-  initialFlow: Float!
-  capTs: Float
+input NewSeries {
+  scenario: String!
+  durations: [DurationInput!]!
+  values: [Float!]!
 }
 
-input SettingsInput {
-  location: LocationInput
-}
-
-input StateInput {
+input NewState {
   inMax: Float!
   outMax: Float!
   stateLossProportional: Float!
@@ -125,6 +181,20 @@ input StateInput {
   isTemp: Boolean!
   tEConversion: Float!
   residualValue: Float!
+}
+
+input NewTopology {
+  capacity: Float!
+  vomCost: Float!
+  rampUp: Float!
+  rampDown: Float!
+  initialLoad: Float!
+  initialFlow: Float!
+  capTs: [ValueInput!]!
+}
+
+input SettingsInput {
+  location: LocationInput
 }
 
 input StateUpdate {
@@ -140,21 +210,70 @@ input StateUpdate {
   residualValue: Float
 }
 
+input TimeLineStartInput {
+  clockChoice: Clock
+  customStartTime: String
+}
+
 input TimeLineUpdate {
   duration: DurationInput
   step: DurationInput
+  start: TimeLineStartInput
+}
+
+input ValueInput {
+  scenario: String
+  constant: Float
+  series: [Float!]
+}
+
+"""
+  Combined date and time (with time zone) in [RFC 3339][0] format.
+
+  Represents a description of an exact instant on the time-line (such as the
+  instant that a user account was created).
+
+  [`DateTime` scalar][1] compliant.
+
+  See also [`chrono::DateTime`][2] for details.
+
+  [0]: https://datatracker.ietf.org/doc/html/rfc3339#section-5
+  [1]: https://graphql-scalars.dev/docs/scalars/date-time
+  [2]: https://docs.rs/chrono/latest/chrono/struct.DateTime.html
+"""
+scalar DateTime
+
+"Defines a clock-based start time."
+type ClockChoice {
+  "Predefined clock option."
+  choice: Clock!
 }
 
 type ConFactor {
-  varType: String!
+  varType: ConstraintFactorType!
   varTuple: VariableId!
-  data: Float!
+  data: [Value!]!
+}
+
+type Constant {
+  value: Float!
+}
+
+type ControlSignal {
+  name: String!
+  signal: [Float!]!
+}
+
+"Represents a user-defined start time."
+type CustomStartTime {
+  "User-provided start time (ISO 8601)."
+  startTime: DateTime!
 }
 
 "Delay for connections between nodes."
 type Delay {
-  fromNode: String!
-  toNode: String!
+  fromNode: Node!
+  toNode: Node!
   delay: Float!
   minDelayFlow: Float!
   maxDelayFlow: Float!
@@ -166,25 +285,38 @@ type Duration {
   seconds: Int!
 }
 
+type ElectricityPriceOutcome {
+  time: [DateTime!]!
+  price: [Float!]!
+}
+
+type FloatList {
+  values: [Float!]!
+}
+
+type Forecast {
+  name: String!
+  fType: String!
+}
+
+type ForecastValue {
+  scenario: String
+  value: Forecastable!
+}
+
 type GenConstraint {
   name: String!
-  gcType: String!
+  gcType: ConstraintType!
   isSetpoint: Boolean!
   penalty: Float!
   factors: [ConFactor!]!
-  constant: Float
-}
-
-type Group {
-  name: String!
-  gType: GroupType!
-  members: [String!]!
+  constant: [Value!]!
 }
 
 type InflowBlock {
   name: String!
-  node: String!
-  data: Float!
+  node: Node!
+  data: [Value!]!
 }
 
 "The model itself."
@@ -197,7 +329,8 @@ type InputData {
   nodeDelay: [Delay!]!
   nodeHistories: [NodeHistory!]!
   markets: [Market!]!
-  groups: [Group!]!
+  nodeGroups: [NodeGroup!]!
+  processGroups: [ProcessGroup!]!
   reserveType: [ReserveType!]!
   risk: [Risk!]!
   inflowBlocks: [InflowBlock!]!
@@ -205,22 +338,20 @@ type InputData {
 }
 
 type InputDataSetup {
-  containsReserves: Boolean!
-  containsOnline: Boolean!
-  containsStates: Boolean!
-  containsPiecewiseEff: Boolean!
-  containsRisk: Boolean!
-  containsDiffusion: Boolean!
-  containsDelay: Boolean!
-  containsMarkets: Boolean!
   reserveRealisation: Boolean!
   useMarketBids: Boolean!
-  commonTimesteps: Int!
-  commonScenarioName: String!
+  useReserves: Boolean!
+  commonTimeSteps: Int!
+  commonScenario: Scenario!
   useNodeDummyVariables: Boolean!
   useRampDummyVariables: Boolean!
   nodeDummyVariableCost: Float!
   rampDummyVariableCost: Float!
+}
+
+type JobStatus {
+  state: JobState!
+  message: String
 }
 
 type LocationSettings {
@@ -232,21 +363,21 @@ type LocationSettings {
 
 type Market {
   name: String!
-  mType: String!
-  node: String!
-  processgroup: String!
-  direction: String!
-  realisation: Float
-  reserveType: String!
+  mType: MarketType!
+  node: Node!
+  processGroup: ProcessGroup!
+  direction: MarketDirection
+  realisation: [Value!]!
+  reserveType: ReserveType
   isBid: Boolean!
   isLimited: Boolean!
   minBid: Float!
   maxBid: Float!
   fee: Float!
-  price: Float
-  upPrice: Float
-  downPrice: Float
-  reserveActivationPrice: Float
+  price: [ForecastValue!]!
+  upPrice: [ForecastValue!]!
+  downPrice: [ForecastValue!]!
+  reserveActivationPrice: [Value!]!
   fixed: [MarketFix!]!
 }
 
@@ -257,7 +388,7 @@ type MarketFix {
 
 type MaybeError {
   "Error message; if null, the operation succeeded."
-  error: String
+  message: String
 }
 
 "Optimization model."
@@ -267,72 +398,115 @@ type Model {
 }
 
 type Mutation {
-  startOptimization: StartOptimizationResult!
+  "Start optimization job. Return job ID."
+  startOptimization: Int!
+  "Start electricity price fetch job. Return job ID."
+  startElectricityPriceFetch: Int!
+  "Start weather forecast job. Return job ID."
+  startWeatherForecastFetch: Int!
   "Update model's time line."
   updateTimeLine(timeLineInput: TimeLineUpdate!): ValidationErrors!
   "Create new scenario."
   createScenario(name: String!, weight: Float!): MaybeError!
+  "Delete a scenario and all items that depend on that scenario."
+  deleteScenario(name: String!): MaybeError!
   "Save the model on disk."
   saveModel: MaybeError!
   "Clear input data from model."
   clearInputData: MaybeError!
-  "Update input data setup."
-  updateInputDataSetup(setupUpdate: InputDataSetupUpdate!): ValidationErrors!
+  "Create or Update input data setup."
+  createInputDataSetup(setupUpdate: InputDataSetupInput!): ValidationErrors!
   "Create new node group"
   createNodeGroup(name: String!): MaybeError!
   "Create new process group."
   createProcessGroup(name: String!): MaybeError!
+  deleteGroup(name: String!): MaybeError!
   "Create new process."
   createProcess(process: NewProcess!): ValidationErrors!
   "Add process to process group."
   addProcessToGroup(processName: String!, groupName: String!): MaybeError!
+  "Delete a process and all items that depend on that process."
+  deleteProcess(name: String!): MaybeError!
   "Create new topology and add it to process."
   createTopology(topology: NewTopology!, sourceNodeName: String, processName: String!, sinkNodeName: String): ValidationErrors!
+  deleteTopology(sourceNodeName: String, processName: String!, sinkNodeName: String): MaybeError!
   "Create new node."
   createNode(node: NewNode!): ValidationErrors!
   "Add node to node group."
   addNodeToGroup(nodeName: String!, groupName: String!): MaybeError!
   "Set state for node. Null clears the state."
-  setNodeState(state: StateInput, nodeName: String!): ValidationErrors!
+  setNodeState(state: NewState, nodeName: String!): ValidationErrors!
   "Update state of a node. The state has to be set."
   updateNodeState(state: StateUpdate!, nodeName: String!): ValidationErrors!
+  connectNodeInflowToTemperatureForecast(nodeName: String!, forecastName: String!, forecastType: String!): MaybeError!
+  "Delete a node and all items that depend on that node."
+  deleteNode(name: String!): MaybeError!
   "Create new diffusion between nodes."
-  createNodeDiffusion(fromNode: String!, toNode: String!, coefficient: Float!): ValidationErrors!
+  createNodeDiffusion(newDiffusion: NewNodeDiffusion!): ValidationErrors!
+  deleteNodeDiffusion(fromNode: String!, toNode: String!): MaybeError!
+  createNodeDelay(delay: NewNodeDelay!): ValidationErrors!
+  deleteNodeDelay(fromNode: String!, toNode: String!): MaybeError!
+  createNodeHistory(nodeName: String!): ValidationErrors!
+  deleteNodeHistory(nodeName: String!): MaybeError!
+  addStepToNodeHistory(nodeName: String!, step: NewSeries!): ValidationErrors!
+  clearNodeHistorySteps(nodeName: String!): MaybeError!
   "Create new market."
   createMarket(market: NewMarket!): ValidationErrors!
+  "Connects market's normal, up and down prices to electricity price forecast."
+  connectMarketPricesToForecast(marketName: String!, forecastName: String!, forecastType: String!): MaybeError!
+  deleteMarket(name: String!): MaybeError!
   "Create new risk."
   createRisk(risk: NewRisk!): ValidationErrors!
+  deleteRisk(parameter: String!): MaybeError!
+  "Create new reserve type."
+  createReserveType(reserveType: NewReserveType!): ValidationErrors!
+  "Create new inflow block."
+  createInflowBlock(inflowBlock: NewInflowBlock!): ValidationErrors!
   "Create new generic constraint."
   createGenConstraint(constraint: NewGenConstraint!): ValidationErrors!
+  deleteGenConstraint(name: String!): MaybeError!
   "Create new flow constraint factor and add it to generic constraint."
-  createFlowConFactor(factor: Float!, constraintName: String!, processName: String!, sourceOrSinkNodeName: String!): ValidationErrors!
+  createFlowConFactor(factor: [ValueInput!]!, constraintName: String!, processName: String!, sourceOrSinkNodeName: String!): ValidationErrors!
+  deleteFlowConFactor(constraintName: String!, processName: String!, sourceOrSinkNodeName: String!): MaybeError!
   "Create new state constraint factor and add it to generic constraint."
-  createStateConFactor(factor: Float!, constraintName: String!, nodeName: String!): ValidationErrors!
+  createStateConFactor(factor: [ValueInput!]!, constraintName: String!, nodeName: String!): ValidationErrors!
+  deleteStateConFactor(constraintName: String!, nodeName: String!): MaybeError!
   "Create new online constraint factor and add it to generic constraint."
-  createOnlineConFactor(factor: Float!, constraintName: String!, processName: String!): ValidationErrors!
+  createOnlineConFactor(factor: [ValueInput!]!, constraintName: String!, processName: String!): ValidationErrors!
+  deleteOnlineConFactor(constraintName: String!, processName: String!): MaybeError!
   updateSettings(settingsInput: SettingsInput!): SettingsResult!
 }
 
 type Node {
   name: String!
-  groups: [String!]!
+  groups: [NodeGroup!]!
   isCommodity: Boolean!
   isMarket: Boolean!
   isRes: Boolean!
   state: State
-  cost: Float
-  inflow: Float
+  cost: [Value!]!
+  inflow: [ForecastValue!]!
 }
 
 type NodeDiffusion {
-  fromNode: String!
-  toNode: String!
-  coefficient: Float!
+  fromNode: Node!
+  toNode: Node!
+  coefficient: [Value!]!
+}
+
+type NodeGroup {
+  name: String!
+  members: [Node!]!
 }
 
 type NodeHistory {
-  node: String!
-  steps: Float!
+  node: Node!
+  steps: [Series!]!
+}
+
+type OptimizationOutcome {
+  time: [DateTime!]!
+  controlSignals: [ControlSignal!]!
 }
 
 type Point {
@@ -342,8 +516,8 @@ type Point {
 
 type Process {
   name: String!
-  groups: [String!]!
-  conversion: String!
+  groups: [ProcessGroup!]!
+  conversion: Conversion!
   isCf: Boolean!
   isCfFix: Boolean!
   isOnline: Boolean!
@@ -356,33 +530,39 @@ type Process {
   minOffline: Float!
   maxOnline: Float!
   maxOffline: Float!
-  initialState: Boolean!
   isScenarioIndependent: Boolean!
   topos: [Topology!]!
-  cf: Float!
-  effTs: Float
+  cf: [Value!]!
+  effTs: [Value!]!
   effOps: [String!]!
   effFun: [Point!]!
 }
 
+type ProcessGroup {
+  name: String!
+  members: [Process!]!
+}
+
 type Query {
-  apiVersion: String!
   settings: Settings!
   model: Model!
   genConstraint(name: String!): GenConstraint!
-  group(name: String!): Group!
+  nodeGroup(name: String!): NodeGroup!
   nodesInGroup(name: String!): [Node!]!
+  processGroup(name: String!): ProcessGroup!
   processesInGroup(name: String!): [Process!]!
   market(name: String!): Market!
   node(name: String!): Node!
-  "return all groups the given node is member of"
-  groupsForNode(name: String!): [Group!]!
+  "Return all groups the given node is member of."
+  groupsForNode(name: String!): [NodeGroup!]!
   nodeDiffusion(fromNode: String!, toNode: String!): NodeDiffusion!
-  "return all groups the given process is member of"
-  groupsForProcess(name: String!): [Group!]!
+  "Return all groups the given process is member of."
+  groupsForProcess(name: String!): [ProcessGroup!]!
   process(name: String!): Process!
+  conFactorsForProcess(name: String!): [ConFactor!]!
   scenario(name: String!): Scenario!
-  status: Status!
+  jobStatus(jobId: Int!): JobStatus!
+  jobOutcome(jobId: Int!): JobOutcome!
 }
 
 type ReserveType {
@@ -403,18 +583,19 @@ type Scenario {
   weight: Float!
 }
 
+type Series {
+  scenario: String!
+  durations: [Duration!]!
+  values: [Float!]!
+}
+
 "General Hertta settings."
 type Settings {
+  priceFetcherScript: String!
   "Device location."
   location: LocationSettings
-}
-
-type StartOptimizationError {
-  message: String!
-}
-
-type StartOptimizationOutput {
-  jobId: Int!
+  "ENTSO-E API TOKEN."
+  entsoeApiToken: String
 }
 
 type State {
@@ -430,30 +611,19 @@ type State {
   residualValue: Float!
 }
 
-type Status {
-  state: String!
-  jobId: Int
-  message: String
-}
-
 "Optimization time line settings."
 type TimeLineSettings {
   "Time line duration."
   duration: Duration!
   "Time step length."
   step: Duration!
+  "Start of the time line."
+  start: TimeLineStart!
 }
 
 type Topology {
-  source: String!
-  sink: String!
-  capacity: Float!
-  vomCost: Float!
-  rampUp: Float!
-  rampDown: Float!
-  initialLoad: Float!
-  initialFlow: Float!
-  capTs: Float
+  source: NodeOrProcess!
+  sink: NodeOrProcess!
 }
 
 type ValidationError {
@@ -465,11 +635,30 @@ type ValidationErrors {
   errors: [ValidationError!]!
 }
 
-type VariableId {
-  entity: String!
-  identifier: String
+type Value {
+  scenario: String
+  value: SeriesValue!
 }
+
+type VariableId {
+  entity: NodeOrProcess!
+  identifier: Node
+}
+
+type WeatherForecastOutcome {
+  time: [DateTime!]!
+  temperature: [Float!]!
+}
+
+union Forecastable = Constant | FloatList | Forecast
+
+union JobOutcome = ElectricityPriceOutcome | OptimizationOutcome | WeatherForecastOutcome
+
+union NodeOrProcess = Node | Process
+
+union SeriesValue = Constant | FloatList
 
 union SettingsResult = Settings | ValidationErrors
 
-union StartOptimizationResult = StartOptimizationOutput | StartOptimizationError
+"Defines the start of the time line."
+union TimeLineStart = ClockChoice | CustomStartTime

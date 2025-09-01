@@ -1,7 +1,7 @@
 // src/graphql/MarketSection.jsx
 
 import React, { useState } from 'react';
-import { GRAPHQL_ENDPOINT, CREATE_MARKET_MUTATION } from './queries_old';
+import { GRAPHQL_ENDPOINT, CREATE_MARKET_MUTATION } from './queries';
 
 const MarketSection = () => {
   const [marketStatus, setMarketStatus] = useState(null);

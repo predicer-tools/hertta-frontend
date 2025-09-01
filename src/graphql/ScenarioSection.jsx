@@ -1,7 +1,7 @@
 // src/graphql/ScenarioSection.jsx
 
 import React, { useState } from 'react';
-import { GRAPHQL_ENDPOINT, CREATE_SCENARIO_MUTATION } from './queries_old';
+import { GRAPHQL_ENDPOINT, CREATE_SCENARIO_MUTATION } from './queries';
 
 const ScenarioSection = () => {
   const [scenarioStatus, setScenarioStatus] = useState(null);

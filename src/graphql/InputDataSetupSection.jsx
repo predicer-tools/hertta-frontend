@@ -1,7 +1,7 @@
 // src/graphql/InputDataSetupSection.jsx
 
 import React, { useState } from 'react';
-import { GRAPHQL_ENDPOINT, UPDATE_INPUT_DATA_SETUP_MUTATION } from './queries_old';
+import { GRAPHQL_ENDPOINT, UPDATE_INPUT_DATA_SETUP_MUTATION } from './queries';
 
 const InputDataSetupSection = () => {
   const [updateStatus, setUpdateStatus] = useState(null);

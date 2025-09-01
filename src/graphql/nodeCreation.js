@@ -1,6 +1,6 @@
 // src/utils/nodeCreation.js
 
-import { GRAPHQL_ENDPOINT, CREATE_NODE_MUTATION, SET_NODE_STATE_MUTATION } from './queries_old';
+import { GRAPHQL_ENDPOINT, CREATE_NODE_MUTATION, SET_NODE_STATE_MUTATION } from './queries';
 
 // Constants
 export const AIR_HEATING_CAPACITY = 0.00278; // kWh/(m²K)
