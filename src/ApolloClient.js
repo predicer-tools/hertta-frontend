@@ -1,6 +1,6 @@
 // src/ApolloClient.js
 import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
-import { GRAPHQL_ENDPOINT } from './graphql/queries_old';
+import { GRAPHQL_ENDPOINT } from './graphql/queries';
 import { setContext } from '@apollo/client/link/context';
 
 // If authentication is required, you can set up headers here

@@ -35,6 +35,14 @@ function Sidebar({ isOpen }) {
               Configuration
             </NavLink>
           </li>
+                    <li className={styles.navItem}>
+            <NavLink
+              to="/model"
+              className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+            >
+              Model
+            </NavLink>
+          </li>
         </ul>
       </nav>
       <div className={styles.resetContainer}>

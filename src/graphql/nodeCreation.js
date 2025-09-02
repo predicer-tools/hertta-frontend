@@ -1,9 +1,15 @@
 // src/utils/nodeCreation.js
 
-import { GRAPHQL_ENDPOINT, CREATE_NODE_MUTATION, SET_NODE_STATE_MUTATION } from './queries';
 
-// Constants
-export const AIR_HEATING_CAPACITY = 0.00278; // kWh/(m²K)
+import { print } from 'graphql/language/printer';
+import {
+  GRAPHQL_ENDPOINT,
+  CREATE_NODE_MUTATION,
+  SET_NODE_STATE_MUTATION,
+} from './queries';
+
+// Constants 
+export const AIR_HEATING_CAPACITY = 0.00278; // kWh/(m²K) 
 export const FLOOR_CONCRETE_HEATING_CAPACITY = 0.03; // kWh/(m²K)
 
 // Helper functions for GraphQL calls
@@ -12,7 +18,8 @@ export async function createNode(node) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query: CREATE_NODE_MUTATION,
+      // Convert the DocumentNode to a string
+      query: print(CREATE_NODE_MUTATION),
       variables: { node },
     }),
   });
@@ -25,7 +32,7 @@ export async function setNodeState(nodeName, state) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query: SET_NODE_STATE_MUTATION,
+      query: print(SET_NODE_STATE_MUTATION),
       variables: { nodeName, state },
     }),
   });
@@ -58,14 +65,15 @@ export async function createRoomNodes(room, config, materials) {
     const maxTempK = parseFloat(room.maxTemp) + 273.15;
     const minTempK = parseFloat(room.minTemp) + 273.15;
 
+    
     // Define nodes
     const airNode = {
       name: `${room.roomId}_air`,
       isCommodity: false,
       isMarket: false,
       isRes: false,
-      cost: null,
-      inflow: null,
+      cost: [],
+      inflow: [],
     };
 
     const envelopeNode = {
@@ -73,8 +81,8 @@ export async function createRoomNodes(room, config, materials) {
       isCommodity: false,
       isMarket: false,
       isRes: false,
-      cost: null,
-      inflow: null,
+      cost: [],
+      inflow: [],
     };
 
     const soilNode = {
@@ -82,8 +90,8 @@ export async function createRoomNodes(room, config, materials) {
       isCommodity: false,
       isMarket: false,
       isRes: false,
-      cost: null,
-      inflow: null,
+      cost: [],
+      inflow: [],
     };
 
     // Define states

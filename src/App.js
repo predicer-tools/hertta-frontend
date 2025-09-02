@@ -12,6 +12,7 @@ import ManageInputData from './graphql/ManageInputData';
 import EditConfigPage from './pages/EditConfigPage';
 import UpdateInputDataSetup from './graphql/UpdateInputDataSetup';
 import GraphQLActions from './graphql/GraphQLActions';
+import ModelPage from './pages/ModelPage';
 
 function App() {
   const { isConfigured } = useContext(ConfigContext);
@@ -54,6 +55,12 @@ function App() {
         <Route
           path="/input-data"
           element={isConfigured ? <InputData /> : <Navigate to="/config" replace />}
+        />
+
+                {/* Input Data Route */}
+        <Route
+          path="/model"
+          element={isConfigured ? <ModelPage /> : <Navigate to="/model" replace />}
         />
 
         {/* Data Table Route */}
