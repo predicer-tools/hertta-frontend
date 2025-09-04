@@ -11,7 +11,6 @@ import DashboardGrid from './pages/DashboardGrid';
 import ManageInputData from './graphql/ManageInputData';
 import EditConfigPage from './pages/EditConfigPage';
 import UpdateInputDataSetup from './graphql/UpdateInputDataSetup';
-import GraphQLActions from './graphql/GraphQLActions';
 import ModelPage from './pages/ModelPage';
 
 function App() {
@@ -80,14 +79,6 @@ function App() {
           path="/manage-input-data"
           element={
             isConfigured ? <ManageInputData /> : <Navigate to="/config" replace />
-          }
-        />
-
-        {/* Manage Input Data Route */}
-        <Route
-          path="/input-data-setup"
-          element={
-            isConfigured ? <GraphQLActions /> : <Navigate to="/config" replace />
           }
         />
 

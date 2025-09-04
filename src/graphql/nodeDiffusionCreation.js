@@ -1,6 +1,7 @@
 // src/graphql/nodeDiffusionCreation.js
 
 import { GRAPHQL_ENDPOINT, CREATE_NODE_DIFFUSION_MUTATION } from './queries';
+import { print } from 'graphql/language/printer';
 
 // Constants for diffusion calculations
 const frac_windows = 0.1;
@@ -19,12 +20,22 @@ const cond_soil_env = 0.001; // Soil to environment conduction
  */
 async function createNodeDiffusion(fromNode, toNode, coefficient) {
   try {
+    // Wrap the coefficient in the required ValueInput array format
+    const variables = {
+      newDiffusion: {
+        fromNode,
+        toNode,
+        coefficient: [{ constant: coefficient }],
+      },
+    };
+
     const response = await fetch(GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        query: CREATE_NODE_DIFFUSION_MUTATION,
-        variables: { fromNode, toNode, coefficient },
+        // Convert the mutation DocumentNode to a string with print()
+        query: print(CREATE_NODE_DIFFUSION_MUTATION),
+        variables,
       }),
     });
     const result = await response.json();
@@ -36,7 +47,7 @@ async function createNodeDiffusion(fromNode, toNode, coefficient) {
 
     if (result.data.createNodeDiffusion.errors.length > 0) {
       const errorMessages = result.data.createNodeDiffusion.errors
-        .map(err => `${err.field}: ${err.message}`)
+        .map((err) => `${err.field}: ${err.message}`)
         .join(', ');
       console.error(`Validation Errors for diffusion from ${fromNode} to ${toNode}: ${errorMessages}`);
       return;
@@ -58,7 +69,7 @@ async function createNodeDiffusion(fromNode, toNode, coefficient) {
  * @param {string} outsideNodeName - The name of the outside node (default: "outside").
  * @param {string} soilNodeName - The name of the soil node (default: "soil").
  */
-export async function createRoomNodeDiffusions(room, outsideNodeName = "outside", soilNodeName = "soil") {
+export async function createRoomNodeDiffusions(room, outsideNodeName = 'outside', soilNodeName = 'soil') {
   const { roomId, roomWidth, roomLength } = room;
 
   const width = parseFloat(roomWidth);
@@ -73,17 +84,19 @@ export async function createRoomNodeDiffusions(room, outsideNodeName = "outside"
   const surf_area_walls = surf_area_walls_total * (1.0 - frac_windows);
   const surf_area_windows = surf_area_walls_total * frac_windows;
   const surf_area_floor = width * length;
-  const surf_area_ceiling = surf_area_floor; // Assuming ceiling area equals floor area
+  const surf_area_ceiling = surf_area_floor; // Ceiling area equals floor area
 
   // Calculate diffusion coefficients
-  const diff_ext_env = surf_area_walls * cond_wall_ext_env +
-                       surf_area_windows * cond_windows +
-                       surf_area_ceiling * cond_ceil_ext_env;
+  const diff_ext_env =
+    surf_area_walls * cond_wall_ext_env +
+    surf_area_windows * cond_windows +
+    surf_area_ceiling * cond_ceil_ext_env;
 
-  const diff_env_int = surf_area_walls * cond_env_int +
-                       surf_area_windows * cond_windows +
-                       surf_area_floor * cond_env_int +
-                       surf_area_ceiling * cond_env_int;
+  const diff_env_int =
+    surf_area_walls * cond_env_int +
+    surf_area_windows * cond_windows +
+    surf_area_floor * cond_env_int +
+    surf_area_ceiling * cond_env_int;
 
   const diff_soil_env = surf_area_floor * cond_soil_env;
 
@@ -102,7 +115,6 @@ export async function createRoomNodeDiffusions(room, outsideNodeName = "outside"
 
     // 3. building_envelope -> soil
     await createNodeDiffusion(buildingEnvelopeNode, roomSoilNode, diff_soil_env);
-
   } catch (error) {
     console.error(`Error creating diffusions for roomId: ${roomId}`, error);
   }
