@@ -4,33 +4,32 @@ import React, { useState, useContext } from 'react';
 import './DataForm.css';
 import DataContext from '../context/DataContext'; // Import DataContext
 
+import { useMutation } from '@apollo/client';
+import { CREATE_PROCESS_MUTATION } from '../graphql/queries'; // adjust path if necessary
+
 function FormElectricHeater({ fetchedDevices = [], onClose }) {
   const { rooms, addElectricHeater, heaters } = useContext(DataContext); // Access heaters and functions from DataContext
 
   const [heaterId, setHeaterId] = useState('');
   const [capacity, setCapacity] = useState('');
   const [roomId, setRoomId] = useState('');
-
-  // State for error messages
   const [error, setError] = useState('');
+
+  const [createProcess] = useMutation(CREATE_PROCESS_MUTATION, {
+    onError: (err) => {
+      console.error('Process creation failed:', err);
+    },
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Trimmed inputs for accurate validation
     const trimmedHeaterId = heaterId.trim();
     const trimmedCapacity = capacity.toString().trim();
     const trimmedRoomId = roomId.trim();
-
-    // Reset error
     setError('');
 
-    // Validation: Ensure required fields are filled
-    if (
-      trimmedHeaterId === '' ||
-      trimmedCapacity === '' ||
-      trimmedRoomId === ''
-    ) {
+    if (!trimmedHeaterId || !trimmedCapacity || !trimmedRoomId) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -71,12 +70,35 @@ function FormElectricHeater({ fetchedDevices = [], onClose }) {
       // isEnabled is handled in DataContext.js
     });
 
-    // Reset form
+    // build NewProcess input and call mutation
+    const processInput = {
+      name: trimmedHeaterId,
+      conversion: 'UNIT',
+      isCfFix: false,
+      isOnline: false,
+      isRes: false,
+      eff: 1.0,
+      loadMin: 0.0,
+      loadMax: 0.0,
+      startCost: 0.0,
+      minOnline: 0.0,
+      maxOnline: 0.0,
+      minOffline: 0.0,
+      maxOffline: 0.0,
+      initialState: false,
+      isScenarioIndependent: false,
+      cf: [],
+      effTs: [],
+      effOpsFun: [],
+    };
+
+    createProcess({ variables: { process: processInput } });
+
     setHeaterId('');
     setCapacity('');
     setRoomId('');
+    setError('');
 
-    // Close the modal after successful submission
     if (onClose) onClose();
   };
 

@@ -7,6 +7,7 @@ import ConfigContext from './ConfigContext'; // Import ConfigContext
 import { generateControlSignals } from '../utils/controlData';
 import { createRoomNodes } from '../graphql/nodeCreation';
 import { createRoomNodeDiffusions } from '../graphql/nodeDiffusionCreation';
+import { createHeaterProcess } from '../graphql/processCreation';
 
 // Create the DataContext
 const DataContext = createContext();
@@ -352,6 +353,19 @@ export const DataProvider = ({ children }) => {
           isEnabled: true, // Initialize isEnabled as true
         },
       ]);
+      // Create a corresponding process via GraphQL.  We construct the
+      // process based on the heater's id and capacity; efficiency comes
+      // from capacity.  Errors will be logged in the helper.
+      try {
+        const result = await createHeaterProcess(heater);
+        if (result?.errors && result.errors.length > 0) {
+          console.warn('Validation errors when creating process:', result.errors);
+        } else {
+          console.log('Process created successfully for heater', id);
+        }
+      } catch (err) {
+        console.error('Failed to create process for heater', id, err);
+      }
     },
     [heaters]
   );
