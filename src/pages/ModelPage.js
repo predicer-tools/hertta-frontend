@@ -28,6 +28,16 @@ const GET_MODEL_OVERVIEW_QUERY = `
         processes {
           name
         }
+        setup {
+          reserveRealisation
+          useMarketBids
+          useReserves
+          useNodeDummyVariables
+          useRampDummyVariables
+          nodeDummyVariableCost
+          rampDummyVariableCost
+          commonTimeSteps
+        }
       }
     }
   }
@@ -39,6 +49,7 @@ const ModelPage = () => {
   const [nodes, setNodes] = useState([]);
   const [processes, setProcesses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [setup, setSetup] = useState(null);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -58,11 +69,15 @@ const ModelPage = () => {
       if (result.errors) {
         setError(result.errors.map((e) => e.message).join(', '));
       } else {
+        const inputData = result?.data?.model?.inputData || {};
         const fetchedNodes = result?.data?.model?.inputData?.nodes || [];
         const fetchedProcesses = result?.data?.model?.inputData?.processes || [];
+        const fetchedSetup = inputData.setup || null;
         setNodes(fetchedNodes);
         setProcesses(fetchedProcesses);
+        setSetup(fetchedSetup);
       }
+
     } catch (err) {
       setError(err.message);
     } finally {
@@ -101,6 +116,14 @@ const ModelPage = () => {
       {/* Display the list of nodes and processes.  If there are none, show placeholders. */}
       {!loading && !error && (
         <>
+          <h2>Setup</h2>
+          {setup ? (
+            <pre style={{ whiteSpace: 'pre-wrap' }}>
+              {JSON.stringify(setup, null, 2)}
+            </pre>
+          ) : (
+            <p>No setup found.</p>
+          )}
           <h2>Nodes</h2>
           {nodes.length > 0 ? (
             <ul>
