@@ -357,7 +357,7 @@ export const DataProvider = ({ children }) => {
       // process based on the heater's id and capacity; efficiency comes
       // from capacity.  Errors will be logged in the helper.
       try {
-        const result = await createHeaterProcess(heater);
+        const result = await createHeaterProcess(heater, roomId);
         if (result?.errors && result.errors.length > 0) {
           console.warn('Validation errors when creating process:', result.errors);
         } else {

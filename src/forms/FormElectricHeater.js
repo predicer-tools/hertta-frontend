@@ -2,24 +2,15 @@
 
 import React, { useState, useContext } from 'react';
 import './DataForm.css';
-import DataContext from '../context/DataContext'; // Import DataContext
-
-import { useMutation } from '@apollo/client';
-import { CREATE_PROCESS_MUTATION } from '../graphql/queries'; // adjust path if necessary
+import DataContext from '../context/DataContext';
 
 function FormElectricHeater({ fetchedDevices = [], onClose }) {
-  const { rooms, addElectricHeater, heaters } = useContext(DataContext); // Access heaters and functions from DataContext
+  const { rooms, addElectricHeater, heaters } = useContext(DataContext);
 
   const [heaterId, setHeaterId] = useState('');
   const [capacity, setCapacity] = useState('');
   const [roomId, setRoomId] = useState('');
   const [error, setError] = useState('');
-
-  const [createProcess] = useMutation(CREATE_PROCESS_MUTATION, {
-    onError: (err) => {
-      console.error('Process creation failed:', err);
-    },
-  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -34,66 +25,44 @@ function FormElectricHeater({ fetchedDevices = [], onClose }) {
       return;
     }
 
-    // Validation: Ensure capacity is greater than 0
+    // Capacity must be > 0
     const parsedCapacity = parseFloat(capacity);
     if (isNaN(parsedCapacity) || parsedCapacity <= 0) {
       setError('Capacity must be greater than 0.');
       return;
     }
 
-    // Validation: Check if the selected heater is already assigned to any room
+    // Prevent duplicate heater IDs
     const existingHeater = heaters.find(
-      (heater) => heater.id.toLowerCase() === trimmedHeaterId.toLowerCase()
+      (h) => h.id.toLowerCase() === trimmedHeaterId.toLowerCase()
     );
-
     if (existingHeater) {
       if (existingHeater.roomId === trimmedRoomId) {
-        // Heater is already assigned to the same room
         setError('This heater is already assigned to the selected room.');
       } else {
-        // Heater is assigned to a different room
-        setError('This heater is already assigned to another room and cannot be assigned to multiple rooms.');
+        setError(
+          'This heater is already assigned to another room and cannot be assigned to multiple rooms.'
+        );
       }
       return;
     }
 
-    // Find the selected device's friendly_name
-    const selectedDevice = fetchedDevices.find(device => device.entity_id === trimmedHeaterId);
-    const heaterName = selectedDevice?.attributes?.friendly_name || trimmedHeaterId; // Fallback to heaterId if friendly_name is unavailable
+    // Friendly name from fetched devices, fallback to id
+    const selectedDevice = fetchedDevices.find(
+      (d) => d.entity_id === trimmedHeaterId
+    );
+    const heaterName =
+      selectedDevice?.attributes?.friendly_name || trimmedHeaterId;
 
-    // Add heating device with isEnabled set to true in DataContext.js
+    // Add to context (DataContext will handle process/topologies)
     addElectricHeater({
-      id: trimmedHeaterId, // Device ID
-      name: heaterName, // Heater Name
-      capacity: parsedCapacity, // Capacity in kW
-      roomId: trimmedRoomId, // Associated Room ID
-      // isEnabled is handled in DataContext.js
+      id: trimmedHeaterId,
+      name: heaterName,
+      capacity: parsedCapacity,
+      roomId: trimmedRoomId,
     });
 
-    // build NewProcess input and call mutation
-    const processInput = {
-      name: trimmedHeaterId,
-      conversion: 'UNIT',
-      isCfFix: false,
-      isOnline: false,
-      isRes: false,
-      eff: 1.0,
-      loadMin: 0.0,
-      loadMax: 0.0,
-      startCost: 0.0,
-      minOnline: 0.0,
-      maxOnline: 0.0,
-      minOffline: 0.0,
-      maxOffline: 0.0,
-      initialState: false,
-      isScenarioIndependent: false,
-      cf: [],
-      effTs: [],
-      effOpsFun: [],
-    };
-
-    createProcess({ variables: { process: processInput } });
-
+    // Clear form
     setHeaterId('');
     setCapacity('');
     setRoomId('');
@@ -105,10 +74,9 @@ function FormElectricHeater({ fetchedDevices = [], onClose }) {
   return (
     <div className="device-form">
       <h3>Add a Heating Device</h3>
-      {/* Display error message if any */}
       {error && <div className="error-message">{error}</div>}
       <form onSubmit={handleSubmit}>
-        {/* Dropdown for Home Assistant Devices */}
+        {/* Device selector */}
         <div className="input-group">
           <label htmlFor="heaterId">Select Device:</label>
           <select
@@ -126,6 +94,7 @@ function FormElectricHeater({ fetchedDevices = [], onClose }) {
           </select>
         </div>
 
+        {/* Capacity */}
         <div className="input-group">
           <label htmlFor="capacity">Capacity (kW):</label>
           <input
@@ -135,11 +104,12 @@ function FormElectricHeater({ fetchedDevices = [], onClose }) {
             onChange={(e) => setCapacity(e.target.value)}
             placeholder="Enter Device Capacity in kW"
             required
-            min="0.1" // Ensures user cannot input values less than or equal to 0
+            min="0.1"
             step="0.1"
           />
         </div>
 
+        {/* Room selector */}
         <div className="input-group">
           <label htmlFor="roomId">Room:</label>
           <select

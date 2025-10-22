@@ -1,35 +1,64 @@
 // src/graphql/processCreation.js
 //
-// Utility functions for creating processes via the GraphQL API.  This
-// module encapsulates the logic for assembling the input to the
-// `createProcess` mutation and sending the request to the server.
+// Create a heater process AND attach its topologies via GraphQL.
+// Requires an explicit roomName so we don't guess wrong.
 
 import { print } from 'graphql/language/printer';
-import { GRAPHQL_ENDPOINT, CREATE_PROCESS_MUTATION } from './queries';
+import {
+  GRAPHQL_ENDPOINT,
+  CREATE_PROCESS_MUTATION,
+  CREATE_TOPOLOGY_MUTATION,
+  GET_NODE_QUERY,
+} from './queries';
 
 /**
- * Create a process corresponding to an electric heater via the GraphQL API.
+ * Create a heater process and attach two topologies:
+ *   1) electricitygrid -> <process>
+ *   2) <process> -> <roomName>_air  (e.g., "Olohuone_air")
  *
- * Given a heater definition (as stored in the application state), this
- * helper will construct a `NewProcess` input object and execute the
- * `createProcess` mutation.  The efficiency (`eff`) is taken from
- * `heater.capacity`, reflecting the user provided value.  All other
- * required fields are set to sensible defaults as specified by the
- * Hertta schema.
+ * Preconditions:
+ *   - Node "<roomName>_air" must already exist; otherwise we throw and do NOT create the process.
  *
- * @param {Object} heater - The heater object (requires `id` and `capacity`).
- * @returns {Promise<Object>} The result of the createProcess mutation.
+ * @param {Object} heater  - Must have `id`; may have `capacity` (number).
+ * @param {string} roomName - The human-readable room name (e.g., "Olohuone").
+ * @returns {Promise<{processResult: any, topologyErrors: Array}>}
  */
-export async function createHeaterProcess(heater) {
-  if (!heater || !heater.id || heater.capacity === undefined) {
-    throw new Error('createHeaterProcess requires a heater with id and capacity');
+export async function createHeaterProcess(heater, roomName) {
+  if (!heater || !heater.id) {
+    throw new Error('createHeaterProcess requires a heater with id');
+  }
+  if (typeof roomName !== 'string' || !roomName.trim()) {
+    throw new Error('createHeaterProcess requires a non-empty roomName');
   }
 
-  // Assemble the NewProcess input.  See the GraphQL schema for details on
-  // each field.  We treat the heater ID as the process name and use
-  // conversion type `UNIT` for a simple device.  Efficiency comes from
-  // the heater's capacity (kW) which the user supplies via the form.
-  const input = {
+  const capacity = typeof heater.capacity === 'number' ? heater.capacity : 7;
+
+  // Build "<roomName>_air" sink node (normalize spaces to underscores)
+  const roomAirNode = `${roomName.trim().replace(/\s+/g, '_')}_air`;
+
+  // ---- PRECHECK: verify that <roomName>_air node exists ----
+  {
+    const checkRes = await fetch(GRAPHQL_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: print(GET_NODE_QUERY),
+        variables: { name: roomAirNode },
+      }),
+    });
+    const checkJson = await checkRes.json();
+
+    if (checkJson.errors && checkJson.errors.length) {
+      const msg = checkJson.errors.map((e) => e.message).join(', ');
+      throw new Error(`Room air node "${roomAirNode}" not found: ${msg}`);
+    }
+    if (!checkJson?.data?.node?.name) {
+      throw new Error(`Room air node "${roomAirNode}" not found`);
+    }
+  }
+
+  // ---- 1) Create the process ----
+  const processInput = {
     name: heater.id,
     conversion: 'UNIT',
     isCfFix: false,
@@ -50,19 +79,74 @@ export async function createHeaterProcess(heater) {
     effOpsFun: [],
   };
 
-  try {
-    const response = await fetch(GRAPHQL_ENDPOINT, {
+  const createProcRes = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: print(CREATE_PROCESS_MUTATION),
+      variables: { process: processInput },
+    }),
+  });
+  const createProcJson = await createProcRes.json();
+  const processResult = createProcJson?.data?.createProcess;
+  const procErrors = processResult?.errors ?? [];
+  if (procErrors.length) {
+    const msg = procErrors.map((e) => `${e.field}: ${e.message}`).join('; ');
+    throw new Error(`createProcess failed: ${msg}`);
+  }
+
+  // ---- 2) Attach topologies ----
+  const topologyInput = {
+    capacity,
+    vomCost: 0,
+    rampUp: 1,
+    rampDown: 1,
+    initialLoad: 0.7,
+    initialFlow: 0.7,
+    capTs: [],
+  };
+
+  const topologyErrors = [];
+
+  // 2a) electricitygrid -> process
+  {
+    const res = await fetch(GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        query: print(CREATE_PROCESS_MUTATION),
-        variables: { process: input },
+        query: print(CREATE_TOPOLOGY_MUTATION),
+        variables: {
+          topology: topologyInput,
+          processName: heater.id,
+          sourceNodeName: 'electricitygrid',
+          sinkNodeName: null,
+        },
       }),
     });
-    const result = await response.json();
-    return result.data?.createProcess;
-  } catch (err) {
-    console.error('Failed to create process:', err);
-    throw err;
+    const json = await res.json();
+    const errs = json?.data?.createTopology?.errors ?? [];
+    if (errs.length) topologyErrors.push({ direction: 'electricitygrid->process', errors: errs });
   }
+
+  // 2b) process -> <roomName>_air
+  {
+    const res = await fetch(GRAPHQL_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: print(CREATE_TOPOLOGY_MUTATION),
+        variables: {
+          topology: topologyInput,
+          processName: heater.id,
+          sourceNodeName: null,
+          sinkNodeName: roomAirNode,
+        },
+      }),
+    });
+    const json = await res.json();
+    const errs = json?.data?.createTopology?.errors ?? [];
+    if (errs.length) topologyErrors.push({ direction: `process->${roomAirNode}`, errors: errs });
+  }
+
+  return { processResult, topologyErrors };
 }

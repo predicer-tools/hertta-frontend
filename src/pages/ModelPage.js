@@ -1,32 +1,29 @@
 /*
  * src/pages/ModelPage.js
- *
- * A React component that displays the current optimisation model stored
- * in the GraphQL backend.  This version extends the original
- * implementation by also fetching and displaying the list of
- * processes in the model.  We still fetch nodes as before, but now
- * use a single query to retrieve both node names and process names.
- * When using the Apollo gql tag, the exported queries are
- * DocumentNode objects, so we must print them to strings before
- * sending them through fetch.  Using plain strings here avoids
- * calling print() and keeps the payloads small.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { print } from 'graphql/language/printer';
 import { GRAPHQL_ENDPOINT, SAVE_MODEL_MUTATION } from '../graphql/queries';
 
-// Define a query that fetches both node names and process names.  Using a
-// plain string avoids the need to call print() on a DocumentNode.
+// Include process topos (source/sink names)
 const GET_MODEL_OVERVIEW_QUERY = `
   query {
     model {
       inputData {
-        nodes {
-          name
-        }
+        nodes { name }
         processes {
           name
+          topos {
+            source {
+              ... on Node { name }
+              ... on Process { name }
+            }
+            sink {
+              ... on Node { name }
+              ... on Process { name }
+            }
+          }
         }
         setup {
           reserveRealisation
@@ -44,8 +41,6 @@ const GET_MODEL_OVERVIEW_QUERY = `
 `;
 
 const ModelPage = () => {
-  // Track nodes and processes instead of the entire model.  Each entry
-  // is an object with at least a `name` property.
   const [nodes, setNodes] = useState([]);
   const [processes, setProcesses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,9 +48,6 @@ const ModelPage = () => {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // Helper to fetch the model via GraphQL.  We send our custom query
-  // directly as a string because GET_MODEL_OVERVIEW_QUERY is already a
-  // string.  The server responds with nodes and processes.
   const fetchModel = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -70,14 +62,13 @@ const ModelPage = () => {
         setError(result.errors.map((e) => e.message).join(', '));
       } else {
         const inputData = result?.data?.model?.inputData || {};
-        const fetchedNodes = result?.data?.model?.inputData?.nodes || [];
-        const fetchedProcesses = result?.data?.model?.inputData?.processes || [];
+        const fetchedNodes = inputData.nodes || [];
+        const fetchedProcesses = inputData.processes || [];
         const fetchedSetup = inputData.setup || null;
         setNodes(fetchedNodes);
         setProcesses(fetchedProcesses);
         setSetup(fetchedSetup);
       }
-
     } catch (err) {
       setError(err.message);
     } finally {
@@ -85,13 +76,10 @@ const ModelPage = () => {
     }
   }, []);
 
-  // Fetch the model when the component mounts.
   useEffect(() => {
     fetchModel();
   }, [fetchModel]);
 
-  // Helper to trigger a save/update mutation.  As with the query, we
-  // print the mutation DocumentNode to a string before sending it.
   const saveModel = async () => {
     setSaving(true);
     try {
@@ -100,8 +88,6 @@ const ModelPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: print(SAVE_MODEL_MUTATION) }),
       });
-      // Re-fetch the model after saving to ensure the UI reflects
-      // any changes persisted on the backend.
       fetchModel();
     } finally {
       setSaving(false);
@@ -113,7 +99,6 @@ const ModelPage = () => {
       <h1>Model Overview</h1>
       {loading && <p>Loading…</p>}
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-      {/* Display the list of nodes and processes.  If there are none, show placeholders. */}
       {!loading && !error && (
         <>
           <h2>Setup</h2>
@@ -124,6 +109,7 @@ const ModelPage = () => {
           ) : (
             <p>No setup found.</p>
           )}
+
           <h2>Nodes</h2>
           {nodes.length > 0 ? (
             <ul>
@@ -134,11 +120,23 @@ const ModelPage = () => {
           ) : (
             <p>No nodes have been added yet.</p>
           )}
+
           <h2>Processes</h2>
           {processes.length > 0 ? (
             <ul>
               {processes.map((proc) => (
-                <li key={proc.name}>{proc.name}</li>
+                <li key={proc.name}>
+                  {proc.name}
+                  {proc.topos && proc.topos.length > 0 && (
+                    <ul>
+                      {proc.topos.map((t, idx) => {
+                        const src = t?.source?.name ?? '(?)';
+                        const sink = t?.sink?.name ?? '(?)';
+                        return <li key={`${proc.name}-topo-${idx}`}>{`${src} → ${sink}`}</li>;
+                      })}
+                    </ul>
+                  )}
+                </li>
               ))}
             </ul>
           ) : (
