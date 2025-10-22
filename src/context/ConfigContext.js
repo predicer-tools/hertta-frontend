@@ -1,4 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
+// import { GRAPHQL_ENDPOINT } from '../graphql/queries'; // not used here
+import { applyDefaultModelSetup } from '../graphql/configActions';
 
 // Create the ConfigContext
 const ConfigContext = createContext();
@@ -19,7 +21,7 @@ export const ConfigProvider = ({ children }) => {
     country: localStorage.getItem('country') || '',
     location: localStorage.getItem('location') || '',
     apiKey: localStorage.getItem('apiKey') || '',
-    selectedMaterial: localStorage.getItem('selectedMaterial') || '', // Added selectedMaterial
+    selectedMaterial: localStorage.getItem('selectedMaterial') || '',
   });
 
   // =====================
@@ -34,7 +36,6 @@ export const ConfigProvider = ({ children }) => {
         return JSON.parse(storedMaterials);
       } catch (error) {
         console.error('Error parsing materials from localStorage:', error);
-        // If parsing fails, initialize with default materials
       }
     }
     // Default materials
@@ -50,12 +51,10 @@ export const ConfigProvider = ({ children }) => {
   // Sensors and Devices State
   // =====================
 
-  // Stores the fetched sensors from Home Assistant
   const [sensors, setSensors] = useState(() => {
     return JSON.parse(localStorage.getItem('homeAssistantSensors')) || [];
   });
 
-  // Stores the fetched devices from Home Assistant
   const [devices, setDevices] = useState(() => {
     return JSON.parse(localStorage.getItem('fetchedDevices')) || [];
   });
@@ -69,7 +68,7 @@ export const ConfigProvider = ({ children }) => {
     localStorage.setItem('country', config.country);
     localStorage.setItem('location', config.location);
     localStorage.setItem('apiKey', config.apiKey);
-    localStorage.setItem('selectedMaterial', config.selectedMaterial); // Persist selectedMaterial
+    localStorage.setItem('selectedMaterial', config.selectedMaterial);
   }, [isConfigured, config]);
 
   // =====================
@@ -98,11 +97,17 @@ export const ConfigProvider = ({ children }) => {
 
   /**
    * Updates the configuration state.
-   * @param {Object} newConfig - Partial configuration to update.
-   * Example: { isConfigured: true, country: 'Finland', selectedMaterial: 'Kevytrakenteinen' }
+   * If config flips from false -> true, also applies the default model setup
+   * (creates process group "p1" and InputDataSetup).
    */
   const updateConfig = (newConfig) => {
     if (newConfig.isConfigured !== undefined) {
+      // Trigger model setup only on first-time completion
+      if (newConfig.isConfigured === true && !isConfigured) {
+        applyDefaultModelSetup().catch((e) => {
+          console.error('Failed to apply default model setup:', e);
+        });
+      }
       setIsConfigured(newConfig.isConfigured);
     }
 
@@ -110,13 +115,12 @@ export const ConfigProvider = ({ children }) => {
       country: newConfig.country || prev.country,
       location: newConfig.location || prev.location,
       apiKey: newConfig.apiKey || prev.apiKey,
-      selectedMaterial: newConfig.selectedMaterial || prev.selectedMaterial, // Update selectedMaterial
+      selectedMaterial: newConfig.selectedMaterial || prev.selectedMaterial,
     }));
   };
 
   /**
    * Updates the sensors state with new sensors data.
-   * @param {Array} newSensors - Array of sensor objects.
    */
   const updateSensors = (newSensors) => {
     setSensors(newSensors);
@@ -124,7 +128,6 @@ export const ConfigProvider = ({ children }) => {
 
   /**
    * Updates the devices state with new devices data.
-   * @param {Array} newDevices - Array of device objects.
    */
   const updateDevices = (newDevices) => {
     setDevices(newDevices);
@@ -132,8 +135,6 @@ export const ConfigProvider = ({ children }) => {
 
   /**
    * Updates an existing material in the materials list.
-   * @param {number} index - The index of the material to update.
-   * @param {Object} updatedMaterial - The updated material object.
    */
   const updateMaterial = (index, updatedMaterial) => {
     setMaterials((prevMaterials) =>
@@ -145,10 +146,6 @@ export const ConfigProvider = ({ children }) => {
   // Function to Reset All Configuration, Sensors, and Devices
   // =====================
 
-  /**
-   * Resets the entire configuration, including sensors and devices.
-   * Clears relevant localStorage entries and resets state to initial values.
-   */
   const resetConfig = () => {
     // Clear specific localStorage items
     localStorage.removeItem('isConfigured');
@@ -165,7 +162,7 @@ export const ConfigProvider = ({ children }) => {
       country: '',
       location: '',
       apiKey: '',
-      selectedMaterial: '', // Reset selectedMaterial
+      selectedMaterial: '',
     });
     setSensors([]);
     setDevices([]);
@@ -203,17 +200,11 @@ export const ConfigProvider = ({ children }) => {
     resetConfig,
 
     // Location Accessor
-    getLocation: () => config.location, // Returns the location
+    getLocation: () => config.location,
   };
 
-  // =====================
-  // Provider's Return
-  // =====================
-
   return (
-    <ConfigContext.Provider
-      value={contextValue}
-    >
+    <ConfigContext.Provider value={contextValue}>
       {children}
     </ConfigContext.Provider>
   );
