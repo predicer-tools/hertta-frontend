@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { print } from 'graphql/language/printer';
 import { GRAPHQL_ENDPOINT, SAVE_MODEL_MUTATION } from '../graphql/queries';
 
-// Include process topos (source/sink names)
+// Include process topos (source/sink names) + markets
 const GET_MODEL_OVERVIEW_QUERY = `
   query {
     model {
@@ -24,6 +24,18 @@ const GET_MODEL_OVERVIEW_QUERY = `
               ... on Process { name }
             }
           }
+        }
+        markets {
+          name
+          mType
+          node { name }
+          processGroup { name }
+          direction
+          isBid
+          isLimited
+          minBid
+          maxBid
+          fee
         }
         setup {
           reserveRealisation
@@ -43,6 +55,7 @@ const GET_MODEL_OVERVIEW_QUERY = `
 const ModelPage = () => {
   const [nodes, setNodes] = useState([]);
   const [processes, setProcesses] = useState([]);
+  const [markets, setMarkets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [setup, setSetup] = useState(null);
   const [error, setError] = useState(null);
@@ -62,12 +75,10 @@ const ModelPage = () => {
         setError(result.errors.map((e) => e.message).join(', '));
       } else {
         const inputData = result?.data?.model?.inputData || {};
-        const fetchedNodes = inputData.nodes || [];
-        const fetchedProcesses = inputData.processes || [];
-        const fetchedSetup = inputData.setup || null;
-        setNodes(fetchedNodes);
-        setProcesses(fetchedProcesses);
-        setSetup(fetchedSetup);
+        setNodes(inputData.nodes || []);
+        setProcesses(inputData.processes || []);
+        setMarkets(inputData.markets || []);
+        setSetup(inputData.setup || null);
       }
     } catch (err) {
       setError(err.message);
@@ -132,7 +143,9 @@ const ModelPage = () => {
                       {proc.topos.map((t, idx) => {
                         const src = t?.source?.name ?? '(?)';
                         const sink = t?.sink?.name ?? '(?)';
-                        return <li key={`${proc.name}-topo-${idx}`}>{`${src} → ${sink}`}</li>;
+                        return (
+                          <li key={`${proc.name}-topo-${idx}`}>{`${src} → ${sink}`}</li>
+                        );
                       })}
                     </ul>
                   )}
@@ -141,6 +154,29 @@ const ModelPage = () => {
             </ul>
           ) : (
             <p>No processes have been added yet.</p>
+          )}
+
+          <h2>Markets</h2>
+          {markets.length > 0 ? (
+            <ul>
+              {markets.map((mkt) => (
+                <li key={mkt.name}>
+                  {mkt.name} — {mkt.mType}
+                  <ul>
+                    <li>node: {mkt.node?.name || '-'}</li>
+                    <li>processGroup: {mkt.processGroup?.name || '-'}</li>
+                    <li>direction: {mkt.direction || 'none'}</li>
+                    <li>isBid: {String(mkt.isBid)}</li>
+                    <li>isLimited: {String(mkt.isLimited)}</li>
+                    <li>minBid: {mkt.minBid}</li>
+                    <li>maxBid: {mkt.maxBid}</li>
+                    <li>fee: {mkt.fee}</li>
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No markets have been added yet.</p>
           )}
         </>
       )}
