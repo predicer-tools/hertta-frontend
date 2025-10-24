@@ -17,6 +17,24 @@ async function graphqlRequest(query, variables) {
 }
 
 /**
+ * Ensure Scenario exists (idempotent-ish).
+ * If it already exists, the backend may return a message; treat "already exists" as OK.
+ */
+export async function ensureScenario(name = 's1', weight = 1) {
+  const data = await graphqlRequest(
+    `mutation ($name: String!, $weight: Float!) {
+      createScenario(name: $name, weight: $weight) { message }
+    }`,
+    { name, weight }
+  );
+  const msg = data?.createScenario?.message || '';
+  if (msg && !/exist|already/i.test(msg)) {
+    throw new Error(`createScenario(${name}) failed: ${msg}`);
+  }
+  return true;
+}
+
+/**
  * Ensure a node named "electricitygrid" exists with zero-ish values,
  * inflow referencing the forecast "ELERING" (fType: "electricity"),
  * and state tEConversion = 1.
@@ -86,6 +104,7 @@ export async function createProcessGroup(name = 'p1') {
 
 /**
  * Create/Update InputDataSetup with defaults.
+ * NOTE: commonScenarioName must exist -> ensured via ensureScenario().
  */
 export async function createDefaultInputDataSetup() {
   const setupUpdate = {
@@ -97,7 +116,7 @@ export async function createDefaultInputDataSetup() {
     nodeDummyVariableCost: 10000,
     rampDummyVariableCost: 10000,
     commonTimesteps: 0,
-    commonScenarioName: 'ALL',
+    commonScenarioName: 's1', // <- use s1
   };
 
   const data = await graphqlRequest(
@@ -186,17 +205,18 @@ export async function createNPEnergyMarket() {
 /**
  * One-shot initializer (idempotent-ish):
  * 1) ensure electricitygrid node exists (ELERING, fType 'electricity', tEConversion=1)
- * 2) create process group "p1"
- * 3) create default InputDataSetup
- * 4) set risks: alfa=0.1, beta=0.0
- * 5) create NPE energy market on electricitygrid with group "p1"
+ * 2) ensure scenario "s1" (weight 1)
+ * 3) create process group "p1"
+ * 4) create default InputDataSetup (commonScenarioName: 's1')
+ * 5) set risks: alfa=0.1, beta=0.0
+ * 6) create NPE energy market on electricitygrid with group "p1"
  */
 export async function applyDefaultModelSetup() {
   await ensureElectricityGridNode();
+  await ensureScenario('s1', 1);
   const pgMsg = await createProcessGroup('p1');
   await createDefaultInputDataSetup();
 
-  // RISK parameters from your sheet (comma -> dot): alfa=0.1, beta=0.0
   await setRisk('alfa', 0.1);
   await setRisk('beta', 0.0);
 

@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { print } from 'graphql/language/printer';
 import { GRAPHQL_ENDPOINT, SAVE_MODEL_MUTATION } from '../graphql/queries';
 
-// Include process topos (source/sink names) + markets + risk
+// Include process topos + markets + risk + scenarios
 const GET_MODEL_OVERVIEW_QUERY = `
   query {
     model {
@@ -41,6 +41,10 @@ const GET_MODEL_OVERVIEW_QUERY = `
           parameter
           value
         }
+        scenarios {
+          name
+          weight
+        }
         setup {
           reserveRealisation
           useMarketBids
@@ -61,6 +65,7 @@ const ModelPage = () => {
   const [processes, setProcesses] = useState([]);
   const [markets, setMarkets] = useState([]);
   const [risks, setRisks] = useState([]);
+  const [scenarios, setScenarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [setup, setSetup] = useState(null);
   const [error, setError] = useState(null);
@@ -84,6 +89,7 @@ const ModelPage = () => {
         setProcesses(inputData.processes || []);
         setMarkets(inputData.markets || []);
         setRisks(inputData.risk || []);
+        setScenarios(inputData.scenarios || []);
         setSetup(inputData.setup || null);
       }
     } catch (err) {
@@ -136,6 +142,17 @@ const ModelPage = () => {
             </ul>
           ) : (
             <p>No risk parameters set.</p>
+          )}
+
+          <h2>Scenarios</h2>
+          {scenarios.length > 0 ? (
+            <ul>
+              {scenarios.map((s) => (
+                <li key={s.name}>{s.name} — weight: {s.weight}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>No scenarios defined.</p>
           )}
 
           <h2>Nodes</h2>
