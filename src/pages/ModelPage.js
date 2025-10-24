@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { print } from 'graphql/language/printer';
 import { GRAPHQL_ENDPOINT, SAVE_MODEL_MUTATION } from '../graphql/queries';
 
-// Include process topos (source/sink names) + markets
+// Include process topos (source/sink names) + markets + risk
 const GET_MODEL_OVERVIEW_QUERY = `
   query {
     model {
@@ -37,6 +37,10 @@ const GET_MODEL_OVERVIEW_QUERY = `
           maxBid
           fee
         }
+        risk {
+          parameter
+          value
+        }
         setup {
           reserveRealisation
           useMarketBids
@@ -56,6 +60,7 @@ const ModelPage = () => {
   const [nodes, setNodes] = useState([]);
   const [processes, setProcesses] = useState([]);
   const [markets, setMarkets] = useState([]);
+  const [risks, setRisks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [setup, setSetup] = useState(null);
   const [error, setError] = useState(null);
@@ -78,6 +83,7 @@ const ModelPage = () => {
         setNodes(inputData.nodes || []);
         setProcesses(inputData.processes || []);
         setMarkets(inputData.markets || []);
+        setRisks(inputData.risk || []);
         setSetup(inputData.setup || null);
       }
     } catch (err) {
@@ -119,6 +125,17 @@ const ModelPage = () => {
             </pre>
           ) : (
             <p>No setup found.</p>
+          )}
+
+          <h2>Risk</h2>
+          {risks.length > 0 ? (
+            <ul>
+              {risks.map((r) => (
+                <li key={r.parameter}>{r.parameter}: {r.value}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>No risk parameters set.</p>
           )}
 
           <h2>Nodes</h2>

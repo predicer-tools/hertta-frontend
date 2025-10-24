@@ -27,8 +27,8 @@ export async function ensureElectricityGridNode() {
     isCommodity: false,
     isMarket: false,
     isRes: false,
-    cost: [{ constant: 0 }], // ValueInput[]
-    inflow: [{ forecast: 'ELERING', fType: 'electricity' }], // ForecastValueInput[]
+    cost: [{ constant: 0 }],
+    inflow: [{ forecast: 'ELERING', fType: 'electricity' }],
   };
 
   const createNodeData = await graphqlRequest(
@@ -45,7 +45,6 @@ export async function ensureElectricityGridNode() {
     if (!isAlreadyExists) throw new Error(`createNode(electricitygrid) failed: ${msg}`);
   }
 
-  // Set state: tEConversion = 1 (everything else 0/false)
   const stateInput = {
     inMax: 0,
     outMax: 0,
@@ -117,9 +116,38 @@ export async function createDefaultInputDataSetup() {
 }
 
 /**
+ * Create or update a risk parameter to a given value.
+ * We delete first (ignore missing), then create with the desired value.
+ */
+export async function setRisk(parameter, value) {
+  // Best-effort delete
+  await graphqlRequest(
+    `mutation ($parameter: String!) {
+      deleteRisk(parameter: $parameter) { message }
+    }`,
+    { parameter }
+  );
+
+  // Create with new value
+  const data = await graphqlRequest(
+    `mutation ($risk: NewRisk!) {
+      createRisk(risk: $risk) { errors { field message } }
+    }`,
+    { risk: { parameter, value } }
+  );
+
+  const errs = data?.createRisk?.errors ?? [];
+  if (errs.length) {
+    const msg = errs.map((e) => `${e.field}: ${e.message}`).join('; ');
+    throw new Error(`createRisk(${parameter}) failed: ${msg}`);
+  }
+  return true;
+}
+
+/**
  * Create the NPE ENERGY market on electricitygrid using process group "p1".
  * Prices are tied to the ELERING electricity forecast.
- * Direction is omitted (null) to match your "none" spreadsheet column.
+ * Direction omitted (null).
  */
 export async function createNPEnergyMarket() {
   const marketInput = {
@@ -127,17 +155,15 @@ export async function createNPEnergyMarket() {
     mType: 'ENERGY',
     node: 'electricitygrid',
     processGroup: 'p1',
-    // direction omitted -> null (schema allows optional)
-    realisation: [{ constant: 0 }], // ValueInput[]
-    // reserveType omitted -> null
+    realisation: [{ constant: 0 }],
     isBid: true,
     isLimited: false,
     minBid: 0,
     maxBid: 0,
     fee: 0,
     price: [{ forecast: 'ELERING', fType: 'electricity' }],
-    upPrice: [],    
-    downPrice: [],  
+    upPrice: [],
+    downPrice: [],
     reserveActivationPrice: [{ constant: 0 }],
   };
 
@@ -151,7 +177,6 @@ export async function createNPEnergyMarket() {
   const errs = data?.createMarket?.errors ?? [];
   if (errs.length) {
     const msg = errs.map((e) => `${e.field}: ${e.message}`).join('; ');
-    // tolerate "already exists" to keep setup idempotent
     const isAlreadyExists = /exist|unique|already/i.test(msg);
     if (!isAlreadyExists) throw new Error(`createMarket(npe) failed: ${msg}`);
   }
@@ -160,15 +185,21 @@ export async function createNPEnergyMarket() {
 
 /**
  * One-shot initializer (idempotent-ish):
- * 1) ensure electricitygrid node exists (ELERING forecast, fType 'electricity', tEConversion=1)
+ * 1) ensure electricitygrid node exists (ELERING, fType 'electricity', tEConversion=1)
  * 2) create process group "p1"
  * 3) create default InputDataSetup
- * 4) create NPE energy market on electricitygrid with group "p1"
+ * 4) set risks: alfa=0.1, beta=0.0
+ * 5) create NPE energy market on electricitygrid with group "p1"
  */
 export async function applyDefaultModelSetup() {
   await ensureElectricityGridNode();
   const pgMsg = await createProcessGroup('p1');
   await createDefaultInputDataSetup();
+
+  // RISK parameters from your sheet (comma -> dot): alfa=0.1, beta=0.0
+  await setRisk('alfa', 0.1);
+  await setRisk('beta', 0.0);
+
   await createNPEnergyMarket();
   return { processGroupMessage: pgMsg || null };
 }
