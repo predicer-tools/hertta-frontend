@@ -8,6 +8,7 @@ import { generateControlSignals } from '../utils/controlData';
 import { createRoomNodes } from '../graphql/nodeCreation';
 import { createRoomNodeDiffusions } from '../graphql/nodeDiffusionCreation';
 import { createHeaterProcess } from '../graphql/processCreation';
+import { createRoomGenConstraints } from '../graphql/genConstraintCreation';
 
 // Create the DataContext
 const DataContext = createContext();
@@ -251,10 +252,11 @@ export const DataProvider = ({ children }) => {
       return updatedRooms;
     });
 
-    // Automatically create nodes, states, and diffusions after the room is added
-    createRoomNodes(newRoom, config, materials)      // Ensure this function encapsulates logic from RoomNodesSection
+    createRoomNodes(newRoom, config, materials)
       .then(() => createRoomNodeDiffusions(newRoom))
-      .catch(error => console.error('Error creating nodes or diffusions:', error));
+      .then(() => createRoomGenConstraints(newRoom))
+      .catch(error => console.error('Error creating nodes, diffusions, or constraints:', error));
+
 
     return true;
   }, [rooms, config, materials]);

@@ -1061,3 +1061,18 @@ export const GET_PROCESS_NAMES_QUERY = gql`
     }
   }
 `;
+
+export const CREATE_ROOM_GEN_CONSTRAINTS_MUTATION = `
+  mutation CreateRoomGenConstraints(
+    $upConstraint: NewGenConstraint!,
+    $downConstraint: NewGenConstraint!
+  ) {
+    up: createGenConstraint(constraint: $upConstraint) {
+      errors { field message }
+    }
+    down: createGenConstraint(constraint: $downConstraint) {
+      errors { field message }
+    }
+  }
+`;
+

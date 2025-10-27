@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { print } from 'graphql/language/printer';
 import { GRAPHQL_ENDPOINT, SAVE_MODEL_MUTATION } from '../graphql/queries';
 
-// Include process topos + markets + risk + scenarios
+// Include genConstraints so we can see them
 const GET_MODEL_OVERVIEW_QUERY = `
   query {
     model {
@@ -45,6 +45,19 @@ const GET_MODEL_OVERVIEW_QUERY = `
           name
           weight
         }
+        genConstraints {
+          name
+          gcType
+          isSetpoint
+          penalty
+          constant {
+            scenario
+            value {
+              ... on Constant { value }
+              ... on FloatList { values }
+            }
+          }
+        }
         setup {
           reserveRealisation
           useMarketBids
@@ -66,6 +79,7 @@ const ModelPage = () => {
   const [markets, setMarkets] = useState([]);
   const [risks, setRisks] = useState([]);
   const [scenarios, setScenarios] = useState([]);
+  const [genConstraints, setGenConstraints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [setup, setSetup] = useState(null);
   const [error, setError] = useState(null);
@@ -90,6 +104,7 @@ const ModelPage = () => {
         setMarkets(inputData.markets || []);
         setRisks(inputData.risk || []);
         setScenarios(inputData.scenarios || []);
+        setGenConstraints(inputData.genConstraints || []);
         setSetup(inputData.setup || null);
       }
     } catch (err) {
@@ -211,6 +226,26 @@ const ModelPage = () => {
             </ul>
           ) : (
             <p>No markets have been added yet.</p>
+          )}
+
+          <h2>Generic Constraints</h2>
+          {genConstraints.length > 0 ? (
+            <ul>
+              {genConstraints.map((gc) => (
+                <li key={gc.name}>
+                  {gc.name} — {gc.gcType} — setpoint: {String(gc.isSetpoint)} — penalty: {gc.penalty}
+                  <ul>
+                    {gc.constant.map((c, i) => (
+                      <li key={`${gc.name}-const-${i}`}>
+                        Constant: {c.value?.value ?? c.value?.values?.join(', ') ?? '—'}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No generic constraints defined.</p>
           )}
         </>
       )}
