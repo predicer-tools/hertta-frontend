@@ -90,7 +90,12 @@ async function ensureOutsideNode() {
     isMarket: false,
     isRes: false,
     cost: [],
-    inflow: [],
+    inflow: [
+      {
+        scenario: 's1',
+        value: { constant: 1.0 },
+      },
+    ],
   };
   const outsideState = {
     inMax: 1e10,

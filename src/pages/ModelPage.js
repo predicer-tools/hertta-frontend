@@ -8,7 +8,8 @@ import {
   GRAPHQL_ENDPOINT,
   SAVE_MODEL_MUTATION,
   START_OPTIMIZATION_MUTATION,
-  JOB_STATUS_QUERY, // returns { state, message }
+  JOB_STATUS_QUERY,
+  UPDATE_SETTINGS_MUTATION,
 } from '../graphql/queries';
 
 // Keep this as a raw string since we post it with fetch directly.
@@ -98,6 +99,7 @@ const ModelPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [updatingLocation, setUpdatingLocation] = useState(false);
 
   // errors & debug
   const [error, setError] = useState(null);
@@ -216,6 +218,30 @@ const ModelPage = () => {
     }
   };
 
+const updateLocationToTampere = async () => {
+  setUpdatingLocation(true);
+  setError(null);
+  setLastResponseDebug(null);
+  try {
+    const json = await graphqlRequest({
+      query: print(UPDATE_SETTINGS_MUTATION),
+      variables: {
+        settingsInput: {
+          location: { country: 'Finland', place: 'Tampere' },
+        },
+      },
+    });
+    setLastResponseDebug(json);
+    // optional: re-fetch model to refresh any dependent UI
+    await fetchModel();
+  } catch (e) {
+    setError(e.message);
+    setLastResponseDebug(e.debug ?? null);
+  } finally {
+    setUpdatingLocation(false);
+  }
+};
+
   return (
     <div style={{ padding: 20 }}>
       <h1>Model Overview</h1>
@@ -331,6 +357,14 @@ const ModelPage = () => {
             Check Job Status Now
           </button>
         )}
+        <button
+          onClick={updateLocationToTampere}
+          disabled={updatingLocation}
+          style={{ marginLeft: 10 }}
+          title="Set Settings.location to Finland / Tampere"
+        >
+          {updatingLocation ? 'Updating Location…' : 'Set Location: Tampere'}
+        </button>
       </div>
 
       {/* Debug panel to see the last raw response or error payload */}
