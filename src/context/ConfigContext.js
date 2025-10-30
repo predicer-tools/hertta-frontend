@@ -1,22 +1,19 @@
+// src/context/ConfigContext.js
+
 import React, { createContext, useState, useEffect } from 'react';
-// import { GRAPHQL_ENDPOINT } from '../graphql/queries'; // not used here
 import { applyDefaultModelSetup } from '../graphql/configActions';
 
-// Create the ConfigContext
 const ConfigContext = createContext();
 
-// ConfigProvider component to wrap around parts of the app that need access to the config
 export const ConfigProvider = ({ children }) => {
   // =====================
   // Configuration State
   // =====================
 
-  // Determines if the application has been configured
   const [isConfigured, setIsConfigured] = useState(() => {
     return localStorage.getItem('isConfigured') === 'true';
   });
 
-  // Stores the configuration details
   const [config, setConfig] = useState({
     country: localStorage.getItem('country') || '',
     location: localStorage.getItem('location') || '',
@@ -28,7 +25,6 @@ export const ConfigProvider = ({ children }) => {
   // Materials State
   // =====================
 
-  // Stores the list of materials
   const [materials, setMaterials] = useState(() => {
     const storedMaterials = localStorage.getItem('materials');
     if (storedMaterials) {
@@ -38,7 +34,6 @@ export const ConfigProvider = ({ children }) => {
         console.error('Error parsing materials from localStorage:', error);
       }
     }
-    // Default materials
     return [
       { name: 'Kevytrakenteinen', value: 40 / 1000 },
       { name: 'Keskiraskas I', value: 70 / 1000 },
@@ -60,7 +55,7 @@ export const ConfigProvider = ({ children }) => {
   });
 
   // =====================
-  // Persist Configuration to LocalStorage
+  // Persistence
   // =====================
 
   useEffect(() => {
@@ -71,17 +66,9 @@ export const ConfigProvider = ({ children }) => {
     localStorage.setItem('selectedMaterial', config.selectedMaterial);
   }, [isConfigured, config]);
 
-  // =====================
-  // Persist Materials to LocalStorage
-  // =====================
-
   useEffect(() => {
     localStorage.setItem('materials', JSON.stringify(materials));
   }, [materials]);
-
-  // =====================
-  // Persist Sensors and Devices to LocalStorage
-  // =====================
 
   useEffect(() => {
     localStorage.setItem('homeAssistantSensors', JSON.stringify(sensors));
@@ -92,62 +79,66 @@ export const ConfigProvider = ({ children }) => {
   }, [devices]);
 
   // =====================
-  // Functions to Update Configuration, Sensors, and Devices
+  // Updaters
   // =====================
 
   /**
    * Updates the configuration state.
    * If config flips from false -> true, also applies the default model setup
-   * (creates process group "p1" and InputDataSetup).
+   * and sends the device location (country/place) at the same time.
    */
   const updateConfig = (newConfig) => {
-    if (newConfig.isConfigured !== undefined) {
-      // Trigger model setup only on first-time completion
-      if (newConfig.isConfigured === true && !isConfigured) {
-        applyDefaultModelSetup().catch((e) => {
-          console.error('Failed to apply default model setup:', e);
-        });
-      }
-      setIsConfigured(newConfig.isConfigured);
+    // Build the next config first so we pass the latest values to the initializer
+    const nextConfig = {
+      country: newConfig.country ?? config.country,
+      location: newConfig.location ?? config.location,
+      apiKey: newConfig.apiKey ?? config.apiKey,
+      selectedMaterial: newConfig.selectedMaterial ?? config.selectedMaterial,
+    };
+
+    const flippingToConfigured =
+      newConfig.isConfigured === true && !isConfigured;
+
+    if (flippingToConfigured) {
+      // Pass location to the initializer if we have both parts
+      const hasLocation =
+        nextConfig.country?.trim() && nextConfig.location?.trim();
+
+      applyDefaultModelSetup(
+        hasLocation
+          ? { country: nextConfig.country.trim(), place: nextConfig.location.trim() }
+          : undefined
+      ).catch((e) => {
+        console.error('Failed to apply default model setup:', e);
+      });
+
+      setIsConfigured(true);
+    } else if (newConfig.isConfigured === false && isConfigured) {
+      setIsConfigured(false);
     }
 
-    setConfig((prev) => ({
-      country: newConfig.country || prev.country,
-      location: newConfig.location || prev.location,
-      apiKey: newConfig.apiKey || prev.apiKey,
-      selectedMaterial: newConfig.selectedMaterial || prev.selectedMaterial,
-    }));
+    setConfig(nextConfig);
   };
 
-  /**
-   * Updates the sensors state with new sensors data.
-   */
   const updateSensors = (newSensors) => {
     setSensors(newSensors);
   };
 
-  /**
-   * Updates the devices state with new devices data.
-   */
   const updateDevices = (newDevices) => {
     setDevices(newDevices);
   };
 
-  /**
-   * Updates an existing material in the materials list.
-   */
   const updateMaterial = (index, updatedMaterial) => {
-    setMaterials((prevMaterials) =>
-      prevMaterials.map((mat, idx) => (idx === index ? updatedMaterial : mat))
+    setMaterials((prev) =>
+      prev.map((mat, idx) => (idx === index ? updatedMaterial : mat))
     );
   };
 
   // =====================
-  // Function to Reset All Configuration, Sensors, and Devices
+  // Reset
   // =====================
 
   const resetConfig = () => {
-    // Clear specific localStorage items
     localStorage.removeItem('isConfigured');
     localStorage.removeItem('country');
     localStorage.removeItem('location');
@@ -156,7 +147,6 @@ export const ConfigProvider = ({ children }) => {
     localStorage.removeItem('fetchedDevices');
     localStorage.removeItem('materials');
 
-    // Reset state
     setIsConfigured(false);
     setConfig({
       country: '',
@@ -175,31 +165,25 @@ export const ConfigProvider = ({ children }) => {
   };
 
   // =====================
-  // Provider's Value
+  // Provider
   // =====================
 
   const contextValue = {
-    // Configuration State and Updaters
     isConfigured,
     config,
     updateConfig,
 
-    // Sensors State and Updaters
     sensors,
     updateSensors,
 
-    // Devices State and Updaters
     devices,
     updateDevices,
 
-    // Materials State and Updaters
     materials,
     updateMaterial,
 
-    // Reset Function
     resetConfig,
 
-    // Location Accessor
     getLocation: () => config.location,
   };
 

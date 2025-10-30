@@ -9,6 +9,7 @@ import {
   CREATE_PROCESS_MUTATION,
   CREATE_TOPOLOGY_MUTATION,
   GET_NODE_QUERY,
+    ADD_PROCESS_TO_GROUP_MUTATION,
 } from './queries';
 
 /**
@@ -94,6 +95,19 @@ export async function createHeaterProcess(heater, roomName) {
     const msg = procErrors.map((e) => `${e.field}: ${e.message}`).join('; ');
     throw new Error(`createProcess failed: ${msg}`);
   }
+
+  // Add the process to process group 'p1'
+  await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: print(ADD_PROCESS_TO_GROUP_MUTATION),
+      variables: {
+        processName: heater.id,
+        groupName: 'p1',
+      },
+    }),
+  });
 
   // ---- 2) Attach topologies ----
   const topologyInput = {

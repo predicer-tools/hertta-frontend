@@ -2,11 +2,16 @@
  * src/pages/ModelPage.js
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { print } from 'graphql/language/printer';
-import { GRAPHQL_ENDPOINT, SAVE_MODEL_MUTATION } from '../graphql/queries';
+import {
+  GRAPHQL_ENDPOINT,
+  SAVE_MODEL_MUTATION,
+  START_OPTIMIZATION_MUTATION,
+  JOB_STATUS_QUERY, // returns { state, message }
+} from '../graphql/queries';
 
-// Include genConstraints so we can see them
+// Keep this as a raw string since we post it with fetch directly.
 const GET_MODEL_OVERVIEW_QUERY = `
   query {
     model {
@@ -15,57 +20,29 @@ const GET_MODEL_OVERVIEW_QUERY = `
         processes {
           name
           topos {
-            source {
-              ... on Node { name }
-              ... on Process { name }
-            }
-            sink {
-              ... on Node { name }
-              ... on Process { name }
-            }
+            source { ... on Node { name } ... on Process { name } }
+            sink   { ... on Node { name } ... on Process { name } }
           }
         }
         markets {
-          name
-          mType
+          name mType
           node { name }
           processGroup { name }
-          direction
-          isBid
-          isLimited
-          minBid
-          maxBid
-          fee
+          direction isBid isLimited minBid maxBid fee
         }
-        risk {
-          parameter
-          value
-        }
-        scenarios {
-          name
-          weight
-        }
+        risk { parameter value }
+        scenarios { name weight }
         genConstraints {
-          name
-          gcType
-          isSetpoint
-          penalty
+          name gcType isSetpoint penalty
           constant {
             scenario
-            value {
-              ... on Constant { value }
-              ... on FloatList { values }
-            }
+            value { ... on Constant { value } ... on FloatList { values } }
           }
         }
         setup {
-          reserveRealisation
-          useMarketBids
-          useReserves
-          useNodeDummyVariables
-          useRampDummyVariables
-          nodeDummyVariableCost
-          rampDummyVariableCost
+          reserveRealisation useMarketBids useReserves
+          useNodeDummyVariables useRampDummyVariables
+          nodeDummyVariableCost rampDummyVariableCost
           commonTimeSteps
         }
       }
@@ -73,42 +50,111 @@ const GET_MODEL_OVERVIEW_QUERY = `
   }
 `;
 
+// Tiny helper to surface *all* error info
+async function graphqlRequest({ query, variables }) {
+  const res = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  const text = await res.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch (e) {
+    // Non-JSON or server crashed: expose full payload
+    const err = new Error(`Non-JSON response (${res.status} ${res.statusText})`);
+    err.debug = { status: res.status, statusText: res.statusText, body: text };
+    throw err;
+  }
+
+  if (!res.ok) {
+    const err = new Error(`HTTP ${res.status} ${res.statusText}`);
+    err.debug = json;
+    throw err;
+  }
+
+  if (json.errors && json.errors.length) {
+    const err = new Error(json.errors.map(e => e.message).join(' | '));
+    err.debug = json;
+    throw err;
+  }
+
+  return json;
+}
+
 const ModelPage = () => {
+  // overview data
   const [nodes, setNodes] = useState([]);
   const [processes, setProcesses] = useState([]);
   const [markets, setMarkets] = useState([]);
   const [risks, setRisks] = useState([]);
   const [scenarios, setScenarios] = useState([]);
   const [genConstraints, setGenConstraints] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [setup, setSetup] = useState(null);
-  const [error, setError] = useState(null);
+
+  // ui state
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [starting, setStarting] = useState(false);
+
+  // errors & debug
+  const [error, setError] = useState(null);
+  const [lastResponseDebug, setLastResponseDebug] = useState(null);
+
+  // job tracking
+  const [jobId, setJobId] = useState(null);
+  const [jobState, setJobState] = useState(null); // QUEUED | IN_PROGRESS | FAILED | FINISHED
+  const [jobMessage, setJobMessage] = useState(null);
+  const pollRef = useRef(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  const pollJobStatus = useCallback(async (id) => {
+    try {
+      const json = await graphqlRequest({
+        query: print(JOB_STATUS_QUERY),
+        variables: { jobId: id },
+      });
+      setLastResponseDebug(json);
+      const status = json?.data?.jobStatus;
+      setJobState(status?.state ?? null);
+      setJobMessage(status?.message ?? null);
+
+      if (status?.state === 'FAILED' || status?.state === 'FINISHED') {
+        stopPolling();
+      }
+    } catch (e) {
+      setError(e.message);
+      setLastResponseDebug(e.debug ?? null);
+      stopPolling();
+    }
+  }, []);
 
   const fetchModel = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setLastResponseDebug(null);
     try {
-      const response = await fetch(GRAPHQL_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: GET_MODEL_OVERVIEW_QUERY }),
-      });
-      const result = await response.json();
-      if (result.errors) {
-        setError(result.errors.map((e) => e.message).join(', '));
-      } else {
-        const inputData = result?.data?.model?.inputData || {};
-        setNodes(inputData.nodes || []);
-        setProcesses(inputData.processes || []);
-        setMarkets(inputData.markets || []);
-        setRisks(inputData.risk || []);
-        setScenarios(inputData.scenarios || []);
-        setGenConstraints(inputData.genConstraints || []);
-        setSetup(inputData.setup || null);
-      }
-    } catch (err) {
-      setError(err.message);
+      const json = await graphqlRequest({ query: GET_MODEL_OVERVIEW_QUERY });
+      setLastResponseDebug(json);
+      const inputData = json?.data?.model?.inputData ?? {};
+      setNodes(inputData.nodes ?? []);
+      setProcesses(inputData.processes ?? []);
+      setMarkets(inputData.markets ?? []);
+      setRisks(inputData.risk ?? []);
+      setScenarios(inputData.scenarios ?? []);
+      setGenConstraints(inputData.genConstraints ?? []);
+      setSetup(inputData.setup ?? null);
+    } catch (e) {
+      setError(e.message);
+      setLastResponseDebug(e.debug ?? null);
     } finally {
       setLoading(false);
     }
@@ -116,99 +162,121 @@ const ModelPage = () => {
 
   useEffect(() => {
     fetchModel();
+    return stopPolling; // cleanup any polling on unmount
   }, [fetchModel]);
 
   const saveModel = async () => {
     setSaving(true);
+    setError(null);
+    setLastResponseDebug(null);
     try {
-      await fetch(GRAPHQL_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: print(SAVE_MODEL_MUTATION) }),
-      });
-      fetchModel();
+      const json = await graphqlRequest({ query: print(SAVE_MODEL_MUTATION) });
+      setLastResponseDebug(json);
+      await fetchModel();
+    } catch (e) {
+      setError(e.message);
+      setLastResponseDebug(e.debug ?? null);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveAndStartOptimization = async () => {
+    setStarting(true);
+    setError(null);
+    setLastResponseDebug(null);
+    setJobId(null);
+    setJobState(null);
+    setJobMessage(null);
+    stopPolling();
+
+    try {
+      // 1) Save
+      const saveJson = await graphqlRequest({ query: print(SAVE_MODEL_MUTATION) });
+      setLastResponseDebug(saveJson);
+
+      // 2) Start
+      const startJson = await graphqlRequest({ query: print(START_OPTIMIZATION_MUTATION) });
+      setLastResponseDebug(startJson);
+      const id = startJson?.data?.startOptimization ?? null;
+      setJobId(id);
+
+      if (id != null) {
+        // 3) Poll job status every 2s
+        await pollJobStatus(id);
+        pollRef.current = setInterval(() => pollJobStatus(id), 2000);
+      } else {
+        setError('No jobId returned from startOptimization.');
+      }
+    } catch (e) {
+      setError(e.message);
+      setLastResponseDebug(e.debug ?? null);
+    } finally {
+      setStarting(false);
     }
   };
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Model Overview</h1>
-      {loading && <p>Loading…</p>}
+
+      {(loading || saving || starting) && <p>Working…</p>}
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+
+      {jobId !== null && (
+        <div style={{ marginBottom: 12 }}>
+          <strong>Optimization Job:</strong> #{jobId}{' '}
+          {jobState && <span>— state: <em>{jobState}</em></span>}
+          {jobMessage && <div>message: {jobMessage}</div>}
+        </div>
+      )}
+
       {!loading && !error && (
         <>
           <h2>Setup</h2>
           {setup ? (
-            <pre style={{ whiteSpace: 'pre-wrap' }}>
-              {JSON.stringify(setup, null, 2)}
-            </pre>
-          ) : (
-            <p>No setup found.</p>
-          )}
+            <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(setup, null, 2)}</pre>
+          ) : <p>No setup found.</p>}
 
           <h2>Risk</h2>
-          {risks.length > 0 ? (
-            <ul>
-              {risks.map((r) => (
-                <li key={r.parameter}>{r.parameter}: {r.value}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No risk parameters set.</p>
-          )}
+          {risks.length ? (
+            <ul>{risks.map(r => <li key={r.parameter}>{r.parameter}: {r.value}</li>)}</ul>
+          ) : <p>No risk parameters set.</p>}
 
           <h2>Scenarios</h2>
-          {scenarios.length > 0 ? (
-            <ul>
-              {scenarios.map((s) => (
-                <li key={s.name}>{s.name} — weight: {s.weight}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No scenarios defined.</p>
-          )}
+          {scenarios.length ? (
+            <ul>{scenarios.map(s => <li key={s.name}>{s.name} — weight: {s.weight}</li>)}</ul>
+          ) : <p>No scenarios defined.</p>}
 
           <h2>Nodes</h2>
-          {nodes.length > 0 ? (
-            <ul>
-              {nodes.map((node) => (
-                <li key={node.name}>{node.name}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No nodes have been added yet.</p>
-          )}
+          {nodes.length ? (
+            <ul>{nodes.map(n => <li key={n.name}>{n.name}</li>)}</ul>
+          ) : <p>No nodes.</p>}
 
           <h2>Processes</h2>
-          {processes.length > 0 ? (
+          {processes.length ? (
             <ul>
-              {processes.map((proc) => (
+              {processes.map(proc => (
                 <li key={proc.name}>
                   {proc.name}
-                  {proc.topos && proc.topos.length > 0 && (
+                  {proc.topos?.length ? (
                     <ul>
-                      {proc.topos.map((t, idx) => {
-                        const src = t?.source?.name ?? '(?)';
-                        const sink = t?.sink?.name ?? '(?)';
-                        return (
-                          <li key={`${proc.name}-topo-${idx}`}>{`${src} → ${sink}`}</li>
-                        );
-                      })}
+                      {proc.topos.map((t, i) => (
+                        <li key={`${proc.name}-topo-${i}`}>
+                          {(t?.source?.name ?? '(?)')} → {(t?.sink?.name ?? '(?)')}
+                        </li>
+                      ))}
                     </ul>
-                  )}
+                  ) : null}
                 </li>
               ))}
             </ul>
-          ) : (
-            <p>No processes have been added yet.</p>
-          )}
+          ) : <p>No processes.</p>}
 
           <h2>Markets</h2>
-          {markets.length > 0 ? (
+          {markets.length ? (
             <ul>
-              {markets.map((mkt) => (
+              {markets.map(mkt => (
                 <li key={mkt.name}>
                   {mkt.name} — {mkt.mType}
                   <ul>
@@ -224,37 +292,56 @@ const ModelPage = () => {
                 </li>
               ))}
             </ul>
-          ) : (
-            <p>No markets have been added yet.</p>
-          )}
+          ) : <p>No markets.</p>}
 
           <h2>Generic Constraints</h2>
-          {genConstraints.length > 0 ? (
+          {genConstraints.length ? (
             <ul>
-              {genConstraints.map((gc) => (
+              {genConstraints.map(gc => (
                 <li key={gc.name}>
                   {gc.name} — {gc.gcType} — setpoint: {String(gc.isSetpoint)} — penalty: {gc.penalty}
                   <ul>
                     {gc.constant.map((c, i) => (
                       <li key={`${gc.name}-const-${i}`}>
-                        Constant: {c.value?.value ?? c.value?.values?.join(', ') ?? '—'}
+                        Constant: {c.value?.value ?? (c.value?.values ? c.value.values.join(', ') : '—')}
                       </li>
                     ))}
                   </ul>
                 </li>
               ))}
             </ul>
-          ) : (
-            <p>No generic constraints defined.</p>
-          )}
+          ) : <p>No generic constraints.</p>}
         </>
       )}
-      <button onClick={fetchModel} disabled={loading}>
-        Refresh
-      </button>
-      <button onClick={saveModel} disabled={saving} style={{ marginLeft: 10 }}>
-        {saving ? 'Saving…' : 'Save Model'}
-      </button>
+
+      <div style={{ marginTop: 16 }}>
+        <button onClick={fetchModel} disabled={loading}>Refresh</button>
+        <button onClick={saveModel} disabled={saving} style={{ marginLeft: 10 }}>
+          {saving ? 'Saving…' : 'Save Model'}
+        </button>
+        <button onClick={saveAndStartOptimization} disabled={saving || starting} style={{ marginLeft: 10 }}>
+          {starting ? 'Saving & Starting…' : 'Save & Start Optimization'}
+        </button>
+        {jobId !== null && (
+          <button
+            onClick={() => pollJobStatus(jobId)}
+            disabled={starting}
+            style={{ marginLeft: 10 }}
+          >
+            Check Job Status Now
+          </button>
+        )}
+      </div>
+
+      {/* Debug panel to see the last raw response or error payload */}
+      {lastResponseDebug && (
+        <div style={{ marginTop: 20 }}>
+          <h3>Last GraphQL Response (debug)</h3>
+          <pre style={{ whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto' }}>
+            {JSON.stringify(lastResponseDebug, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   );
 };

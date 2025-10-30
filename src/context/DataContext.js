@@ -1,7 +1,7 @@
 // src/context/DataContext.js
 
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
-import useWeatherData from '../hooks/useWeatherData'; 
+import useWeatherData from '../hooks/useWeatherData';
 import useElectricityData from '../hooks/useElectricityData';
 import ConfigContext from './ConfigContext'; // Import ConfigContext
 import { generateControlSignals } from '../utils/controlData';
@@ -9,14 +9,37 @@ import { createRoomNodes } from '../graphql/nodeCreation';
 import { createRoomNodeDiffusions } from '../graphql/nodeDiffusionCreation';
 import { createHeaterProcess } from '../graphql/processCreation';
 import { createRoomGenConstraints } from '../graphql/genConstraintCreation';
+import { print } from 'graphql/language/printer';
+import { GRAPHQL_ENDPOINT, CLEAR_INPUT_DATA_MUTATION } from '../graphql/queries';
 
 // Create the DataContext
 const DataContext = createContext();
 
+// --- Helper: clear backend model via GraphQL -------------------------------
+async function clearModelOnServer() {
+  try {
+    const res = await fetch(GRAPHQL_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: print(CLEAR_INPUT_DATA_MUTATION) }),
+    });
+    const json = await res.json();
+
+    if (!res.ok) throw new Error(`Network error (${res.status})`);
+    if (json.errors?.length) {
+      throw new Error(json.errors.map((e) => e.message).join(', '));
+    }
+
+    const msg = json?.data?.clearInputData?.message ?? null;
+    if (msg) console.warn('clearInputData message:', msg);
+    console.log('Backend model inputData cleared successfully.');
+  } catch (e) {
+    console.error('Failed to clear backend model (clearInputData):', e);
+  }
+}
+
 // DataProvider component to wrap around parts of the app that need access to the data
 export const DataProvider = ({ children }) => {
-
-  
   // =====================
   // States
   // =====================
@@ -30,42 +53,44 @@ export const DataProvider = ({ children }) => {
     }
 
     // Migrate existing rooms to ensure consistency (remove exceptions and rename fields)
-    const migratedRooms = storedRooms.map(room => {
-      if (!room) {
-        console.warn('Encountered an undefined room during migration. Skipping.');
-        return null;
-      }
+    const migratedRooms = storedRooms
+      .map((room) => {
+        if (!room) {
+          console.warn('Encountered an undefined room during migration. Skipping.');
+          return null;
+        }
 
-      const {
-        maxTemp = room.defaultMaxTemp || 25,
-        minTemp = room.defaultMinTemp || 15,
-        sensorId,
-        sensorState,
-        sensorUnit,
-        roomId,
-        roomWidth,
-        roomLength,
-      } = room;
+        const {
+          maxTemp = room.defaultMaxTemp || 25,
+          minTemp = room.defaultMinTemp || 15,
+          sensorId,
+          sensorState,
+          sensorUnit,
+          roomId,
+          roomWidth,
+          roomLength,
+        } = room;
 
-      if (!roomId || !roomWidth || !roomLength || !sensorId) {
-        console.warn('Room missing required fields during migration:', room);
-        return null;
-      }
+        if (!roomId || !roomWidth || !roomLength || !sensorId) {
+          console.warn('Room missing required fields during migration:', room);
+          return null;
+        }
 
-      return {
-        roomId,
-        roomWidth,
-        roomLength,
-        maxTemp,
-        minTemp,
-        sensorId,
-        sensorState,
-        sensorUnit,
-      };
-    }).filter(room => room !== null); // Remove any null entries resulting from invalid rooms
+        return {
+          roomId,
+          roomWidth,
+          roomLength,
+          maxTemp,
+          minTemp,
+          sensorId,
+          sensorState,
+          sensorUnit,
+        };
+      })
+      .filter((room) => room !== null); // Remove any null entries resulting from invalid rooms
 
     return migratedRooms;
-  });  
+  });
 
   // State for Heaters
   const [heaters, setHeaters] = useState(() => {
@@ -95,7 +120,7 @@ export const DataProvider = ({ children }) => {
       ? weatherData.weather_values[0]
       : null;
 
-  console.log("Current Weather:", currentWeather);
+  console.log('Current Weather:', currentWeather);
 
   const { fiPrices, fiPricesLoading, fiPricesError } = useElectricityData();
 
@@ -198,68 +223,52 @@ export const DataProvider = ({ children }) => {
    * @param {Object} room - The room object to add.
    * @returns {boolean} - Returns true if room is added successfully, false otherwise.
    */
-  const addRoom = useCallback((room) => {
-    // Destructure room object to ensure required fields are present
-    const {
-      roomId,
-      roomWidth,
-      roomLength,
-      maxTemp,
-      minTemp,
-      sensorId,
-      sensorState,
-      sensorUnit,
-    } = room;
-  
-    // Validate required fields
-    if (
-      !roomId ||
-      !roomWidth ||
-      !roomLength ||
-      maxTemp === undefined ||
-      minTemp === undefined ||
-      !sensorId
-    ) {
-      console.error('Missing required room fields.');
-      return false;
-    }
+  const addRoom = useCallback(
+    (room) => {
+      // Destructure room object to ensure required fields are present
+      const { roomId, roomWidth, roomLength, maxTemp, minTemp, sensorId, sensorState, sensorUnit } = room;
 
-    // Check for duplicate roomId (case-insensitive)
-    const isDuplicateRoom = rooms.some(
-      (existingRoom) => existingRoom.roomId.toLowerCase() === roomId.toLowerCase()
-    );
+      // Validate required fields
+      if (!roomId || !roomWidth || !roomLength || maxTemp === undefined || minTemp === undefined || !sensorId) {
+        console.error('Missing required room fields.');
+        return false;
+      }
 
-    if (isDuplicateRoom) {
-      console.error(`Room with ID "${roomId}" already exists.`);
-      return false; // Indicate failure to add
-    }
+      // Check for duplicate roomId (case-insensitive)
+      const isDuplicateRoom = rooms.some((existingRoom) => existingRoom.roomId.toLowerCase() === roomId.toLowerCase());
 
-    const newRoom = {
-      roomId,
-      roomWidth,
-      roomLength,
-      maxTemp,
-      minTemp,
-      sensorId,
-      sensorState,
-      sensorUnit,
-    };
+      if (isDuplicateRoom) {
+        console.error(`Room with ID "${roomId}" already exists.`);
+        return false; // Indicate failure to add
+      }
 
-    setRooms((prevRooms) => {
-      const updatedRooms = [...prevRooms, newRoom];
-      console.log('Room added:', newRoom);
-      console.log('Updated Rooms:', updatedRooms);
-      return updatedRooms;
-    });
+      const newRoom = {
+        roomId,
+        roomWidth,
+        roomLength,
+        maxTemp,
+        minTemp,
+        sensorId,
+        sensorState,
+        sensorUnit,
+      };
 
-    createRoomNodes(newRoom, config, materials)
-      .then(() => createRoomNodeDiffusions(newRoom))
-      .then(() => createRoomGenConstraints(newRoom))
-      .catch(error => console.error('Error creating nodes, diffusions, or constraints:', error));
+      setRooms((prevRooms) => {
+        const updatedRooms = [...prevRooms, newRoom];
+        console.log('Room added:', newRoom);
+        console.log('Updated Rooms:', updatedRooms);
+        return updatedRooms;
+      });
 
+      createRoomNodes(newRoom, config, materials)
+        .then(() => createRoomNodeDiffusions(newRoom))
+        .then(() => createRoomGenConstraints(newRoom))
+        .catch((error) => console.error('Error creating nodes, diffusions, or constraints:', error));
 
-    return true;
-  }, [rooms, config, materials]);
+      return true;
+    },
+    [rooms, config, materials]
+  );
 
   /**
    * Deletes a room from the rooms state based on roomId.
@@ -278,42 +287,24 @@ export const DataProvider = ({ children }) => {
    * @returns {boolean} - Returns true if update is successful, false otherwise.
    */
   const updateRoomFunc = useCallback((updatedRoom) => {
-    const {
-      roomId,
-      roomWidth,
-      roomLength,
-      maxTemp,
-      minTemp,
-      sensorId,
-      sensorState,
-      sensorUnit,
-    } = updatedRoom;
-  
+    const { roomId, roomWidth, roomLength, maxTemp, minTemp, sensorId, sensorState, sensorUnit } = updatedRoom;
+
     // Validation: Ensure required fields are present
-    if (
-      !roomId ||
-      !roomWidth ||
-      !roomLength ||
-      maxTemp === undefined ||
-      minTemp === undefined ||
-      !sensorId
-    ) {
+    if (!roomId || !roomWidth || !roomLength || maxTemp === undefined || minTemp === undefined || !sensorId) {
       console.error('Missing required room fields.');
       return false;
     }
-  
+
     setRooms((prevRooms) => {
       const roomExists = prevRooms.some((room) => room.roomId === roomId);
       if (!roomExists) {
         console.error(`Room with ID "${roomId}" does not exist.`);
         return prevRooms;
       }
-  
-      return prevRooms.map((room) =>
-        room.roomId === roomId ? { ...room, ...updatedRoom } : room
-      );
+
+      return prevRooms.map((room) => (room.roomId === roomId ? { ...room, ...updatedRoom } : room));
     });
-  
+
     return true;
   }, []);
 
@@ -329,25 +320,23 @@ export const DataProvider = ({ children }) => {
   const addElectricHeater = useCallback(
     async (heater) => {
       const { id, roomId, capacity } = heater;
-  
+
       // Validate required fields
       if (!id || !roomId || !capacity) {
         console.error('Missing required heater fields.');
         return;
       }
-  
+
       // Check for duplicate heater ID
-      const isDuplicateHeater = heaters.find(
-        (existingHeater) => existingHeater.id.toLowerCase() === id.toLowerCase()
-      );
-  
+      const isDuplicateHeater = heaters.find((existingHeater) => existingHeater.id.toLowerCase() === id.toLowerCase());
+
       if (isDuplicateHeater) {
         console.error(`Heater with ID "${id}" already exists.`);
         return;
       }
-  
+
       console.log('Adding heater:', heater);
-  
+
       setHeaters((prevHeaters) => [
         ...prevHeaters,
         {
@@ -376,20 +365,21 @@ export const DataProvider = ({ children }) => {
    * Deletes an electric heater from the heaters state based on heaterId.
    * @param {string} heaterId - The ID of the heater to delete.
    */
-  const deleteHeater = useCallback((heaterId) => {
-    setHeaters((prevHeaters) => prevHeaters.filter((heater) => heater.id !== heaterId));
-    // Also delete control signals associated with this heater
-    const updatedControlSignals = { ...controlSignals };
-    delete updatedControlSignals[heaterId];
-    setControlSignals(updatedControlSignals);
-    localStorage.setItem('controlSignals', JSON.stringify(updatedControlSignals));
-  }, [controlSignals]);
+  const deleteHeater = useCallback(
+    (heaterId) => {
+      setHeaters((prevHeaters) => prevHeaters.filter((heater) => heater.id !== heaterId));
+      // Also delete control signals associated with this heater
+      const updatedControlSignals = { ...controlSignals };
+      delete updatedControlSignals[heaterId];
+      setControlSignals(updatedControlSignals);
+      localStorage.setItem('controlSignals', JSON.stringify(updatedControlSignals));
+    },
+    [controlSignals]
+  );
 
   const toggleHeaterEnabled = useCallback((heaterId) => {
     setHeaters((prevHeaters) =>
-      prevHeaters.map((heater) =>
-        heater.id === heaterId ? { ...heater, isEnabled: !heater.isEnabled } : heater
-      )
+      prevHeaters.map((heater) => (heater.id === heaterId ? { ...heater, isEnabled: !heater.isEnabled } : heater))
     );
   }, []);
 
@@ -398,39 +388,42 @@ export const DataProvider = ({ children }) => {
    * @param {Object} updatedHeater - The heater object with updated details.
    * @returns {boolean} - Returns true if update is successful, false otherwise.
    */
-  const updateHeaterFunc = useCallback((updatedHeater) => {
-    console.log('Updating heater:', updatedHeater);
-    const heaterExists = heaters.some((heater) => heater.id === updatedHeater.id);
-    if (!heaterExists) {
-      console.error(`Heater with ID "${updatedHeater.id}" does not exist.`);
-      return false;
-    }
+  const updateHeaterFunc = useCallback(
+    (updatedHeater) => {
+      console.log('Updating heater:', updatedHeater);
+      const heaterExists = heaters.some((heater) => heater.id === updatedHeater.id);
+      if (!heaterExists) {
+        console.error(`Heater with ID "${updatedHeater.id}" does not exist.`);
+        return false;
+      }
 
-    setHeaters((prevHeaters) =>
-      prevHeaters.map((heater) =>
-        heater.id === updatedHeater.id ? { ...heater, ...updatedHeater } : heater
-      )
-    );
-    return true; // Indicate successful update
-  }, [heaters]);
+      setHeaters((prevHeaters) => prevHeaters.map((heater) => (heater.id === updatedHeater.id ? { ...heater, ...updatedHeater } : heater)));
+      return true; // Indicate successful update
+    },
+    [heaters]
+  );
 
   // =====================
-  // Function to Reset All Data (Existing - Preserved)
+  // Function to Reset All Data (with backend model clear)
   // =====================
 
   /**
    * Resets all data in the DataContext to their initial empty states.
    * Clears corresponding localStorage entries.
+   * Also clears the backend model via clearInputData.
    */
-  const resetData = useCallback(() => {
-    // Reset all states to their initial empty values
+  const resetData = useCallback(async () => {
+    // 1) Clear backend model (nodes, processes, markets, groups, scenarios, genConstraints, etc.)
+    await clearModelOnServer();
+
+    // 2) Reset local states
     setRooms([]);
     setHeaters([]);
     setControlSignals({});
     setOptimizeStarted(false);
     setLastOptimizedTime(null);
 
-    // Clear corresponding localStorage entries
+    // 3) Clear localStorage
     localStorage.removeItem('rooms');
     localStorage.removeItem('heaters');
     localStorage.removeItem('fiElectricityPrices');
@@ -487,11 +480,7 @@ export const DataProvider = ({ children }) => {
   // Provider's Value
   // =====================
 
-  return (
-    <DataContext.Provider value={contextValue}>
-      {children}
-    </DataContext.Provider>
-  );
+  return <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>;
 };
 
 export default DataContext;
