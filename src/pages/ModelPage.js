@@ -10,6 +10,7 @@ import {
   START_OPTIMIZATION_MUTATION,
   JOB_STATUS_QUERY,
   UPDATE_SETTINGS_MUTATION,
+  GET_JOB_OUTCOME_QUERY, // ⬅️ add this export in ../graphql/queries if not already
 } from '../graphql/queries';
 
 // Keep this as a raw string since we post it with fetch directly.
@@ -64,7 +65,6 @@ async function graphqlRequest({ query, variables }) {
   try {
     json = JSON.parse(text);
   } catch (e) {
-    // Non-JSON or server crashed: expose full payload
     const err = new Error(`Non-JSON response (${res.status} ${res.statusText})`);
     err.debug = { status: res.status, statusText: res.statusText, body: text };
     throw err;
@@ -111,12 +111,43 @@ const ModelPage = () => {
   const [jobMessage, setJobMessage] = useState(null);
   const pollRef = useRef(null);
 
+  // outcome
+  const [outcome, setOutcome] = useState(null);
+  const [outcomeType, setOutcomeType] = useState(null);
+
   const stopPolling = () => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
   };
+
+  const fetchOutcome = useCallback(async (id) => {
+    try {
+      const json = await graphqlRequest({
+        query: print(GET_JOB_OUTCOME_QUERY),
+        variables: { jobId: id },
+      });
+      setLastResponseDebug(json);
+      const data = json?.data?.jobOutcome ?? null;
+      if (!data) {
+        setOutcome(null);
+        setOutcomeType(null);
+        return;
+      }
+      const t = data.__typename || (
+        data.controlSignals ? 'OptimizationOutcome' :
+        data.temperature    ? 'WeatherForecastOutcome' :
+        data.price          ? 'ElectricityPriceOutcome' :
+        'Unknown'
+      );
+      setOutcomeType(t);
+      setOutcome(data);
+    } catch (e) {
+      setError(e.message);
+      setLastResponseDebug(e.debug ?? null);
+    }
+  }, []);
 
   const pollJobStatus = useCallback(async (id) => {
     try {
@@ -126,18 +157,24 @@ const ModelPage = () => {
       });
       setLastResponseDebug(json);
       const status = json?.data?.jobStatus;
-      setJobState(status?.state ?? null);
+      const s = status?.state ?? null;
+      setJobState(s);
       setJobMessage(status?.message ?? null);
 
-      if (status?.state === 'FAILED' || status?.state === 'FINISHED') {
+      if (s === 'FAILED') {
         stopPolling();
+      }
+      if (s === 'FINISHED') {
+        stopPolling();
+        // fetch outcome once finished
+        await fetchOutcome(id);
       }
     } catch (e) {
       setError(e.message);
       setLastResponseDebug(e.debug ?? null);
       stopPolling();
     }
-  }, []);
+  }, [fetchOutcome]);
 
   const fetchModel = useCallback(async () => {
     setLoading(true);
@@ -190,6 +227,8 @@ const ModelPage = () => {
     setJobId(null);
     setJobState(null);
     setJobMessage(null);
+    setOutcome(null);
+    setOutcomeType(null);
     stopPolling();
 
     try {
@@ -218,29 +257,82 @@ const ModelPage = () => {
     }
   };
 
-const updateLocationToTampere = async () => {
-  setUpdatingLocation(true);
-  setError(null);
-  setLastResponseDebug(null);
-  try {
-    const json = await graphqlRequest({
-      query: print(UPDATE_SETTINGS_MUTATION),
-      variables: {
-        settingsInput: {
-          location: { country: 'Finland', place: 'Tampere' },
+  const updateLocationToTampere = async () => {
+    setUpdatingLocation(true);
+    setError(null);
+    setLastResponseDebug(null);
+    try {
+      const json = await graphqlRequest({
+        query: print(UPDATE_SETTINGS_MUTATION),
+        variables: {
+          settingsInput: {
+            location: { country: 'Finland', place: 'Tampere' },
+          },
         },
-      },
-    });
-    setLastResponseDebug(json);
-    // optional: re-fetch model to refresh any dependent UI
-    await fetchModel();
-  } catch (e) {
-    setError(e.message);
-    setLastResponseDebug(e.debug ?? null);
-  } finally {
-    setUpdatingLocation(false);
-  }
-};
+      });
+      setLastResponseDebug(json);
+      await fetchModel();
+    } catch (e) {
+      setError(e.message);
+      setLastResponseDebug(e.debug ?? null);
+    } finally {
+      setUpdatingLocation(false);
+    }
+  };
+
+  // Small helpers for rendering OptimizationOutcome
+  const renderOptimizationOutcome = () => {
+    if (!outcome || outcomeType !== 'OptimizationOutcome') return null;
+
+    const times = outcome.time ?? [];
+    const firstTs = times[0] ?? '–';
+    const lastTs = times[times.length - 1] ?? '–';
+
+    return (
+      <div style={{ marginTop: 24 }}>
+        <h2>Optimization Outcome</h2>
+        <div style={{ marginBottom: 6 }}>
+          <div>Time points: {times.length}</div>
+          <div>Range: {String(firstTs)} → {String(lastTs)}</div>
+        </div>
+
+        {(outcome.controlSignals ?? []).length === 0 ? (
+          <p>No control signals.</p>
+        ) : (
+          <div>
+            {(outcome.controlSignals ?? []).map(sig => {
+              const sample = Array.isArray(sig.signal) ? sig.signal.slice(0, 8) : [];
+              const zeros = Array.isArray(sig.signal) && sig.signal.every(v => v === 0);
+              return (
+                <div key={sig.name} style={{ marginBottom: 10 }}>
+                  <strong>{sig.name}</strong>{' '}
+                  <span style={{ opacity: 0.7 }}>
+                    ({sig.signal?.length ?? 0} values{zeros ? ', all zero' : ''})
+                  </span>
+                  <div style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                    [{sample.join(', ')}{sig.signal && sig.signal.length > sample.length ? ', …' : ''}]
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderNonOptimizationOutcome = () => {
+    if (!outcome || (outcomeType === 'OptimizationOutcome' || !outcomeType)) return null;
+
+    return (
+      <div style={{ marginTop: 24 }}>
+        <h2>{outcomeType}</h2>
+        <pre style={{ whiteSpace: 'pre-wrap' }}>
+          {JSON.stringify(outcome, null, 2)}
+        </pre>
+      </div>
+    );
+  };
 
   return (
     <div style={{ padding: 20 }}>
@@ -256,6 +348,10 @@ const updateLocationToTampere = async () => {
           {jobMessage && <div>message: {jobMessage}</div>}
         </div>
       )}
+
+      {/* Outcome sections */}
+      {renderOptimizationOutcome()}
+      {renderNonOptimizationOutcome()}
 
       {!loading && !error && (
         <>
@@ -349,13 +445,23 @@ const updateLocationToTampere = async () => {
           {starting ? 'Saving & Starting…' : 'Save & Start Optimization'}
         </button>
         {jobId !== null && (
-          <button
-            onClick={() => pollJobStatus(jobId)}
-            disabled={starting}
-            style={{ marginLeft: 10 }}
-          >
-            Check Job Status Now
-          </button>
+          <>
+            <button
+              onClick={() => pollJobStatus(jobId)}
+              disabled={starting}
+              style={{ marginLeft: 10 }}
+            >
+              Check Job Status Now
+            </button>
+            <button
+              onClick={() => fetchOutcome(jobId)}
+              disabled={starting}
+              style={{ marginLeft: 10 }}
+              title="Fetch job outcome now"
+            >
+              Fetch Outcome
+            </button>
+          </>
         )}
         <button
           onClick={updateLocationToTampere}
