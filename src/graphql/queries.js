@@ -16,6 +16,16 @@ export const GET_SETTINGS_QUERY = gql`
   }
 `;
 
+export const MODEL_QUERY = gql`
+  query Model {
+    model {
+      inputData {
+        scenarios { name weight }
+      }
+    }
+  }
+`;
+
 export const GET_MODEL_QUERY = gql`
   query {
     model {

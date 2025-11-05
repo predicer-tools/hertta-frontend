@@ -170,7 +170,7 @@ export async function createRoomNodes(room, config, materials) {
     const t_e_conversion_floor_slab = FLOOR_CONCRETE_HEATING_CAPACITY * roomArea;
 
     let sensorStateKelvin = parseFloat(room.sensorState);
-    if (isNaN(sensorStateKelvin)) sensorStateKelvin = 0.0;
+    if (isNaN(sensorStateKelvin)) sensorStateKelvin = 273.15;
     sensorStateKelvin += 273.15;
 
     const maxTempK = parseFloat(room.maxTemp) + 273.15;
