@@ -18,6 +18,7 @@ import {
   GRAPHQL_ENDPOINT,
   CREATE_NODE_MUTATION,
   SET_NODE_STATE_MUTATION,
+  CONNECT_NODE_INFLOW_TO_TEMP_FORECAST,
 } from '../graphql/queries';
 
 // Constants
@@ -69,6 +70,31 @@ export async function setNodeState(nodeName, state) {
   return result.data.setNodeState;
 }
 
+async function connectNodeInflowToFMI(nodeName) {
+  const response = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: print(CONNECT_NODE_INFLOW_TO_TEMP_FORECAST),
+      variables: {
+        nodeName,
+        forecastName: 'FMI',
+        forecastType: 'temperature',
+      },
+    }),
+  });
+  const json = await response.json();
+
+  if (!response.ok) throw new Error(`Network error (${response.status})`);
+  if (json.errors?.length) throw new Error(json.errors.map(e => e.message).join(', '));
+
+  const maybe = json?.data?.connectNodeInflowToTemperatureForecast;
+  if (maybe?.message) {
+    // Backend uses MaybeError; a message here indicates a problem
+    throw new Error(maybe.message);
+  }
+}
+
 /**
  * Ensure that the outside node exists in the model.  This helper
  * function will create the node and set its state on the first call.
@@ -90,32 +116,29 @@ async function ensureOutsideNode() {
     isMarket: false,
     isRes: false,
     cost: [],
-    inflow: [
-      {
-        scenario: 's1',
-        value: { constant: 1.0 },
-      },
-    ],
+    inflow: [], // leave empty; we’ll attach the FMI forecast via mutation
   };
+
   const outsideState = {
     inMax: 1e10,
     outMax: 1e10,
     stateLossProportional: 0.0,
-    stateMin: 273.15, // 0°C
-    stateMax: 308.15, // 35°C
+    stateMin: 273.15,     // 0°C
+    stateMax: 308.15,     // 35°C
     initialState: 288.15, // 15°C default outside temperature
     isScenarioIndependent: false,
     isTemp: true,
-    tEConversion: 0.0,
+    tEConversion: 1e9,
     residualValue: 0.0,
   };
+
   try {
     const createResult = await createNode(outsideNode);
     // Determine whether the outside node was newly created or already existed.
     let created = true;
     if (createResult?.errors && createResult.errors.length > 0) {
       // When errors are returned, we assume the node already exists. Log as info
-      // and skip updating its state as requested by the user.
+      // and skip updating its state.
       console.info('Outside node may already exist:', createResult.errors);
       created = false;
     } else {
@@ -131,11 +154,16 @@ async function ensureOutsideNode() {
       }
     }
 
-    // Mark that we have attempted to create the outside node so that subsequent
-    // calls know we've handled it once.
+    // Attach FMI temperature forecast as inflow source
+    try {
+      await connectNodeInflowToFMI('outside');
+      console.log('Outside node inflow connected to FMI temperature forecast.');
+    } catch (e) {
+      console.warn('Could not connect outside inflow to FMI temperature forecast:', e.message);
+    }
+
     outsideNodeCreated = true;
   } catch (err) {
-    // Log the error but do not rethrow so that room node creation can proceed
     console.error('Failed to create outside node:', err.message);
   }
 }

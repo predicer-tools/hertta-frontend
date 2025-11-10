@@ -112,13 +112,14 @@ export const DataProvider = ({ children }) => {
   const { config, materials } = useContext(ConfigContext);
   const location = config.location;
 
-  // Integrate the new weather data hook (location comes from ConfigContext)
   const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
 
+  const weatherDataCompat = weatherData
+    ? { ...weatherData, weather_values: weatherData.rows ?? [] }
+    : null;
+
   const currentWeather =
-    weatherData && Array.isArray(weatherData.weather_values) && weatherData.weather_values.length > 0
-      ? weatherData.weather_values[0]
-      : null;
+    (weatherDataCompat?.weather_values?.length ? weatherDataCompat.weather_values[0] : null);
 
   console.log('Current Weather:', currentWeather);
 
@@ -428,6 +429,7 @@ export const DataProvider = ({ children }) => {
     localStorage.removeItem('heaters');
     localStorage.removeItem('fiElectricityPrices');
     localStorage.removeItem('weatherData');
+    localStorage.removeItem('weatherDataGraphQL'); 
     localStorage.removeItem('controlSignals');
     localStorage.removeItem('optimizeStarted');
     localStorage.removeItem('lastOptimizedTime');
@@ -467,7 +469,7 @@ export const DataProvider = ({ children }) => {
     lastOptimizedTime,
 
     // Weather Data (from useWeatherData hook)
-    weatherData,
+    weatherData: weatherDataCompat,
     weatherLoading,
     weatherError,
     currentWeather,

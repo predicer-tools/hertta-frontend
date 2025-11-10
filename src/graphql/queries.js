@@ -1086,3 +1086,15 @@ export const CREATE_ROOM_GEN_CONSTRAINTS_MUTATION = `
   }
 `;
 
+export const CONNECT_NODE_INFLOW_TO_TEMP_FORECAST = gql`
+  mutation ConnectNodeInflowToTempForecast($nodeName: String!, $forecastName: String!, $forecastType: String!) {
+    connectNodeInflowToTemperatureForecast(
+      nodeName: $nodeName,
+      forecastName: $forecastName,
+      forecastType: $forecastType
+    ) {
+      message
+    }
+  }
+`;
+
