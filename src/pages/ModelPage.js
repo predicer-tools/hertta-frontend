@@ -6,8 +6,14 @@ import React, { useState, useEffect, useCallback, useRef, useContext } from 'rea
 import { print } from 'graphql/language/printer';
 // Pull in ConfigContext so we can access the Home Assistant API key
 import ConfigContext from '../context/ConfigContext';
-// Import the helper that will dispatch control signals to Home Assistant
-import { sendControlSignalToHomeAssistant } from '../hass/HomeAssistantInterface';
+// Note: All control signal dispatch logic is handled by ControlSignalScheduler,
+// which exposes updateControlSignals, clearAllSchedules, and getScheduleStatus.
+// Import scheduler utilities to handle control signal dispatch outside of this page
+import {
+  updateControlSignals,
+  clearAllSchedules,
+  getScheduleStatus,
+} from '../hass/ControlSignalScheduler';
 import {
   GRAPHQL_ENDPOINT,
   SAVE_MODEL_MUTATION,
@@ -124,6 +130,11 @@ const ModelPage = () => {
   const [outcome, setOutcome] = useState(null);
   const [outcomeType, setOutcomeType] = useState(null);
 
+  // Track the current control signal dispatch status.  This map contains
+  // per-entity details about the last value sent and the next scheduled
+  // dispatch.  It is updated periodically by polling the scheduler.
+  const [scheduleStatus, setScheduleStatus] = useState({});
+
   const stopPolling = () => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
@@ -153,72 +164,11 @@ const ModelPage = () => {
       setOutcomeType(t);
       setOutcome(data);
 
-      // If we have an optimization outcome with control signals,
-      // dispatch them to Home Assistant.  Each signal contains an array
-      // of values; here we schedule each value to be sent one hour apart.
+      // If we have an optimisation outcome with control signals, delegate
+      // scheduling to the ControlSignalScheduler.  It will replace any
+      // existing schedules and manage dispatch on an hourly basis.
       if (t === 'OptimizationOutcome' && Array.isArray(data.controlSignals)) {
-        // Only dispatch control signals for valid Home Assistant domains.
-        const validDomains = new Set(['switch', 'light', 'climate', 'number', 'fan', 'cover']);
-
-        /**
-         * Extract a Home Assistant entity_id from a control signal name.
-         * Many optimisation names follow patterns like:
-         *   light.led_strips_4_8w_m_rgb_827_865_1m_9610358_electricitygrid_light.led_strips_4_8w_m_rgb_827_865_1m_9610358_s1
-         * or
-         *   light.led_strips_4_8w_m_rgb_827_865_1m_9610358_light.led_strips_4_8w_m_rgb_827_865_1m_9610358_Olohuone_air
-         *
-         * The real entity_id is the first occurrence of the domain.object (domain includes
-         * everything before the first dot). We stop accumulating once we see the domain
-         * repeated or encounter a marker such as "_electricitygrid". If no valid
-         * domain/object is found, return an empty string.
-         */
-        const extractEntityId = (name) => {
-          if (typeof name !== 'string' || !name.includes('.')) return '';
-          // Simple case: if the name includes '_electricitygrid', cut before it.
-          const marker = '_electricitygrid';
-          const idx = name.indexOf(marker);
-          if (idx > 0) {
-            const entityId = name.substring(0, idx);
-            const domain = entityId.split('.')[0];
-            return validDomains.has(domain) ? entityId : '';
-          }
-          // General case: split by underscore and accumulate until domain repeats.
-          const parts = name.split('_');
-          const firstDot = name.indexOf('.');
-          const domain = name.slice(0, firstDot);
-          let entityParts = [];
-          let seenDomain = 0;
-          for (const part of parts) {
-            // Append part to entity parts
-            entityParts.push(part);
-            // Count occurrences of the domain (either exact match or prefix like "light." )
-            if (part === domain || part.startsWith(domain + '.')) {
-              seenDomain++;
-              if (seenDomain > 1) {
-                // Remove the duplicate domain and break
-                entityParts.pop();
-                break;
-              }
-            }
-          }
-          const candidate = entityParts.join('_');
-          if (!candidate.includes('.')) return '';
-          const candDomain = candidate.split('.')[0];
-          return validDomains.has(candDomain) ? candidate : '';
-        };
-
-        data.controlSignals.forEach((sig) => {
-          const entityId = extractEntityId(sig.name);
-          if (!entityId) return; // Skip signals that don't map to a valid entity
-          const values = Array.isArray(sig.signal) ? sig.signal : [];
-          values.forEach((value, idx) => {
-            setTimeout(() => {
-              if (config && config.apiKey) {
-                sendControlSignalToHomeAssistant(config.apiKey, entityId, value);
-              }
-            }, idx * 60 * 60 * 1000);
-          });
-        });
+        updateControlSignals(config?.apiKey, data.controlSignals);
       }
     } catch (e) {
       setError(e.message);
@@ -278,8 +228,23 @@ const ModelPage = () => {
 
   useEffect(() => {
     fetchModel();
-    return stopPolling; // cleanup any polling on unmount
+    return () => {
+      // Clean up polling and any scheduled control signal intervals on unmount.
+      stopPolling();
+      clearAllSchedules();
+    };
   }, [fetchModel]);
+
+  // Periodically update the local scheduleStatus state by polling the
+  // ControlSignalScheduler.  This effect runs once on mount and
+  // establishes an interval that retrieves the latest schedule status every
+  // few seconds.  When the component unmounts, the interval is cleared.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setScheduleStatus(getScheduleStatus());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const saveModel = async () => {
     setSaving(true);
@@ -304,6 +269,10 @@ const ModelPage = () => {
     setJobId(null);
     setJobState(null);
     setJobMessage(null);
+    // Clear any existing schedules before resetting the outcome state.  This
+    // ensures that outdated control signals are not sent while a new
+    // optimisation run is starting.
+    clearAllSchedules();
     setOutcome(null);
     setOutcomeType(null);
     stopPolling();
@@ -364,58 +333,10 @@ const ModelPage = () => {
   // so the user can reapply the last optimization outcome on demand.
   const applyControlSignalsNow = () => {
     if (outcomeType === 'OptimizationOutcome' && Array.isArray(outcome?.controlSignals)) {
-      // Valid Home Assistant domains
-      const validDomains = new Set(['switch', 'light', 'climate', 'number', 'fan', 'cover']);
-      /**
-       * Extract a Home Assistant entity_id from a control signal name.  See the
-       * explanation in fetchOutcome for how this works.  In summary, if the name
-       * contains `_electricitygrid`, we return the substring before that marker.
-       * Otherwise, we accumulate underscore-separated parts until the domain
-       * repeats, then validate the result.  Returns an empty string if no valid
-       * entity_id can be determined.
-       */
-      const extractEntityId = (name) => {
-        if (typeof name !== 'string' || !name.includes('.')) return '';
-        const marker = '_electricitygrid';
-        const idx = name.indexOf(marker);
-        if (idx > 0) {
-          const entityId = name.substring(0, idx);
-          const domain = entityId.split('.')[0];
-          return validDomains.has(domain) ? entityId : '';
-        }
-        const parts = name.split('_');
-        const firstDot = name.indexOf('.');
-        const domain = name.slice(0, firstDot);
-        let entityParts = [];
-        let seenDomain = 0;
-        for (const part of parts) {
-          entityParts.push(part);
-          if (part === domain || part.startsWith(domain + '.')) {
-            seenDomain++;
-            if (seenDomain > 1) {
-              entityParts.pop();
-              break;
-            }
-          }
-        }
-        const candidate = entityParts.join('_');
-        if (!candidate.includes('.')) return '';
-        const candDomain = candidate.split('.')[0];
-        return validDomains.has(candDomain) ? candidate : '';
-      };
-
-      outcome.controlSignals.forEach((sig) => {
-        const entityId = extractEntityId(sig.name);
-        if (!entityId) return;
-        const values = Array.isArray(sig.signal) ? sig.signal : [];
-        values.forEach((value, idx) => {
-          setTimeout(() => {
-            if (config && config.apiKey) {
-              sendControlSignalToHomeAssistant(config.apiKey, entityId, value);
-            }
-          }, idx * 60 * 60 * 1000);
-        });
-      });
+      // Delegate to the ControlSignalScheduler to apply the most recent
+      // optimisation control signals.  The scheduler will start a new
+      // schedule for each entity and replace any existing schedules.
+      updateControlSignals(config?.apiKey, outcome.controlSignals);
     }
   };
 
@@ -491,6 +412,33 @@ const ModelPage = () => {
       {/* Outcome sections */}
       {renderOptimizationOutcome()}
       {renderNonOptimizationOutcome()}
+
+      {/* Display current control signal dispatch status.  Shows the last
+          value sent to each entity and when it was sent, as well as the
+          next value and its scheduled dispatch time. */}
+      {Object.keys(scheduleStatus).length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <h2>Control Signal Dispatch</h2>
+          <ul>
+            {Object.entries(scheduleStatus).map(([entity, st]) => (
+              <li key={entity} style={{ marginBottom: 4 }}>
+                <strong>{entity}</strong>: last&nbsp;
+                {st.lastValue !== null && st.lastValue !== undefined ? st.lastValue : '–'}&nbsp;
+                at&nbsp;
+                {st.lastSentAt instanceof Date
+                  ? st.lastSentAt.toLocaleString()
+                  : st.lastSentAt || '–'}
+                , next&nbsp;
+                {st.nextValue !== null && st.nextValue !== undefined ? st.nextValue : '–'}&nbsp;
+                at&nbsp;
+                {st.nextSentAt instanceof Date
+                  ? st.nextSentAt.toLocaleString()
+                  : st.nextSentAt || '–'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {!loading && !error && (
         <>
