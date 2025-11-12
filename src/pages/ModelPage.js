@@ -2,8 +2,12 @@
  * src/pages/ModelPage.js
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { print } from 'graphql/language/printer';
+// Pull in ConfigContext so we can access the Home Assistant API key
+import ConfigContext from '../context/ConfigContext';
+// Import the helper that will dispatch control signals to Home Assistant
+import { sendControlSignalToHomeAssistant } from '../hass/HomeAssistantInterface';
 import {
   GRAPHQL_ENDPOINT,
   SAVE_MODEL_MUTATION,
@@ -86,6 +90,11 @@ async function graphqlRequest({ query, variables }) {
 }
 
 const ModelPage = () => {
+  // Pull the Home Assistant configuration from context.  This provides
+  // the API key needed to dispatch control signals once an optimization
+  // job finishes.  The ConfigContext comes from ../context/ConfigContext.
+  const { config } = useContext(ConfigContext);
+
   // overview data
   const [nodes, setNodes] = useState([]);
   const [processes, setProcesses] = useState([]);
@@ -143,11 +152,79 @@ const ModelPage = () => {
       );
       setOutcomeType(t);
       setOutcome(data);
+
+      // If we have an optimization outcome with control signals,
+      // dispatch them to Home Assistant.  Each signal contains an array
+      // of values; here we schedule each value to be sent one hour apart.
+      if (t === 'OptimizationOutcome' && Array.isArray(data.controlSignals)) {
+        // Only dispatch control signals for valid Home Assistant domains.
+        const validDomains = new Set(['switch', 'light', 'climate', 'number', 'fan', 'cover']);
+
+        /**
+         * Extract a Home Assistant entity_id from a control signal name.
+         * Many optimisation names follow patterns like:
+         *   light.led_strips_4_8w_m_rgb_827_865_1m_9610358_electricitygrid_light.led_strips_4_8w_m_rgb_827_865_1m_9610358_s1
+         * or
+         *   light.led_strips_4_8w_m_rgb_827_865_1m_9610358_light.led_strips_4_8w_m_rgb_827_865_1m_9610358_Olohuone_air
+         *
+         * The real entity_id is the first occurrence of the domain.object (domain includes
+         * everything before the first dot). We stop accumulating once we see the domain
+         * repeated or encounter a marker such as "_electricitygrid". If no valid
+         * domain/object is found, return an empty string.
+         */
+        const extractEntityId = (name) => {
+          if (typeof name !== 'string' || !name.includes('.')) return '';
+          // Simple case: if the name includes '_electricitygrid', cut before it.
+          const marker = '_electricitygrid';
+          const idx = name.indexOf(marker);
+          if (idx > 0) {
+            const entityId = name.substring(0, idx);
+            const domain = entityId.split('.')[0];
+            return validDomains.has(domain) ? entityId : '';
+          }
+          // General case: split by underscore and accumulate until domain repeats.
+          const parts = name.split('_');
+          const firstDot = name.indexOf('.');
+          const domain = name.slice(0, firstDot);
+          let entityParts = [];
+          let seenDomain = 0;
+          for (const part of parts) {
+            // Append part to entity parts
+            entityParts.push(part);
+            // Count occurrences of the domain (either exact match or prefix like "light." )
+            if (part === domain || part.startsWith(domain + '.')) {
+              seenDomain++;
+              if (seenDomain > 1) {
+                // Remove the duplicate domain and break
+                entityParts.pop();
+                break;
+              }
+            }
+          }
+          const candidate = entityParts.join('_');
+          if (!candidate.includes('.')) return '';
+          const candDomain = candidate.split('.')[0];
+          return validDomains.has(candDomain) ? candidate : '';
+        };
+
+        data.controlSignals.forEach((sig) => {
+          const entityId = extractEntityId(sig.name);
+          if (!entityId) return; // Skip signals that don't map to a valid entity
+          const values = Array.isArray(sig.signal) ? sig.signal : [];
+          values.forEach((value, idx) => {
+            setTimeout(() => {
+              if (config && config.apiKey) {
+                sendControlSignalToHomeAssistant(config.apiKey, entityId, value);
+              }
+            }, idx * 60 * 60 * 1000);
+          });
+        });
+      }
     } catch (e) {
       setError(e.message);
       setLastResponseDebug(e.debug ?? null);
     }
-  }, []);
+  }, [config]);
 
   const pollJobStatus = useCallback(async (id) => {
     try {
@@ -277,6 +354,68 @@ const ModelPage = () => {
       setLastResponseDebug(e.debug ?? null);
     } finally {
       setUpdatingLocation(false);
+    }
+  };
+
+  // Manually apply the control signals again
+  // This helper loops over the control signals we received from the optimization
+  // job and schedules them to be sent to Home Assistant using the same timing
+  // logic (one hour between each value).  It is exposed as a button in the UI
+  // so the user can reapply the last optimization outcome on demand.
+  const applyControlSignalsNow = () => {
+    if (outcomeType === 'OptimizationOutcome' && Array.isArray(outcome?.controlSignals)) {
+      // Valid Home Assistant domains
+      const validDomains = new Set(['switch', 'light', 'climate', 'number', 'fan', 'cover']);
+      /**
+       * Extract a Home Assistant entity_id from a control signal name.  See the
+       * explanation in fetchOutcome for how this works.  In summary, if the name
+       * contains `_electricitygrid`, we return the substring before that marker.
+       * Otherwise, we accumulate underscore-separated parts until the domain
+       * repeats, then validate the result.  Returns an empty string if no valid
+       * entity_id can be determined.
+       */
+      const extractEntityId = (name) => {
+        if (typeof name !== 'string' || !name.includes('.')) return '';
+        const marker = '_electricitygrid';
+        const idx = name.indexOf(marker);
+        if (idx > 0) {
+          const entityId = name.substring(0, idx);
+          const domain = entityId.split('.')[0];
+          return validDomains.has(domain) ? entityId : '';
+        }
+        const parts = name.split('_');
+        const firstDot = name.indexOf('.');
+        const domain = name.slice(0, firstDot);
+        let entityParts = [];
+        let seenDomain = 0;
+        for (const part of parts) {
+          entityParts.push(part);
+          if (part === domain || part.startsWith(domain + '.')) {
+            seenDomain++;
+            if (seenDomain > 1) {
+              entityParts.pop();
+              break;
+            }
+          }
+        }
+        const candidate = entityParts.join('_');
+        if (!candidate.includes('.')) return '';
+        const candDomain = candidate.split('.')[0];
+        return validDomains.has(candDomain) ? candidate : '';
+      };
+
+      outcome.controlSignals.forEach((sig) => {
+        const entityId = extractEntityId(sig.name);
+        if (!entityId) return;
+        const values = Array.isArray(sig.signal) ? sig.signal : [];
+        values.forEach((value, idx) => {
+          setTimeout(() => {
+            if (config && config.apiKey) {
+              sendControlSignalToHomeAssistant(config.apiKey, entityId, value);
+            }
+          }, idx * 60 * 60 * 1000);
+        });
+      });
     }
   };
 
@@ -471,6 +610,19 @@ const ModelPage = () => {
         >
           {updatingLocation ? 'Updating Location…' : 'Set Location: Tampere'}
         </button>
+
+        {/* Button to manually reapply control signals.
+            This appears only when there is a finished optimization outcome with control signals. */}
+        {outcomeType === 'OptimizationOutcome' && Array.isArray(outcome?.controlSignals) && outcome.controlSignals.length > 0 && (
+          <button
+            onClick={applyControlSignalsNow}
+            disabled={!outcome || outcomeType !== 'OptimizationOutcome'}
+            style={{ marginLeft: 10 }}
+            title="Apply the most recent control signals to Home Assistant again"
+          >
+            Apply Control Signals
+          </button>
+        )}
       </div>
 
       {/* Debug panel to see the last raw response or error payload */}
