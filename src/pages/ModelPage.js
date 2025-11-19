@@ -124,6 +124,7 @@ const ModelPage = () => {
   const [jobId, setJobId] = useState(null);
   const [jobState, setJobState] = useState(null); // QUEUED | IN_PROGRESS | FAILED | FINISHED
   const [jobMessage, setJobMessage] = useState(null);
+  // ref used for polling job state; we will manage polling within saveAndStartOptimization
   const pollRef = useRef(null);
 
   // outcome
@@ -142,66 +143,8 @@ const ModelPage = () => {
     }
   };
 
-  const fetchOutcome = useCallback(async (id) => {
-    try {
-      const json = await graphqlRequest({
-        query: print(GET_JOB_OUTCOME_QUERY),
-        variables: { jobId: id },
-      });
-      setLastResponseDebug(json);
-      const data = json?.data?.jobOutcome ?? null;
-      if (!data) {
-        setOutcome(null);
-        setOutcomeType(null);
-        return;
-      }
-      const t = data.__typename || (
-        data.controlSignals ? 'OptimizationOutcome' :
-        data.temperature    ? 'WeatherForecastOutcome' :
-        data.price          ? 'ElectricityPriceOutcome' :
-        'Unknown'
-      );
-      setOutcomeType(t);
-      setOutcome(data);
-
-      // If we have an optimisation outcome with control signals, delegate
-      // scheduling to the ControlSignalScheduler.  It will replace any
-      // existing schedules and manage dispatch on an hourly basis.
-      if (t === 'OptimizationOutcome' && Array.isArray(data.controlSignals)) {
-        updateControlSignals(config?.apiKey, data.controlSignals);
-      }
-    } catch (e) {
-      setError(e.message);
-      setLastResponseDebug(e.debug ?? null);
-    }
-  }, [config]);
-
-  const pollJobStatus = useCallback(async (id) => {
-    try {
-      const json = await graphqlRequest({
-        query: print(JOB_STATUS_QUERY),
-        variables: { jobId: id },
-      });
-      setLastResponseDebug(json);
-      const status = json?.data?.jobStatus;
-      const s = status?.state ?? null;
-      setJobState(s);
-      setJobMessage(status?.message ?? null);
-
-      if (s === 'FAILED') {
-        stopPolling();
-      }
-      if (s === 'FINISHED') {
-        stopPolling();
-        // fetch outcome once finished
-        await fetchOutcome(id);
-      }
-    } catch (e) {
-      setError(e.message);
-      setLastResponseDebug(e.debug ?? null);
-      stopPolling();
-    }
-  }, [fetchOutcome]);
+  // Remove fetchOutcome and pollJobStatus logic.  We'll perform
+  // polling and outcome handling directly inside saveAndStartOptimization.
 
   const fetchModel = useCallback(async () => {
     setLoading(true);
@@ -262,6 +205,11 @@ const ModelPage = () => {
     }
   };
 
+  /**
+   * Save the current model, start an optimization job, poll its status,
+   * fetch the outcome when finished, and schedule control signals.
+   * This combines the workflow into a single button handler.
+   */
   const saveAndStartOptimization = async () => {
     setStarting(true);
     setError(null);
@@ -269,35 +217,91 @@ const ModelPage = () => {
     setJobId(null);
     setJobState(null);
     setJobMessage(null);
-    // Clear any existing schedules before resetting the outcome state.  This
-    // ensures that outdated control signals are not sent while a new
-    // optimisation run is starting.
+    // Clear any existing schedules before resetting the outcome state.
     clearAllSchedules();
     setOutcome(null);
     setOutcomeType(null);
-    stopPolling();
-
+    // Cancel any previous polling interval
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
     try {
-      // 1) Save
+      // 1) Save the model
       const saveJson = await graphqlRequest({ query: print(SAVE_MODEL_MUTATION) });
       setLastResponseDebug(saveJson);
-
-      // 2) Start
+      // 2) Start the optimization job
       const startJson = await graphqlRequest({ query: print(START_OPTIMIZATION_MUTATION) });
       setLastResponseDebug(startJson);
       const id = startJson?.data?.startOptimization ?? null;
       setJobId(id);
-
-      if (id != null) {
-        // 3) Poll job status every 2s
-        await pollJobStatus(id);
-        pollRef.current = setInterval(() => pollJobStatus(id), 2000);
-      } else {
-        setError('No jobId returned from startOptimization.');
+      if (!id) {
+        throw new Error('No jobId returned from startOptimization');
+      }
+      // Function to poll job status
+      const pollStatus = async () => {
+        try {
+          const statusJson = await graphqlRequest({
+            query: print(JOB_STATUS_QUERY),
+            variables: { jobId: id },
+          });
+          setLastResponseDebug(statusJson);
+          const status = statusJson?.data?.jobStatus;
+          const state = status?.state ?? null;
+          setJobState(state);
+          setJobMessage(status?.message ?? null);
+          if (state === 'FINISHED') {
+            // Stop polling
+            if (pollRef.current) {
+              clearInterval(pollRef.current);
+              pollRef.current = null;
+            }
+            // Fetch the outcome
+            const outcomeJson = await graphqlRequest({
+              query: print(GET_JOB_OUTCOME_QUERY),
+              variables: { jobId: id },
+            });
+            setLastResponseDebug(outcomeJson);
+            const data = outcomeJson?.data?.jobOutcome ?? null;
+            if (data) {
+              const t = data.__typename || (
+                data.controlSignals ? 'OptimizationOutcome' :
+                data.temperature    ? 'WeatherForecastOutcome' :
+                data.price          ? 'ElectricityPriceOutcome' :
+                'Unknown'
+              );
+              setOutcomeType(t);
+              setOutcome(data);
+              // If we have control signals, schedule them to Home Assistant
+              if (t === 'OptimizationOutcome' && Array.isArray(data.controlSignals)) {
+                updateControlSignals(config?.apiKey, data.controlSignals);
+              }
+            }
+          } else if (state === 'FAILED') {
+            // Stop polling on failure
+            if (pollRef.current) {
+              clearInterval(pollRef.current);
+              pollRef.current = null;
+            }
+          }
+        } catch (err) {
+          if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+          }
+          setError(err.message);
+          if (err.debug) setLastResponseDebug(err.debug);
+        }
+      };
+      // Immediately poll once to handle quick completions
+      await pollStatus();
+      // If the job is not yet finished or failed, set up polling interval
+      if (!pollRef.current) {
+        pollRef.current = setInterval(pollStatus, 2000);
       }
     } catch (e) {
       setError(e.message);
-      setLastResponseDebug(e.debug ?? null);
+      if (e.debug) setLastResponseDebug(e.debug);
     } finally {
       setStarting(false);
     }
@@ -531,25 +535,8 @@ const ModelPage = () => {
         <button onClick={saveAndStartOptimization} disabled={saving || starting} style={{ marginLeft: 10 }}>
           {starting ? 'Saving & Starting…' : 'Save & Start Optimization'}
         </button>
-        {jobId !== null && (
-          <>
-            <button
-              onClick={() => pollJobStatus(jobId)}
-              disabled={starting}
-              style={{ marginLeft: 10 }}
-            >
-              Check Job Status Now
-            </button>
-            <button
-              onClick={() => fetchOutcome(jobId)}
-              disabled={starting}
-              style={{ marginLeft: 10 }}
-              title="Fetch job outcome now"
-            >
-              Fetch Outcome
-            </button>
-          </>
-        )}
+        {/* We no longer provide manual job status and outcome fetch buttons,
+            as the new save-and-start handler manages polling and outcome retrieval. */}
         <button
           onClick={updateLocationToTampere}
           disabled={updatingLocation}

@@ -123,9 +123,9 @@ async function ensureOutsideNode() {
     inMax: 1e10,
     outMax: 1e10,
     stateLossProportional: 0.0,
-    stateMin: 273.15,     // 0°C
-    stateMax: 308.15,     // 35°C
-    initialState: 288.15, // 15°C default outside temperature
+    stateMin: 238.15,     
+    stateMax: 308.15,     
+    initialState: 288.15,
     isScenarioIndependent: false,
     isTemp: true,
     tEConversion: 1e9,

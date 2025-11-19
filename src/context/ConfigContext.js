@@ -3,9 +3,22 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { applyDefaultModelSetup } from '../graphql/configActions';
 
+const HASS_BACKEND_URL = 'http://localhost:4001';
+
 const ConfigContext = createContext();
 
 export const ConfigProvider = ({ children }) => {
+
+  // =====================
+  // Sync API key to backend on first load
+  // =====================
+  useEffect(() => {
+    if (config.apiKey) {
+      void sendApiKeyToBackend(config.apiKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // =====================
   // Configuration State
   // =====================
@@ -78,6 +91,28 @@ export const ConfigProvider = ({ children }) => {
     localStorage.setItem('fetchedDevices', JSON.stringify(devices));
   }, [devices]);
 
+  const sendApiKeyToBackend = async (apiKey) => {
+    if (!apiKey) return;
+
+    try {
+      const resp = await fetch(`${HASS_BACKEND_URL}/set-ha-api-key`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey }),
+      });
+
+      if (!resp.ok) {
+        console.error('Failed to send HA API key to backend:', resp.status);
+      } else {
+        const data = await resp.json().catch(() => ({}));
+        console.log('Backend /set-ha-api-key response:', data);
+      }
+    } catch (err) {
+      console.error('Error calling /set-ha-api-key:', err);
+    }
+  };
+
+
   // =====================
   // Updaters
   // =====================
@@ -87,8 +122,9 @@ export const ConfigProvider = ({ children }) => {
    * If config flips from false -> true, also applies the default model setup
    * and sends the device location (country/place) at the same time.
    */
+
   const updateConfig = (newConfig) => {
-    // Build the next config first so we pass the latest values to the initializer
+
     const nextConfig = {
       country: newConfig.country ?? config.country,
       location: newConfig.location ?? config.location,
@@ -100,13 +136,15 @@ export const ConfigProvider = ({ children }) => {
       newConfig.isConfigured === true && !isConfigured;
 
     if (flippingToConfigured) {
-      // Pass location to the initializer if we have both parts
       const hasLocation =
         nextConfig.country?.trim() && nextConfig.location?.trim();
 
       applyDefaultModelSetup(
         hasLocation
-          ? { country: nextConfig.country.trim(), place: nextConfig.location.trim() }
+          ? {
+              country: nextConfig.country.trim(),
+              place: nextConfig.location.trim(),
+            }
           : undefined
       ).catch((e) => {
         console.error('Failed to apply default model setup:', e);
@@ -117,8 +155,18 @@ export const ConfigProvider = ({ children }) => {
       setIsConfigured(false);
     }
 
+    // Detect if apiKey changed
+    const apiKeyChanged =
+      nextConfig.apiKey && nextConfig.apiKey !== config.apiKey;
+
     setConfig(nextConfig);
+
+    if (apiKeyChanged) {
+      // fire-and-forget call to backend
+      void sendApiKeyToBackend(nextConfig.apiKey);
+    }
   };
+
 
   const updateSensors = (newSensors) => {
     setSensors(newSensors);

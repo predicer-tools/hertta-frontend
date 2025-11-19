@@ -12,6 +12,8 @@ import { createRoomGenConstraints } from '../graphql/genConstraintCreation';
 import { print } from 'graphql/language/printer';
 import { GRAPHQL_ENDPOINT, CLEAR_INPUT_DATA_MUTATION } from '../graphql/queries';
 
+const HASS_BACKEND_URL = 'http://localhost:4001';
+
 // Create the DataContext
 const DataContext = createContext();
 
@@ -138,65 +140,68 @@ export const DataProvider = ({ children }) => {
   // Optimization Functions
   // =====================
 
-  const startOptimization = useCallback(() => {
+  const startOptimization = useCallback(async () => {
+    // Don’t start twice
+    if (optimizeStarted) return;
+
     const now = new Date();
-    console.log('Starting optimization at:', now);
+    console.log('Requesting hourly optimization start at:', now);
 
-    if (!heaters || heaters.length === 0 || !fiPrices || fiPrices.length === 0) {
-      const generatedControlSignals = generateControlSignals(heaters, []);
-      setControlSignals(generatedControlSignals);
-      setOptimizeStarted(true); // Set optimizeStarted to true
-      setLastOptimizedTime(now);
+    // Mark as started in UI immediately
+    setOptimizeStarted(true);
+    setLastOptimizedTime(now.toISOString());
+    localStorage.setItem('optimizeStarted', JSON.stringify(true));
+    localStorage.setItem('lastOptimizedTime', JSON.stringify(now.toISOString()));
 
-      // Persist data
-      localStorage.setItem('controlSignals', JSON.stringify(generatedControlSignals));
-      localStorage.setItem('optimizeStarted', JSON.stringify(true));
-      localStorage.setItem('lastOptimizedTime', JSON.stringify(now));
+    try {
+      const resp = await fetch(`${HASS_BACKEND_URL}/start-hourly-optimization`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
 
-      console.log('Optimization completed with OFF signals at:', now);
-      return;
+      if (!resp.ok) {
+        console.error('Failed to start hourly optimisation in backend:', resp.status);
+        // rollback UI state
+        setOptimizeStarted(false);
+        localStorage.setItem('optimizeStarted', JSON.stringify(false));
+        return;
+      }
+
+      const data = await resp.json().catch(() => ({}));
+      console.log('Backend response /start-hourly-optimization:', data);
+    } catch (err) {
+      console.error('Error calling /start-hourly-optimization:', err);
+      setOptimizeStarted(false);
+      localStorage.setItem('optimizeStarted', JSON.stringify(false));
+    }
+  }, [optimizeStarted]);
+
+
+  const stopOptimization = useCallback(async () => {
+    console.log('Stopping hourly optimization (frontend + backend)...');
+
+    try {
+      const resp = await fetch(`${HASS_BACKEND_URL}/stop-hourly-optimization`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!resp.ok) {
+        console.error('Failed to stop hourly optimisation in backend:', resp.status);
+      } else {
+        const data = await resp.json().catch(() => ({}));
+        console.log('Backend response /stop-hourly-optimization:', data);
+      }
+    } catch (err) {
+      console.error('Error calling /stop-hourly-optimization:', err);
     }
 
-    const generatedControlSignals = generateControlSignals(heaters, fiPrices);
-    setControlSignals(generatedControlSignals);
-    setOptimizeStarted(true); // Set optimizeStarted to true
-    setLastOptimizedTime(now);
-
-    // Persist data
-    localStorage.setItem('controlSignals', JSON.stringify(generatedControlSignals));
-    localStorage.setItem('optimizeStarted', JSON.stringify(true));
-    localStorage.setItem('lastOptimizedTime', JSON.stringify(now));
-
-    console.log('Optimization completed with generated signals at:', now);
-  }, [heaters, fiPrices]);
-
-  const stopOptimization = useCallback(() => {
-    console.log('Stopping optimization...');
+    // Local state cleanup
     setOptimizeStarted(false);
-    setControlSignals({}); // Clear control signals or leave them as is
     setLastOptimizedTime(null);
-
-    // Persist the reset state
-    localStorage.removeItem('controlSignals');
     localStorage.setItem('optimizeStarted', JSON.stringify(false));
     localStorage.removeItem('lastOptimizedTime');
   }, []);
-
-  useEffect(() => {
-    if (!optimizeStarted || !lastOptimizedTime) return;
-
-    const intervalId = setInterval(() => {
-      const now = new Date();
-      const diffInMinutes = (now - new Date(lastOptimizedTime)) / (1000 * 60);
-
-      if (diffInMinutes >= 15) {
-        console.log('Automatically triggering optimization.');
-        startOptimization();
-      }
-    }, 60000); // Check every 60 seconds
-
-    return () => clearInterval(intervalId); // Cleanup on component unmount or optimizeStarted change
-  }, [optimizeStarted, lastOptimizedTime, startOptimization]);
 
   // =====================
   // Persist Rooms Data to LocalStorage on Change (Already Handled in Initialization)
