@@ -2,10 +2,64 @@
 
 import React, { createContext, useState, useEffect } from 'react';
 import { applyDefaultModelSetup } from '../graphql/configActions';
+import { ensureOutsideNode } from '../graphql/nodeCreation';
+import { print } from 'graphql/language/printer';
+import { GRAPHQL_ENDPOINT, SAVE_MODEL_MUTATION } from '../graphql/queries';
 
 const HASS_BACKEND_URL = 'http://localhost:4001';
 
 const ConfigContext = createContext();
+
+const saveModelOnServer = async () => {
+  try {
+    const resp = await fetch(GRAPHQL_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: print(SAVE_MODEL_MUTATION),
+        variables: {},
+      }),
+    });
+
+    const json = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(`Network error saving model (${resp.status})`);
+    }
+
+    if (json.errors?.length) {
+      throw new Error(json.errors.map((e) => e.message).join(', '));
+    }
+
+    const msg = json?.data?.saveModel?.message ?? null;
+    if (msg) {
+      console.warn('saveModel returned message:', msg);
+    } else {
+      console.log('Model saved successfully (saveModel).');
+    }
+  } catch (e) {
+    console.error('Failed to save model on server:', e);
+  }
+};
+
+const startWeatherLoopOnBackend = async () => {
+  try {
+    const resp = await fetch(`${HASS_BACKEND_URL}/start-weather`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const json = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      console.error('Failed to start weather loop on backend:', resp.status, json);
+    } else {
+      console.log('Backend /start-weather response:', json);
+    }
+  } catch (e) {
+    console.error('Error calling /start-weather:', e);
+  }
+};
+
 
 export const ConfigProvider = ({ children }) => {
 
@@ -146,7 +200,17 @@ export const ConfigProvider = ({ children }) => {
               place: nextConfig.location.trim(),
             }
           : undefined
-      ).catch((e) => {
+      )
+      .then(() => {
+        return ensureOutsideNode();
+      })
+      .then(() => {
+        return saveModelOnServer();
+      })
+      .then(() => {
+        return startWeatherLoopOnBackend();
+      })
+      .catch((e) => {
         console.error('Failed to apply default model setup:', e);
       });
 

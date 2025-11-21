@@ -103,9 +103,9 @@ async function connectNodeInflowToFMI(nodeName) {
  * temperatures between 0°C and 35°C with a default initial state of
  * 15°C (288.15 K).  These limits can be tuned as necessary.
  *
- * @private
+ *
  */
-async function ensureOutsideNode() {
+export async function ensureOutsideNode() {
   // Always attempt to create the outside node.  Even if it has already
   // been created by a previous call, the API will return a validation
   // error which we can safely ignore.  This approach ensures the
@@ -116,7 +116,7 @@ async function ensureOutsideNode() {
     isMarket: false,
     isRes: false,
     cost: [],
-    inflow: [], // leave empty; we’ll attach the FMI forecast via mutation
+    inflow: [],
   };
 
   const outsideState = {
@@ -134,19 +134,16 @@ async function ensureOutsideNode() {
 
   try {
     const createResult = await createNode(outsideNode);
-    // Determine whether the outside node was newly created or already existed.
+
     let created = true;
     if (createResult?.errors && createResult.errors.length > 0) {
-      // When errors are returned, we assume the node already exists. Log as info
-      // and skip updating its state.
+
       console.info('Outside node may already exist:', createResult.errors);
       created = false;
     } else {
       console.log('Outside node created successfully');
     }
 
-    // Only set the state on first creation. If the node already exists we
-    // leave its state untouched.
     if (created) {
       const stateResult = await setNodeState(outsideNode.name, outsideState);
       if (stateResult?.errors && stateResult.errors.length > 0) {
@@ -154,7 +151,6 @@ async function ensureOutsideNode() {
       }
     }
 
-    // Attach FMI temperature forecast as inflow source
     try {
       await connectNodeInflowToFMI('outside');
       console.log('Outside node inflow connected to FMI temperature forecast.');
@@ -184,8 +180,6 @@ async function ensureOutsideNode() {
  */
 export async function createRoomNodes(room, config, materials) {
   try {
-    // Create outside node if needed before adding any other nodes
-    await ensureOutsideNode();
 
     // Find selected material's heating capacity
     const selectedMat = materials.find((m) => m.name === config.selectedMaterial);

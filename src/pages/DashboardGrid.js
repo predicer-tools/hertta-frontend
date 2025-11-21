@@ -39,7 +39,7 @@ function DashboardGrid() {
         currentWeather,
 
         optimizeStarted,
-        startOptimization, // Use startOptimization from DataContext
+        startOptimization,
         stopOptimization,
         lastOptimizedTime,
 

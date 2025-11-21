@@ -20,7 +20,7 @@ function DataTable() {
   const { rooms, heaters, deleteRoom, deleteHeater, controlSignals, fiPrices, fiPricesLoading, fiPricesError  } = useContext(DataContext); // Access rooms and heaters from DataContext
   const { getLocation } = useContext(ConfigContext);
   const location = getLocation();
-  const { weatherData } = useWeatherData(location);
+  const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
 
 
   // State for Heater Edit Modal
