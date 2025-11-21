@@ -114,14 +114,14 @@ export const DataProvider = ({ children }) => {
   const { config, materials } = useContext(ConfigContext);
   const location = config.location;
 
-  const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
-
-  const weatherDataCompat = weatherData
-    ? { ...weatherData, weather_values: weatherData.rows ?? [] }
-    : null;
+  const {
+    weatherData,
+    loading: weatherLoading,
+    error: weatherError,
+  } = useWeatherData(location);
 
   const currentWeather =
-    (weatherDataCompat?.weather_values?.length ? weatherDataCompat.weather_values[0] : null);
+    weatherData?.weather_values?.length ? weatherData.weather_values[0] : null;
 
   console.log('Current Weather:', currentWeather);
 
@@ -474,7 +474,7 @@ export const DataProvider = ({ children }) => {
     lastOptimizedTime,
 
     // Weather Data (from useWeatherData hook)
-    weatherData: weatherDataCompat,
+    weatherData,
     weatherLoading,
     weatherError,
     currentWeather,

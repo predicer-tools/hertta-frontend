@@ -168,10 +168,10 @@ function DashboardGrid() {
                                   <Typography variant="body1" color="error">
                                     Failed to load weather data.
                                   </Typography>
-                                ) : weatherData ? (
-                                  <Typography variant="body1">
-                                    Temperature: {currentWeather.value}°C
-                                  </Typography>
+                                ) : weatherData && currentWeather ? (
+                                <Typography variant="body1">
+                                    Temperature: {currentWeather.value.toFixed(1)}°C
+                                </Typography>
                                 ) : (
                                   <Typography variant="body1">
                                     No weather data available.
