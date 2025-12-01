@@ -272,20 +272,41 @@ function DashboardGrid() {
                                     </Typography>
                                     <Grid2 container spacing={1} sx={{ marginTop: 2 }}>
                                         {heaters
-                                            .filter((heater) => heater.roomId === room.roomId)
-                                            .map((heater) => (
-                                            <Grid2 xs={12} key={heater.id} sx={{ display: 'flex', alignItems: 'center' }}>
-                                                <ClickableHeater heater={heater} onClick={() => handleOpenHeaterModal(heater)} />
+                                        .filter((heater) => heater.roomId === room.roomId)
+                                        .map((heater) => {
+                                            const isOptimized = optimizeStarted && heater.isEnabled;
+
+                                            return (
+                                            <Grid2
+                                                xs={12}
+                                                key={heater.id}
+                                                sx={{ display: 'flex', alignItems: 'center' }}
+                                            >
+                                        
+                                                <ClickableHeater
+                                                heater={heater}
+                                                isOptimized={isOptimized}
+                                                onClick={() => handleOpenHeaterModal(heater)}
+                                                />
+
+                                                
                                                 <Switch
                                                 checked={heater.isEnabled}
                                                 onChange={() => toggleHeaterEnabled(heater.id)}
-                                                inputProps={{ 'aria-label': 'Enable Optimization' }}
+                                                inputProps={{ 'aria-label': 'Include heater in optimization' }}
                                                 />
+
+                                                
                                                 <Typography variant="body2" sx={{ marginLeft: 1 }}>
-                                                {heater.isEnabled ? 'Optimized' : 'Not Optimized'}
+                                                {!heater.isEnabled
+                                                    ? 'Optimization disabled'
+                                                    : optimizeStarted
+                                                    ? 'Optimizing now'
+                                                    : 'Enabled (optimization off)'}
                                                 </Typography>
                                             </Grid2>
-                                        ))}
+                                            );
+                                        })}
                                     </Grid2>
                                 </Paper>
                             </Grid2>
