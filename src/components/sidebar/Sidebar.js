@@ -1,4 +1,4 @@
-// src/components/Sidebar/Sidebar.js
+// src/components/sidebar/Sidebar.js
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
