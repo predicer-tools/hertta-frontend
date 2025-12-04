@@ -1,0 +1,29 @@
+.clickablePaper {
+    padding: 16px;
+    border-radius: 8px;
+    background-color: #ffffff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    min-height: 200px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    outline: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+  
+  .clickablePaper:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  }
+  
+  .clickablePaper:focus {
+    box-shadow: 0 0 0 3px rgba(21, 156, 228, 0.4); /* Focus ring */
+  }
+  
+  .disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  

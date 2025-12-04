@@ -1,0 +1,45 @@
+/* src/pages/InputData.module.css */
+
+/* Container for the entire Input Data page */
+.inputDataContainer {
+    padding: 1.25rem; /* 20px */
+    background-color: #fff; /* Match the body background */
+    border-radius: 0.5rem; /* 8px for rounded corners */
+    box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  }
+  
+  /* Container for the action buttons */
+  .buttonsContainer {
+    display: flex;
+    flex-direction: column; /* Stack buttons vertically */
+    gap: 1rem; /* 16px space between buttons */
+    margin-bottom: 1.25rem; /* 20px below the buttons */
+    align-items: flex-start; /* Align buttons to the start */
+  }
+  
+  /* Styling for the Add buttons */
+  .addButton {
+    /* Inherit styles from App.css via global classes */
+    /* Additional local styles can be added here if necessary */
+    width: 100%; /* Make buttons full width */
+    max-width: 300px; /* Optional: set a maximum width */
+  }
+  
+  /* Styling for the Data Table Container */
+  .dataTableContainer {
+    margin-top: 2.5rem; /* 40px above the table */
+  }
+  
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    .buttonsContainer {
+      align-items: center; /* Center buttons on smaller screens */
+      width: 100%;
+    }
+  
+    .addButton {
+      width: 100%; /* Ensure full width on small screens */
+      max-width: 100%; /* Remove max-width constraint */
+    }
+  }
+  

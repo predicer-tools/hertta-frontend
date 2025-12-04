@@ -1,69 +1,83 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Node.js dependencies
+node_modules/
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# Build outputs
+build/
+dist/
 
-# testing
-/coverage
-
-# production
-/build
-/dist
-
-# misc
-.DS_Store
-Thumbs.db
-
-# environment variables
+# Environment variables
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
-# logs
+# Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-*.log
 
-# IDE specific files
-.idea/
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Coverage directory used by testing tools
+coverage/
+
+# MacOS system files
+.DS_Store
+
+# Python bytecode files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env/
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python-specific packaging files
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Rust build directory
+/target/
+
+# Rust/Cargo specific files
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# Visual Studio Code settings
 .vscode/
-*.sublime-project
-*.sublime-workspace
+.history/
+
+# JetBrains IDEs
+.idea/
+*.iml
 
 # Temporary files
 *.tmp
+*.temp
 *.swp
-
-# cache files
-.cache/
-.temp/
-
-# Other files created by some package managers or bundlers
-package-lock.json
-yarn.lock
-
-# Coverage and test result files
-/jest-coverage/
-test-results.xml
-
-# Optional lock files (if you are not using Yarn or NPM lockfiles)
-/npm-shrinkwrap.json
-/pnpm-lock.yaml
-
-# TypeScript specific (if using TypeScript)
-/tsconfig.tsbuildinfo
-
-# Mac specific files
-.AppleDouble
-.LSOverride
-
-# Windows specific files
-Desktop.ini
-
-# Build artifacts (optional)
-/out/
+*.swo
+*.bak
+*.old
+*.orig
+*.save
+*.sublime-workspace
+*.sublime-project

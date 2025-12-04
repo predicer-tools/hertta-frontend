@@ -1,0 +1,9 @@
+schema: ./src/schema.graphql
+documents: "./src/**/*.graphql"
+generates:
+  # The output path can be arbitrary, but codegen requires at least one generate target.
+  # Since we won't actually generate files, the chosen plugins won't matter much.
+  # You can pick a plugin that does minimal work, like schema-ast, to avoid TS code generation.
+  ./src/generated/schema.graphql:
+    plugins:
+      - "schema-ast"
