@@ -7,8 +7,7 @@ import ConfigContext from '../context/ConfigContext';
 import Modal from '../components/Modal/Modal';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
-// Base URL for the Home Assistant API.  Replace with your actual HA IP/host.
-const HA_BASE_URL = process.env.REACT_APP_HA_BASE_URL;
+const HASS_BACKEND_URL = 'http://localhost:4001';
 
 function ConfigPage() {
   const [country, setCountry] = useState('');
@@ -24,13 +23,8 @@ function ConfigPage() {
 
   // Helper to fetch all entity states and separate sensors/devices.
   const fetchHomeAssistantData = async () => {
-    const headers = {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    };
-
     try {
-      const response = await fetch(`${HA_BASE_URL}states`, { headers });
+      const response = await fetch(`${HASS_BACKEND_URL}/ha-states`);
       if (!response.ok) {
         throw new Error('Failed to fetch entity states from Home Assistant.');
       }
@@ -65,9 +59,7 @@ function ConfigPage() {
 
     try {
       // Ping the API root to ensure the API is reachable and the token works.
-      const pingResponse = await fetch(HA_BASE_URL, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
+      const pingResponse = await fetch(`${HASS_BACKEND_URL}/ha-api`);
 
       const pingResult = await pingResponse.json();
       if (pingResponse.ok && pingResult.message === 'API running.') {

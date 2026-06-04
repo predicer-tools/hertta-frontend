@@ -12,7 +12,7 @@ import { DataProvider } from './context/DataContext'; // Import DataProvider
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 
 const client = new ApolloClient({
-  uri: 'http://127.0.0.1:3030/graphql', // Your GraphQL endpoint
+  uri: '/graphql',
   cache: new InMemoryCache(),
 });
 

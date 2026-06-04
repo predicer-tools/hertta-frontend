@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 
-const GRAPHQL_ENDPOINT = 'http://localhost:3030/graphql';
+const GRAPHQL_ENDPOINT = '/graphql';
 
 // Query to fetch all model components
 const GET_MODEL_QUERY = `

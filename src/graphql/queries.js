@@ -3,7 +3,7 @@
 
 import { gql } from '@apollo/client';
 
-export const GRAPHQL_ENDPOINT = 'http://localhost:3030/graphql';
+export const GRAPHQL_ENDPOINT = '/graphql';
 
 export const GET_SETTINGS_QUERY = gql`
   query {
