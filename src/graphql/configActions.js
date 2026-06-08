@@ -202,6 +202,36 @@ export async function createNPEnergyMarket() {
   return true;
 }
 
+export async function connectNPEnergyMarketToElering() {
+  const data = await graphqlRequest(
+    `mutation ConnectMarketPricesToForecast(
+      $marketName: String!,
+      $forecastName: String!,
+      $forecastType: String!
+    ) {
+      connectMarketPricesToForecast(
+        marketName: $marketName,
+        forecastName: $forecastName,
+        forecastType: $forecastType
+      ) {
+        message
+      }
+    }`,
+    {
+      marketName: 'npe',
+      forecastName: 'ELERING',
+      forecastType: 'electricity',
+    }
+  );
+
+  const msg = data?.connectMarketPricesToForecast?.message ?? null;
+  if (msg) {
+    throw new Error(`connectMarketPricesToForecast(npe, ELERING) failed: ${msg}`);
+  }
+
+  return true;
+}
+
 /**
  * Set (or update) device location.
  * @param {{ country: string, place: string }} location
@@ -291,6 +321,7 @@ export async function applyDefaultModelSetup(userLocation /* { country, place } 
   }
 
   await createNPEnergyMarket();
+  await connectNPEnergyMarketToElering();
 
   // Timeline setup (12h horizon, 1h step, start at CURRENT_HOUR)
   await setTimeline12hHourlyFromCurrentHour();

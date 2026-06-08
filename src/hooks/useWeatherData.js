@@ -1,7 +1,8 @@
 // src/hooks/useWeatherData.js
 import { useState, useEffect } from 'react';
 
-const HASS_BACKEND_URL = 'http://localhost:4001';
+const HASS_BACKEND_URL = '';
+const WEATHER_POLL_INTERVAL_MS = 30_000;
 
 export default function useWeatherData(_locationFromConfig) {
   const [weatherData, setWeatherData] = useState(null);
@@ -10,6 +11,17 @@ export default function useWeatherData(_locationFromConfig) {
 
   useEffect(() => {
     let cancelled = false;
+
+    const startWeatherLoop = async () => {
+      const resp = await fetch(`${HASS_BACKEND_URL}/start-weather`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Failed to start weather task (${resp.status})`);
+      }
+    };
 
     const fetchWeather = async () => {
       setLoading(true);
@@ -24,7 +36,7 @@ export default function useWeatherData(_locationFromConfig) {
         const json = await resp.json();
 
         if (!resp.ok || json.status !== 'ok') {
-          throw new Error("No weather data available");
+          throw new Error('Weather task is running, but no weather data is available yet');
         }
 
         const outcome = json.data;
@@ -54,10 +66,23 @@ export default function useWeatherData(_locationFromConfig) {
       }
     };
 
-    fetchWeather();
+    const startAndFetchWeather = async () => {
+      try {
+        await startWeatherLoop();
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      }
+      await fetchWeather();
+    };
+
+    void startAndFetchWeather();
+    const pollTimer = window.setInterval(() => {
+      void fetchWeather();
+    }, WEATHER_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
+      window.clearInterval(pollTimer);
     };
   }, []);
 

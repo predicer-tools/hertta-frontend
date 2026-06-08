@@ -6,7 +6,7 @@ import { ensureOutsideNode } from '../graphql/nodeCreation';
 import { print } from 'graphql/language/printer';
 import { GRAPHQL_ENDPOINT, SAVE_MODEL_MUTATION } from '../graphql/queries';
 
-const HASS_BACKEND_URL = 'http://localhost:4001';
+const HASS_BACKEND_URL = '';
 
 const ConfigContext = createContext();
 
@@ -87,6 +87,14 @@ export const ConfigProvider = ({ children }) => {
     apiKey: localStorage.getItem('apiKey') || '',
     selectedMaterial: localStorage.getItem('selectedMaterial') || '',
   });
+
+  // Backend tasks are lost whenever the container restarts, while the
+  // configured state remains in browser local storage.
+  useEffect(() => {
+    if (isConfigured) {
+      void startWeatherLoopOnBackend();
+    }
+  }, [isConfigured]);
 
   // =====================
   // Materials State
