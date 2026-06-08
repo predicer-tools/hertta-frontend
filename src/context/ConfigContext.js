@@ -1,7 +1,7 @@
 // src/context/ConfigContext.js
 
 import React, { createContext, useState, useEffect } from 'react';
-import { applyDefaultModelSetup } from '../graphql/configActions';
+import { applyDefaultModelSetup, setLocation } from '../graphql/configActions';
 import { ensureOutsideNode } from '../graphql/nodeCreation';
 import { print } from 'graphql/language/printer';
 import { GRAPHQL_ENDPOINT, SAVE_MODEL_MUTATION } from '../graphql/queries';
@@ -88,13 +88,18 @@ export const ConfigProvider = ({ children }) => {
     selectedMaterial: localStorage.getItem('selectedMaterial') || '',
   });
 
-  // Backend tasks are lost whenever the container restarts, while the
-  // configured state remains in browser local storage.
   useEffect(() => {
-    if (isConfigured) {
-      void startWeatherLoopOnBackend();
+    if (isConfigured && config.country.trim() && config.location.trim()) {
+      void setLocation({
+        country: config.country.trim(),
+        place: config.location.trim(),
+      })
+        .then(startWeatherLoopOnBackend)
+        .catch((error) => {
+          console.error('Failed to restore location and start weather loop:', error);
+        });
     }
-  }, [isConfigured]);
+  }, [isConfigured, config.country, config.location]);
 
   // =====================
   // Materials State
