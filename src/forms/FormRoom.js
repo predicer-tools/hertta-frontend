@@ -15,8 +15,9 @@ function FormRoom({ homeAssistantSensors }) {
   const [maxTemp, setMaxTemp] = useState('');
   const [minTemp, setMinTemp] = useState('');
   const [selectedSensor, setSelectedSensor] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Trimmed inputs for accurate validation
@@ -90,11 +91,18 @@ function FormRoom({ homeAssistantSensors }) {
     };
 
     // Add room with sensor state information
-    const isAdded = addRoom(roomData);
-
-    if (!isAdded) {
-      alert('Failed to add room. Please check the console for details.');
+    try {
+      setSaving(true);
+      const isAdded = await addRoom(roomData);
+      if (!isAdded) {
+        alert('Failed to add room. Please check the entered values.');
+        return;
+      }
+    } catch (error) {
+      alert(`Failed to add room to Hertta model: ${error.message}`);
       return;
+    } finally {
+      setSaving(false);
     }
 
     // Reset form
@@ -203,7 +211,7 @@ function FormRoom({ homeAssistantSensors }) {
           </select>
         </div>
 
-        <button type="submit">Add Room</button>
+        <button type="submit" disabled={saving}>{saving ? 'Adding...' : 'Add Room'}</button>
       </form>
     </div>
   );

@@ -17,7 +17,7 @@ function DataTable() {
   const [sensors, setSensors] = useState([]);
   const [devices, setDevices] = useState([]);
 
-  const { rooms, heaters, deleteRoom, deleteHeater, controlSignals, fiPrices, fiPricesLoading, fiPricesError  } = useContext(DataContext); // Access rooms and heaters from DataContext
+  const { rooms, heaters, deleteRoom, deleteHeater, controlSignals, controlSignalTimes, fiPrices, fiPricesLoading, fiPricesError  } = useContext(DataContext); // Access rooms and heaters from DataContext
   const { getLocation } = useContext(ConfigContext);
   const location = getLocation();
   const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
@@ -42,6 +42,18 @@ function DataTable() {
 
   // Function to format temperature
   const formatTemperature = (temp) => (temp === null || temp === undefined ? 'N/A' : `${temp.toFixed(2)} °C`);
+
+  const formatControlSignalTime = (timestamp) => {
+    if (!timestamp) return 'Unknown';
+    return new Date(timestamp).toLocaleString();
+  };
+
+  const controlSignalRowCount = Math.max(
+    controlSignalTimes.length,
+    ...heaters.map((heater) =>
+      Array.isArray(controlSignals[heater.id]) ? controlSignals[heater.id].length : 0
+    )
+  );
 
   // Modal handling functions for Heaters
   const openHeaterEditModal = (heater) => {
@@ -160,32 +172,27 @@ function DataTable() {
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>Heater ID</th>
-            <th>Control Signals (Next 12 Hours)</th>
+            <th>Timestamp</th>
+            {heaters.map((heater) => (
+              <th key={heater.id}>{heater.name || heater.id}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {heaters.length > 0 ? (
-            heaters.map((heater) => (
-              <tr key={heater.id}>
-                <td>{heater.id}</td>
-                <td>
-                  {controlSignals[heater.id] ? (
-                    controlSignals[heater.id].map((signal, index) => (
-                      <span key={index}>
-                        {index > 0 && ', '}
-                        {signal}
-                      </span>
-                    ))
-                  ) : (
-                    <span>No Signals</span>
-                  )}
-                </td>
+          {heaters.length > 0 && controlSignalRowCount > 0 ? (
+            Array.from({ length: controlSignalRowCount }, (_, index) => (
+              <tr key={controlSignalTimes[index] || index}>
+                <td>{formatControlSignalTime(controlSignalTimes[index])}</td>
+                {heaters.map((heater) => {
+                  const signals = controlSignals[heater.id];
+                  const signal = Array.isArray(signals) ? signals[index] : undefined;
+                  return <td key={heater.id}>{signal ?? '-'}</td>;
+                })}
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan="2">No control signals available</td>
+              <td colSpan={Math.max(heaters.length + 1, 1)}>No control signals available</td>
             </tr>
           )}
         </tbody>

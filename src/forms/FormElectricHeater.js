@@ -11,8 +11,9 @@ function FormElectricHeater({ fetchedDevices = [], onClose }) {
   const [capacity, setCapacity] = useState('');
   const [roomId, setRoomId] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const trimmedHeaterId = heaterId.trim();
@@ -55,12 +56,20 @@ function FormElectricHeater({ fetchedDevices = [], onClose }) {
       selectedDevice?.attributes?.friendly_name || trimmedHeaterId;
 
     // Add to context (DataContext will handle process/topologies)
-    addElectricHeater({
-      id: trimmedHeaterId,
-      name: heaterName,
-      capacity: parsedCapacity,
-      roomId: trimmedRoomId,
-    });
+    try {
+      setSaving(true);
+      await addElectricHeater({
+        id: trimmedHeaterId,
+        name: heaterName,
+        capacity: parsedCapacity,
+        roomId: trimmedRoomId,
+      });
+    } catch (addError) {
+      setError(`Could not add heater to Hertta model: ${addError.message}`);
+      return;
+    } finally {
+      setSaving(false);
+    }
 
     // Clear form
     setHeaterId('');
@@ -127,7 +136,9 @@ function FormElectricHeater({ fetchedDevices = [], onClose }) {
           </select>
         </div>
 
-        <button type="submit">Add Heating Device</button>
+        <button type="submit" disabled={saving}>
+          {saving ? 'Adding...' : 'Add Heating Device'}
+        </button>
       </form>
     </div>
   );

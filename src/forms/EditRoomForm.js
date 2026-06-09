@@ -22,9 +22,12 @@ function EditRoomForm({ room, onClose }) {
   const [maxTemp, setMaxTemp] = useState(room.maxTemp);
   const [minTemp, setMinTemp] = useState(room.minTemp);
   const [selectedSensor, setSelectedSensor] = useState(room.sensorId);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
 
     // Trimmed inputs for accurate validation
     const trimmedRoomId = roomId.trim();
@@ -64,11 +67,15 @@ function EditRoomForm({ room, onClose }) {
       sensorId: selectedSensor,
     };
 
-    // Update room with new details
-    updateRoom(updatedRoomData);
-
-    // Close the modal
-    onClose();
+    try {
+      setSaving(true);
+      const updated = await updateRoom(updatedRoomData);
+      if (updated) onClose();
+    } catch (updateError) {
+      setError(`Could not update Hertta model: ${updateError.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
 
@@ -76,7 +83,7 @@ function EditRoomForm({ room, onClose }) {
     <div className={styles.editRoomForm}>
       <h2>Edit Room</h2>
       <form onSubmit={handleSubmit}>
-        {/* No error state, so remove error message display */}
+        {error && <p className={styles.errorMessage}>{error}</p>}
 
         {/* Room ID */}
         <div className={styles.inputGroup}>
@@ -170,10 +177,10 @@ function EditRoomForm({ room, onClose }) {
         </div>
 
         <div className={styles.buttonGroup}>
-          <button type="submit" className={styles.saveButton}>
-            Save Changes
+          <button type="submit" className={styles.saveButton} disabled={saving}>
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
-          <button type="button" onClick={onClose} className={styles.cancelButton}>
+          <button type="button" onClick={onClose} className={styles.cancelButton} disabled={saving}>
             Cancel
           </button>
         </div>

@@ -1,6 +1,10 @@
 // src/graphql/nodeDiffusionCreation.js
 
-import { GRAPHQL_ENDPOINT, CREATE_NODE_DIFFUSION_MUTATION } from './queries';
+import {
+  GRAPHQL_ENDPOINT,
+  CREATE_NODE_DIFFUSION_MUTATION,
+  DELETE_NODE_DIFFUSION_MUTATION,
+} from './queries';
 import { print } from 'graphql/language/printer';
 
 // Constants for diffusion calculations
@@ -40,22 +44,40 @@ async function createNodeDiffusion(fromNode, toNode, coefficient) {
     });
     const result = await response.json();
 
-    if (result.errors) {
-      console.error(`Error creating diffusion from ${fromNode} to ${toNode}:`, result.errors);
-      return;
-    }
+    if (!response.ok) throw new Error(`Network error (${response.status})`);
+    if (result.errors?.length) throw new Error(result.errors.map((error) => error.message).join(', '));
 
     if (result.data.createNodeDiffusion.errors.length > 0) {
       const errorMessages = result.data.createNodeDiffusion.errors
         .map((err) => `${err.field}: ${err.message}`)
         .join(', ');
-      console.error(`Validation Errors for diffusion from ${fromNode} to ${toNode}: ${errorMessages}`);
-      return;
+      if (!/exist|unique|already/i.test(errorMessages)) {
+        throw new Error(errorMessages);
+      }
     }
 
     console.log(`Node diffusion created: ${fromNode} -> ${toNode}, coefficient: ${coefficient}`);
   } catch (error) {
-    console.error(`Error creating diffusion from ${fromNode} to ${toNode}:`, error);
+    throw new Error(`Could not create diffusion ${fromNode} -> ${toNode}: ${error.message}`);
+  }
+}
+
+async function deleteNodeDiffusion(fromNode, toNode) {
+  const response = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: print(DELETE_NODE_DIFFUSION_MUTATION),
+      variables: { fromNode, toNode },
+    }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(`Network error (${response.status})`);
+  if (result.errors?.length) throw new Error(result.errors.map((error) => error.message).join(', '));
+
+  const message = result.data?.deleteNodeDiffusion?.message;
+  if (message && message !== 'no such node diffusion') {
+    throw new Error(message);
   }
 }
 
@@ -76,8 +98,7 @@ export async function createRoomNodeDiffusions(room, outsideNodeName = 'outside'
   const length = parseFloat(roomLength);
 
   if (isNaN(width) || isNaN(length)) {
-    console.error(`Invalid room dimensions for roomId: ${roomId}`);
-    return;
+    throw new Error(`Invalid room dimensions for room "${roomId}"`);
   }
 
   const surf_area_walls_total = 2 * hight_wall * (width + length);
@@ -116,6 +137,17 @@ export async function createRoomNodeDiffusions(room, outsideNodeName = 'outside'
     // 3. building_envelope -> soil
     await createNodeDiffusion(buildingEnvelopeNode, roomSoilNode, diff_soil_env);
   } catch (error) {
-    console.error(`Error creating diffusions for roomId: ${roomId}`, error);
+    throw new Error(`Could not create diffusions for room "${roomId}": ${error.message}`);
   }
+}
+
+export async function updateRoomNodeDiffusions(room, outsideNodeName = 'outside') {
+  const buildingEnvelopeNode = `${room.roomId}_envelope`;
+  const roomAirNode = `${room.roomId}_air`;
+  const roomSoilNode = `${room.roomId}_soil`;
+
+  await deleteNodeDiffusion(outsideNodeName, buildingEnvelopeNode);
+  await deleteNodeDiffusion(buildingEnvelopeNode, roomAirNode);
+  await deleteNodeDiffusion(buildingEnvelopeNode, roomSoilNode);
+  await createRoomNodeDiffusions(room, outsideNodeName);
 }

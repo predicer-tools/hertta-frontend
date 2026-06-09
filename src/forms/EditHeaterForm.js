@@ -21,11 +21,13 @@ function EditHeaterForm({ heater, onClose }) {
   const [capacity, setCapacity] = useState(heater.capacity);
   const [roomId, setRoomId] = useState(heater.roomId);
   const [isEnabled, setIsEnabled] = useState(heater.isEnabled);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   // Access control signals for this heater
   const heaterControlSignals = controlSignals[heater.id] || [];
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validation: Ensure required fields are filled
@@ -41,17 +43,24 @@ function EditHeaterForm({ heater, onClose }) {
     }
 
     // Update heater with new details
-    const isUpdated = updateHeater({
-      id: heater.id,
-      name: name.trim(),
-      capacity: parseFloat(capacity),
-      roomId,
-      isEnabled,
-    });
-
-    if (!isUpdated) {
-      alert('Failed to update heater. Please check the console for details.');
+    try {
+      setSaving(true);
+      const isUpdated = await updateHeater({
+        id: heater.id,
+        name: name.trim(),
+        capacity: parseFloat(capacity),
+        roomId,
+        isEnabled,
+      });
+      if (!isUpdated) {
+        setError('Failed to update heater.');
+        return;
+      }
+    } catch (updateError) {
+      setError(`Could not save Hertta model: ${updateError.message}`);
       return;
+    } finally {
+      setSaving(false);
     }
 
     // Close the modal
@@ -62,6 +71,7 @@ function EditHeaterForm({ heater, onClose }) {
     <div className={styles.editHeaterForm}>
       <h2>Edit Heating Device</h2>
       <form onSubmit={handleSubmit}>
+        {error && <p>{error}</p>}
         {/* Heater ID (Read-Only) */}
         <div className={styles.inputGroup}>
           <label>Heater ID:</label>
@@ -145,8 +155,8 @@ function EditHeaterForm({ heater, onClose }) {
 
         {/* Buttons */}
         <div className={styles.buttonGroup}>
-          <button type="submit">Save Changes</button>
-          <button type="button" onClick={onClose} className={styles.cancelButton}>
+          <button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
+          <button type="button" onClick={onClose} className={styles.cancelButton} disabled={saving}>
             Cancel
           </button>
         </div>

@@ -4,6 +4,8 @@ import {
   GRAPHQL_ENDPOINT,
   CREATE_GEN_CONSTRAINT_MUTATION,
   CREATE_STATE_CON_FACTOR_MUTATION,
+  UPDATE_GEN_CONSTRAINT_MUTATION,
+  UPDATE_STATE_CON_FACTOR_MUTATION,
   MODEL_QUERY, 
 } from '../graphql/queries';
 
@@ -38,7 +40,10 @@ async function addStateFactor(constraintName, nodeName, kelvin, scenarios) {
     factor,
   });
   const errs = data?.createStateConFactor?.errors ?? [];
-  if (errs.length) throw new Error(errs.map(e => `${e.field}: ${e.message}`).join('; '));
+  if (errs.length) {
+    const msg = errs.map(e => `${e.field}: ${e.message}`).join('; ');
+    if (!/exist|unique|already/i.test(msg)) throw new Error(msg);
+  }
 }
 
 async function getScenarioNames() {
@@ -82,4 +87,32 @@ export async function createRoomGenConstraints(room) {
 
   await addStateFactor(upName, airNodeName, CtoK(maxTemp), scenarios);
   await addStateFactor(downName, airNodeName, CtoK(minTemp), scenarios);
+}
+
+export async function updateRoomGenConstraints(room) {
+  const { roomId, maxTemp, minTemp } = room;
+  const upName = `c_${roomId}_air_up`;
+  const downName = `c_${roomId}_air_down`;
+  const airNodeName = `${roomId}_air`;
+  const scenarios = await getScenarioNames();
+
+  for (const [name, gcType] of [[upName, 'LESS_THAN'], [downName, 'GREATER_THAN']]) {
+    const data = await gql(UPDATE_GEN_CONSTRAINT_MUTATION, {
+      name,
+      constraint: { gcType, isSetpoint: true, penalty: 15 },
+    });
+    const errors = data?.updateGenConstraint?.errors ?? [];
+    if (errors.length) throw new Error(errors.map((error) => `${error.field}: ${error.message}`).join('; '));
+  }
+
+  for (const [constraintName, temperature] of [[upName, maxTemp], [downName, minTemp]]) {
+    const factor = scenarios.map((scenario) => ({ scenario, constant: CtoK(temperature) }));
+    const data = await gql(UPDATE_STATE_CON_FACTOR_MUTATION, {
+      constraintName,
+      nodeName: airNodeName,
+      factor,
+    });
+    const errors = data?.updateStateConFactor?.errors ?? [];
+    if (errors.length) throw new Error(errors.map((error) => `${error.field}: ${error.message}`).join('; '));
+  }
 }

@@ -3,44 +3,11 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { applyDefaultModelSetup, setLocation } from '../graphql/configActions';
 import { ensureOutsideNode } from '../graphql/nodeCreation';
-import { print } from 'graphql/language/printer';
-import { GRAPHQL_ENDPOINT, SAVE_MODEL_MUTATION } from '../graphql/queries';
+import { saveModelOnServer } from '../graphql/modelPersistence';
 
 const HASS_BACKEND_URL = '';
 
 const ConfigContext = createContext();
-
-const saveModelOnServer = async () => {
-  try {
-    const resp = await fetch(GRAPHQL_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: print(SAVE_MODEL_MUTATION),
-        variables: {},
-      }),
-    });
-
-    const json = await resp.json();
-
-    if (!resp.ok) {
-      throw new Error(`Network error saving model (${resp.status})`);
-    }
-
-    if (json.errors?.length) {
-      throw new Error(json.errors.map((e) => e.message).join(', '));
-    }
-
-    const msg = json?.data?.saveModel?.message ?? null;
-    if (msg) {
-      console.warn('saveModel returned message:', msg);
-    } else {
-      console.log('Model saved successfully (saveModel).');
-    }
-  } catch (e) {
-    console.error('Failed to save model on server:', e);
-  }
-};
 
 const startWeatherLoopOnBackend = async () => {
   try {

@@ -8,9 +8,23 @@ import {
   GRAPHQL_ENDPOINT,
   CREATE_PROCESS_MUTATION,
   CREATE_TOPOLOGY_MUTATION,
+  UPDATE_TOPOLOGY_MUTATION,
+  DELETE_TOPOLOGY_MUTATION,
   GET_NODE_QUERY,
     ADD_PROCESS_TO_GROUP_MUTATION,
 } from './queries';
+
+async function graphqlMutation(query, variables, resultField) {
+  const response = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: print(query), variables }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(`Network error (${response.status})`);
+  if (result.errors?.length) throw new Error(result.errors.map((error) => error.message).join(', '));
+  return result.data?.[resultField];
+}
 
 /**
  * Create a heater process and attach two topologies:
@@ -163,4 +177,61 @@ export async function createHeaterProcess(heater, roomName) {
   }
 
   return { processResult, topologyErrors };
+}
+
+export async function updateHeaterProcess(existingHeater, updatedHeater) {
+  const processName = existingHeater.id;
+  const oldRoomNode = `${existingHeater.roomId.trim().replace(/\s+/g, '_')}_air`;
+  const newRoomNode = `${updatedHeater.roomId.trim().replace(/\s+/g, '_')}_air`;
+  const capacity = updatedHeater.isEnabled === false ? 0 : updatedHeater.capacity;
+
+  const updateTopology = async (sourceNodeName, sinkNodeName) => {
+    const result = await graphqlMutation(
+      UPDATE_TOPOLOGY_MUTATION,
+      {
+        topology: { capacity },
+        processName,
+        sourceNodeName,
+        sinkNodeName,
+      },
+      'updateTopology'
+    );
+    const errors = result?.errors ?? [];
+    if (errors.length) {
+      throw new Error(errors.map((error) => `${error.field}: ${error.message}`).join('; '));
+    }
+  };
+
+  await updateTopology('electricitygrid', null);
+
+  if (oldRoomNode === newRoomNode) {
+    await updateTopology(null, newRoomNode);
+    return;
+  }
+
+  const deleteResult = await graphqlMutation(
+    DELETE_TOPOLOGY_MUTATION,
+    { processName, sourceNodeName: null, sinkNodeName: oldRoomNode },
+    'deleteTopology'
+  );
+  if (deleteResult?.message) throw new Error(deleteResult.message);
+
+  const topology = {
+    capacity,
+    vomCost: 0,
+    rampUp: 1,
+    rampDown: 1,
+    initialLoad: 0.7,
+    initialFlow: 0.7,
+    capTs: [],
+  };
+  const createResult = await graphqlMutation(
+    CREATE_TOPOLOGY_MUTATION,
+    { topology, processName, sourceNodeName: null, sinkNodeName: newRoomNode },
+    'createTopology'
+  );
+  const errors = createResult?.errors ?? [];
+  if (errors.length) {
+    throw new Error(errors.map((error) => `${error.field}: ${error.message}`).join('; '));
+  }
 }

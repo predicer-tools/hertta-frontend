@@ -866,6 +866,17 @@ export const CREATE_PROCESS_MUTATION = gql`
   }
 `;
 
+export const UPDATE_PROCESS_MUTATION = gql`
+  mutation UpdateProcess($name: String!, $process: ProcessUpdate!) {
+    updateProcess(name: $name, process: $process) {
+      errors {
+        field
+        message
+      }
+    }
+  }
+`;
+
 export const ADD_PROCESS_TO_GROUP_MUTATION = gql`
   mutation AddProcessToGroup($processName: String!, $groupName: String!) {
     addProcessToGroup(processName: $processName, groupName: $groupName) {
@@ -881,6 +892,39 @@ export const CREATE_TOPOLOGY_MUTATION = gql`
         field
         message
       }
+    }
+  }
+`;
+
+export const UPDATE_TOPOLOGY_MUTATION = gql`
+  mutation UpdateTopology(
+    $topology: TopologyUpdate!
+    $sourceNodeName: String
+    $processName: String!
+    $sinkNodeName: String
+  ) {
+    updateTopology(
+      topology: $topology
+      sourceNodeName: $sourceNodeName
+      processName: $processName
+      sinkNodeName: $sinkNodeName
+    ) {
+      errors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+export const DELETE_TOPOLOGY_MUTATION = gql`
+  mutation DeleteTopology($sourceNodeName: String, $processName: String!, $sinkNodeName: String) {
+    deleteTopology(
+      sourceNodeName: $sourceNodeName
+      processName: $processName
+      sinkNodeName: $sinkNodeName
+    ) {
+      message
     }
   }
 `;
@@ -904,6 +948,14 @@ export const UPDATE_NODE_STATE_MUTATION = gql`
   }
 `;
 
+export const DELETE_NODE_DIFFUSION_MUTATION = gql`
+  mutation DeleteNodeDiffusion($fromNode: String!, $toNode: String!) {
+    deleteNodeDiffusion(fromNode: $fromNode, toNode: $toNode) {
+      message
+    }
+  }
+`;
+
 export const CREATE_NODE_DIFFUSION_MUTATION = gql`
   mutation CreateNodeDiffusion($newDiffusion: NewNodeDiffusion!) {
     createNodeDiffusion(newDiffusion: $newDiffusion) {
@@ -918,6 +970,17 @@ export const CREATE_NODE_DIFFUSION_MUTATION = gql`
 export const CREATE_GEN_CONSTRAINT_MUTATION = gql`
   mutation CreateGenConstraint($constraint: NewGenConstraint!) {
     createGenConstraint(constraint: $constraint) {
+      errors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+export const UPDATE_GEN_CONSTRAINT_MUTATION = gql`
+  mutation UpdateGenConstraint($name: String!, $constraint: GenConstraintUpdate!) {
+    updateGenConstraint(name: $name, constraint: $constraint) {
       errors {
         field
         message
@@ -945,6 +1008,17 @@ export const CREATE_FLOW_CON_FACTOR_MUTATION = gql`
 export const CREATE_STATE_CON_FACTOR_MUTATION = gql`
   mutation CreateStateConFactor($factor: [ValueInput!]!, $constraintName: String!, $nodeName: String!) {
     createStateConFactor(factor: $factor, constraintName: $constraintName, nodeName: $nodeName) {
+      errors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+export const UPDATE_STATE_CON_FACTOR_MUTATION = gql`
+  mutation UpdateStateConFactor($factor: [ValueInput!]!, $constraintName: String!, $nodeName: String!) {
+    updateStateConFactor(factor: $factor, constraintName: $constraintName, nodeName: $nodeName) {
       errors {
         field
         message

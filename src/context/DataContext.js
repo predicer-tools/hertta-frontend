@@ -4,10 +4,11 @@ import React, { createContext, useState, useEffect, useCallback, useContext } fr
 import useWeatherData from '../hooks/useWeatherData';
 import useElectricityData from '../hooks/useElectricityData';
 import ConfigContext from './ConfigContext'; // Import ConfigContext
-import { createRoomNodes } from '../graphql/nodeCreation';
-import { createRoomNodeDiffusions } from '../graphql/nodeDiffusionCreation';
-import { createHeaterProcess } from '../graphql/processCreation';
-import { createRoomGenConstraints } from '../graphql/genConstraintCreation';
+import { createRoomNodes, updateRoomNodeStates } from '../graphql/nodeCreation';
+import { createRoomNodeDiffusions, updateRoomNodeDiffusions } from '../graphql/nodeDiffusionCreation';
+import { createHeaterProcess, updateHeaterProcess } from '../graphql/processCreation';
+import { createRoomGenConstraints, updateRoomGenConstraints } from '../graphql/genConstraintCreation';
+import { saveModelOnServer } from '../graphql/modelPersistence';
 import { print } from 'graphql/language/printer';
 import { GRAPHQL_ENDPOINT, CLEAR_INPUT_DATA_MUTATION } from '../graphql/queries';
 
@@ -122,6 +123,10 @@ export const DataProvider = ({ children }) => {
     const storedControlSignals = JSON.parse(localStorage.getItem('controlSignals'));
     return storedControlSignals && typeof storedControlSignals === 'object' ? storedControlSignals : {};
   });
+  const [controlSignalTimes, setControlSignalTimes] = useState(() => {
+    const storedTimes = JSON.parse(localStorage.getItem('controlSignalTimes'));
+    return Array.isArray(storedTimes) ? storedTimes : [];
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -131,14 +136,21 @@ export const DataProvider = ({ children }) => {
         const response = await fetch(`${HASS_BACKEND_URL}/control-signals`);
         const result = await response.json();
 
-        if (!response.ok || result.status !== 'ok' || !Array.isArray(result.data)) {
+        const latestSignals = Array.isArray(result.data)
+          ? result.data
+          : result.data?.controlSignals;
+        const latestTimes = Array.isArray(result.data?.time) ? result.data.time : [];
+
+        if (!response.ok || result.status !== 'ok' || !Array.isArray(latestSignals)) {
           return;
         }
 
-        const mapped = mapControlSignalsToHeaters(result.data, heaters);
+        const mapped = mapControlSignalsToHeaters(latestSignals, heaters);
         if (!cancelled && Object.keys(mapped).length > 0) {
           setControlSignals(mapped);
           localStorage.setItem('controlSignals', JSON.stringify(mapped));
+          setControlSignalTimes(latestTimes);
+          localStorage.setItem('controlSignalTimes', JSON.stringify(latestTimes));
         }
       } catch {
         // Keep the last successful signals during temporary backend failures.
@@ -188,6 +200,28 @@ export const DataProvider = ({ children }) => {
   // =====================
   // Optimization Functions
   // =====================
+
+  const refreshOptimizationIfActive = useCallback(async () => {
+    if (!optimizeStarted) return;
+
+    const response = await fetch(`${HASS_BACKEND_URL}/refresh-optimization`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const result = await response.json().catch(() => ({}));
+    if (result.status === 'not_running') {
+      setOptimizeStarted(false);
+      localStorage.setItem('optimizeStarted', JSON.stringify(false));
+      return;
+    }
+    if (!response.ok || result.status !== 'refresh_started') {
+      throw new Error(result.message || `Could not refresh optimization (${response.status})`);
+    }
+
+    const now = new Date().toISOString();
+    setLastOptimizedTime(now);
+    localStorage.setItem('lastOptimizedTime', JSON.stringify(now));
+  }, [optimizeStarted]);
 
   const startOptimization = useCallback(async () => {
     // Don’t start twice
@@ -279,7 +313,7 @@ export const DataProvider = ({ children }) => {
    * @returns {boolean} - Returns true if room is added successfully, false otherwise.
    */
   const addRoom = useCallback(
-    (room) => {
+    async (room) => {
       // Destructure room object to ensure required fields are present
       const { roomId, roomWidth, roomLength, maxTemp, minTemp, sensorId, sensorState, sensorUnit } = room;
 
@@ -308,21 +342,16 @@ export const DataProvider = ({ children }) => {
         sensorUnit,
       };
 
-      setRooms((prevRooms) => {
-        const updatedRooms = [...prevRooms, newRoom];
-        console.log('Room added:', newRoom);
-        console.log('Updated Rooms:', updatedRooms);
-        return updatedRooms;
-      });
-
-      createRoomNodes(newRoom, config, materials)
-        .then(() => createRoomNodeDiffusions(newRoom))
-        .then(() => createRoomGenConstraints(newRoom))
-        .catch((error) => console.error('Error creating nodes, diffusions, or constraints:', error));
+      await createRoomNodes(newRoom, config, materials);
+      await createRoomNodeDiffusions(newRoom);
+      await createRoomGenConstraints(newRoom);
+      await saveModelOnServer();
+      setRooms((prevRooms) => [...prevRooms, newRoom]);
+      await refreshOptimizationIfActive();
 
       return true;
     },
-    [rooms, config, materials]
+    [rooms, config, materials, refreshOptimizationIfActive]
   );
 
   /**
@@ -341,7 +370,7 @@ export const DataProvider = ({ children }) => {
    * @param {Object} updatedRoom - The room object with updated details.
    * @returns {boolean} - Returns true if update is successful, false otherwise.
   */
-  const updateRoomFunc = useCallback((updatedRoom) => {
+  const updateRoomFunc = useCallback(async (updatedRoom) => {
     const { roomId, roomWidth, roomLength, maxTemp, minTemp, sensorId } = updatedRoom;
 
     // Validation: Ensure required fields are present
@@ -350,18 +379,23 @@ export const DataProvider = ({ children }) => {
       return false;
     }
 
-    setRooms((prevRooms) => {
-      const roomExists = prevRooms.some((room) => room.roomId === roomId);
-      if (!roomExists) {
-        console.error(`Room with ID "${roomId}" does not exist.`);
-        return prevRooms;
-      }
+    const existingRoom = rooms.find((room) => room.roomId === roomId);
+    if (!existingRoom) {
+      throw new Error(`Room with ID "${roomId}" does not exist.`);
+    }
 
-      return prevRooms.map((room) => (room.roomId === roomId ? { ...room, ...updatedRoom } : room));
-    });
+    const mergedRoom = { ...existingRoom, ...updatedRoom };
+    await updateRoomNodeStates(mergedRoom, config, materials);
+    await updateRoomNodeDiffusions(mergedRoom);
+    await updateRoomGenConstraints(mergedRoom);
+    await saveModelOnServer();
 
+    setRooms((prevRooms) =>
+      prevRooms.map((room) => (room.roomId === roomId ? mergedRoom : room))
+    );
+    await refreshOptimizationIfActive();
     return true;
-  }, []);
+  }, [rooms, config, materials, refreshOptimizationIfActive]);
 
   // =====================
   // Functions to Manipulate Heaters (Existing - Preserved)
@@ -390,30 +424,20 @@ export const DataProvider = ({ children }) => {
         return;
       }
 
-      console.log('Adding heater:', heater);
-
-      setHeaters((prevHeaters) => [
-        ...prevHeaters,
-        {
-          ...heater,
-          isEnabled: true, // Initialize isEnabled as true
-        },
-      ]);
-      // Create a corresponding process via GraphQL.  We construct the
-      // process based on the heater's id and capacity; efficiency comes
-      // from capacity.  Errors will be logged in the helper.
-      try {
-        const result = await createHeaterProcess(heater, roomId);
-        if (result?.errors && result.errors.length > 0) {
-          console.warn('Validation errors when creating process:', result.errors);
-        } else {
-          console.log('Process created successfully for heater', id);
-        }
-      } catch (err) {
-        console.error('Failed to create process for heater', id, err);
+      const result = await createHeaterProcess(heater, roomId);
+      if (result.topologyErrors.length > 0) {
+        const messages = result.topologyErrors.flatMap(({ direction, errors }) =>
+          errors.map((error) => `${direction}: ${error.field}: ${error.message}`)
+        );
+        throw new Error(messages.join('; '));
       }
+      await saveModelOnServer();
+
+      setHeaters((prevHeaters) => [...prevHeaters, { ...heater, isEnabled: true }]);
+      await refreshOptimizationIfActive();
+      return true;
     },
-    [heaters]
+    [heaters, refreshOptimizationIfActive]
   );
 
   /**
@@ -432,11 +456,22 @@ export const DataProvider = ({ children }) => {
     [controlSignals]
   );
 
-  const toggleHeaterEnabled = useCallback((heaterId) => {
-    setHeaters((prevHeaters) =>
-      prevHeaters.map((heater) => (heater.id === heaterId ? { ...heater, isEnabled: !heater.isEnabled } : heater))
-    );
-  }, []);
+  const toggleHeaterEnabled = useCallback(async (heaterId) => {
+    const existingHeater = heaters.find((heater) => heater.id === heaterId);
+    if (!existingHeater) return;
+
+    const updatedHeater = { ...existingHeater, isEnabled: !existingHeater.isEnabled };
+    try {
+      await updateHeaterProcess(existingHeater, updatedHeater);
+      await saveModelOnServer();
+      setHeaters((prevHeaters) =>
+        prevHeaters.map((heater) => (heater.id === heaterId ? updatedHeater : heater))
+      );
+      await refreshOptimizationIfActive();
+    } catch (error) {
+      console.error(`Could not update heater "${heaterId}":`, error);
+    }
+  }, [heaters, refreshOptimizationIfActive]);
 
   /**
    * Updates an existing heater's details.
@@ -444,18 +479,21 @@ export const DataProvider = ({ children }) => {
    * @returns {boolean} - Returns true if update is successful, false otherwise.
    */
   const updateHeaterFunc = useCallback(
-    (updatedHeater) => {
+    async (updatedHeater) => {
       console.log('Updating heater:', updatedHeater);
-      const heaterExists = heaters.some((heater) => heater.id === updatedHeater.id);
-      if (!heaterExists) {
+      const existingHeater = heaters.find((heater) => heater.id === updatedHeater.id);
+      if (!existingHeater) {
         console.error(`Heater with ID "${updatedHeater.id}" does not exist.`);
         return false;
       }
 
+      await updateHeaterProcess(existingHeater, updatedHeater);
+      await saveModelOnServer();
       setHeaters((prevHeaters) => prevHeaters.map((heater) => (heater.id === updatedHeater.id ? { ...heater, ...updatedHeater } : heater)));
+      await refreshOptimizationIfActive();
       return true; // Indicate successful update
     },
-    [heaters]
+    [heaters, refreshOptimizationIfActive]
   );
 
   // =====================
@@ -475,6 +513,7 @@ export const DataProvider = ({ children }) => {
     setRooms([]);
     setHeaters([]);
     setControlSignals({});
+    setControlSignalTimes([]);
     setOptimizeStarted(false);
     setLastOptimizedTime(null);
 
@@ -485,6 +524,7 @@ export const DataProvider = ({ children }) => {
     localStorage.removeItem('weatherData');
     localStorage.removeItem('weatherDataGraphQL'); 
     localStorage.removeItem('controlSignals');
+    localStorage.removeItem('controlSignalTimes');
     localStorage.removeItem('optimizeStarted');
     localStorage.removeItem('lastOptimizedTime');
   }, []);
@@ -517,6 +557,7 @@ export const DataProvider = ({ children }) => {
     // Control Signals
     controlSignals,
     setControlSignals,
+    controlSignalTimes,
     optimizeStarted,
     startOptimization,
     stopOptimization,

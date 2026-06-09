@@ -18,6 +18,7 @@ import {
   GRAPHQL_ENDPOINT,
   CREATE_NODE_MUTATION,
   SET_NODE_STATE_MUTATION,
+  UPDATE_NODE_STATE_MUTATION,
   CONNECT_NODE_INFLOW_TO_TEMP_FORECAST,
 } from '../graphql/queries';
 
@@ -25,11 +26,8 @@ import {
 export const AIR_HEATING_CAPACITY = 0.00278; // kWh/(m²K)
 export const FLOOR_CONCRETE_HEATING_CAPACITY = 0.03; // kWh/(m²K)
 
-// Internal flag used to ensure that the outside node is created only
-// once.  The outside node is used as a reference environment for
-// rooms; creating it multiple times would lead to validation errors
-// from the API.  This flag is mutated after successful creation.
-let outsideNodeCreated = false;
+const isAlreadyExistsError = (errors = []) =>
+  errors.length > 0 && errors.every((error) => /exist|unique|already/i.test(error.message));
 
 /**
  * Create a single node using the GraphQL API.
@@ -47,7 +45,9 @@ export async function createNode(node) {
     }),
   });
   const result = await response.json();
-  return result.data.createNode;
+  if (!response.ok) throw new Error(`Network error (${response.status})`);
+  if (result.errors?.length) throw new Error(result.errors.map((error) => error.message).join(', '));
+  return result.data?.createNode;
 }
 
 /**
@@ -67,7 +67,56 @@ export async function setNodeState(nodeName, state) {
     }),
   });
   const result = await response.json();
-  return result.data.setNodeState;
+  if (!response.ok) throw new Error(`Network error (${response.status})`);
+  if (result.errors?.length) throw new Error(result.errors.map((error) => error.message).join(', '));
+  return result.data?.setNodeState;
+}
+
+async function updateNodeState(nodeName, state) {
+  const response = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: print(UPDATE_NODE_STATE_MUTATION),
+      variables: { nodeName, state },
+    }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(`Network error (${response.status})`);
+  if (result.errors?.length) throw new Error(result.errors.map((error) => error.message).join(', '));
+
+  const errors = result.data?.updateNodeState?.errors ?? [];
+  if (errors.length) {
+    throw new Error(errors.map((error) => `${error.field}: ${error.message}`).join('; '));
+  }
+}
+
+export async function updateRoomNodeStates(room, config, materials) {
+  const selectedMat = materials.find((material) => material.name === config.selectedMaterial);
+  const materialHeatingCapacityPerArea = selectedMat ? selectedMat.value : 0.04;
+  const roomArea = parseFloat(room.roomWidth) * parseFloat(room.roomLength);
+  const sensorStateKelvin = Number.isFinite(parseFloat(room.sensorState))
+    ? parseFloat(room.sensorState) + 273.15
+    : 273.15;
+
+  const sharedState = {
+    initialState: sensorStateKelvin,
+    isTemp: true,
+  };
+
+  await updateNodeState(`${room.roomId}_air`, {
+    ...sharedState,
+    stateMin: parseFloat(room.minTemp) + 273.15,
+    stateMax: parseFloat(room.maxTemp) + 273.15,
+    tEConversion: AIR_HEATING_CAPACITY * roomArea,
+  });
+  await updateNodeState(`${room.roomId}_envelope`, {
+    ...sharedState,
+    tEConversion: (materialHeatingCapacityPerArea * roomArea) - (AIR_HEATING_CAPACITY * roomArea),
+  });
+  await updateNodeState(`${room.roomId}_soil`, {
+    tEConversion: FLOOR_CONCRETE_HEATING_CAPACITY * roomArea,
+  });
 }
 
 async function connectNodeInflowToFMI(nodeName) {
@@ -158,9 +207,8 @@ export async function ensureOutsideNode() {
       console.warn('Could not connect outside inflow to FMI temperature forecast:', e.message);
     }
 
-    outsideNodeCreated = true;
   } catch (err) {
-    console.error('Failed to create outside node:', err.message);
+    throw new Error(`Failed to ensure outside node: ${err.message}`);
   }
 }
 
@@ -180,6 +228,7 @@ export async function ensureOutsideNode() {
  */
 export async function createRoomNodes(room, config, materials) {
   try {
+    await ensureOutsideNode();
 
     // Find selected material's heating capacity
     const selectedMat = materials.find((m) => m.name === config.selectedMaterial);
@@ -191,9 +240,9 @@ export async function createRoomNodes(room, config, materials) {
     const t_e_conversion_env = t_e_conversion_total - t_e_conversion_int;
     const t_e_conversion_floor_slab = FLOOR_CONCRETE_HEATING_CAPACITY * roomArea;
 
-    let sensorStateKelvin = parseFloat(room.sensorState);
-    if (isNaN(sensorStateKelvin)) sensorStateKelvin = 273.15;
-    sensorStateKelvin += 273.15;
+    let sensorStateCelsius = parseFloat(room.sensorState);
+    if (isNaN(sensorStateCelsius)) sensorStateCelsius = 0;
+    const sensorStateKelvin = sensorStateCelsius + 273.15;
 
     const maxTempK = parseFloat(room.maxTemp) + 273.15;
     const minTempK = parseFloat(room.minTemp) + 273.15;
@@ -276,17 +325,22 @@ export async function createRoomNodes(room, config, materials) {
     for (const { node, state, name } of nodesToCreate) {
       const createResult = await createNode(node);
       if (createResult?.errors && createResult.errors.length > 0) {
-        console.error(`Error creating node ${name}`, createResult.errors);
-        continue;
+        if (!isAlreadyExistsError(createResult.errors)) {
+          throw new Error(`Could not create node ${name}: ${createResult.errors
+            .map((error) => `${error.field}: ${error.message}`)
+            .join('; ')}`);
+        }
       }
       const stateResult = await setNodeState(name, state);
       if (stateResult?.errors && stateResult.errors.length > 0) {
-        console.error(`Error setting state for node ${name}`, stateResult.errors);
+        throw new Error(`Could not set state for node ${name}: ${stateResult.errors
+          .map((error) => `${error.field}: ${error.message}`)
+          .join('; ')}`);
       }
     }
 
     console.log(`Nodes for room "${room.roomId}" created and states set successfully.`);
   } catch (err) {
-    console.error(`Failed to create nodes for room "${room.roomId}": ${err.message}`);
+    throw new Error(`Failed to create nodes for room "${room.roomId}": ${err.message}`);
   }
 }
