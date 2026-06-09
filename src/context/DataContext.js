@@ -4,7 +4,6 @@ import React, { createContext, useState, useEffect, useCallback, useContext } fr
 import useWeatherData from '../hooks/useWeatherData';
 import useElectricityData from '../hooks/useElectricityData';
 import ConfigContext from './ConfigContext'; // Import ConfigContext
-import { generateControlSignals } from '../utils/controlData';
 import { createRoomNodes } from '../graphql/nodeCreation';
 import { createRoomNodeDiffusions } from '../graphql/nodeDiffusionCreation';
 import { createHeaterProcess } from '../graphql/processCreation';
@@ -13,6 +12,24 @@ import { print } from 'graphql/language/printer';
 import { GRAPHQL_ENDPOINT, CLEAR_INPUT_DATA_MUTATION } from '../graphql/queries';
 
 const HASS_BACKEND_URL = 'http://localhost:4001';
+const CONTROL_SIGNALS_POLL_INTERVAL_MS = 30_000;
+
+function mapControlSignalsToHeaters(latestSignals, heaters) {
+  const mapped = {};
+
+  for (const heater of heaters) {
+    const signal = latestSignals.find((candidate) => {
+      if (typeof candidate?.name !== 'string') return false;
+      return candidate.name === heater.id || candidate.name.startsWith(`${heater.id}_`);
+    });
+
+    if (signal && Array.isArray(signal.signal)) {
+      mapped[heater.id] = signal.signal.slice(0, 12);
+    }
+  }
+
+  return mapped;
+}
 
 // Create the DataContext
 const DataContext = createContext();
@@ -106,6 +123,40 @@ export const DataProvider = ({ children }) => {
     return storedControlSignals && typeof storedControlSignals === 'object' ? storedControlSignals : {};
   });
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchLatestControlSignals = async () => {
+      try {
+        const response = await fetch(`${HASS_BACKEND_URL}/control-signals`);
+        const result = await response.json();
+
+        if (!response.ok || result.status !== 'ok' || !Array.isArray(result.data)) {
+          return;
+        }
+
+        const mapped = mapControlSignalsToHeaters(result.data, heaters);
+        if (!cancelled && Object.keys(mapped).length > 0) {
+          setControlSignals(mapped);
+          localStorage.setItem('controlSignals', JSON.stringify(mapped));
+        }
+      } catch {
+        // Keep the last successful signals during temporary backend failures.
+      }
+    };
+
+    void fetchLatestControlSignals();
+    const pollTimer = window.setInterval(
+      fetchLatestControlSignals,
+      CONTROL_SIGNALS_POLL_INTERVAL_MS
+    );
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(pollTimer);
+    };
+  }, [heaters]);
+
   // =====================
   // Hooks
   // =====================
@@ -122,8 +173,6 @@ export const DataProvider = ({ children }) => {
 
   const currentWeather =
     weatherData?.weather_values?.length ? weatherData.weather_values[0] : null;
-
-  console.log('Current Weather:', currentWeather);
 
   const { fiPrices, fiPricesLoading, fiPricesError } = useElectricityData();
 
@@ -291,9 +340,9 @@ export const DataProvider = ({ children }) => {
    * Updates an existing room's details.
    * @param {Object} updatedRoom - The room object with updated details.
    * @returns {boolean} - Returns true if update is successful, false otherwise.
-   */
+  */
   const updateRoomFunc = useCallback((updatedRoom) => {
-    const { roomId, roomWidth, roomLength, maxTemp, minTemp, sensorId, sensorState, sensorUnit } = updatedRoom;
+    const { roomId, roomWidth, roomLength, maxTemp, minTemp, sensorId } = updatedRoom;
 
     // Validation: Ensure required fields are present
     if (!roomId || !roomWidth || !roomLength || maxTemp === undefined || minTemp === undefined || !sensorId) {
