@@ -17,6 +17,7 @@ module.exports = function(app) {
     '/hertta-health',
     '/start-hourly-optimization',
     '/stop-hourly-optimization',
+    '/control-signals',
     '/weather',
     '/start-weather',
     '/prices',
