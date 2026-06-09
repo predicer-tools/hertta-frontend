@@ -74,7 +74,6 @@ const useElectricityData = () => {
 
         if (json.status !== 'ok' || !json.data) {
           console.warn('No electricity price data from backend:', json);
-          setFiPrices([]);
           return;
         }
 

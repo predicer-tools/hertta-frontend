@@ -1,16 +1,30 @@
 // src/hooks/useWeatherData.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const HASS_BACKEND_URL = '';
-const WEATHER_POLL_INTERVAL_MS = 30_000;
+const WEATHER_RETRY_INTERVAL_MS = 30_000;
+const WEATHER_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+const WEATHER_STORAGE_KEY = 'weatherData';
 
 export default function useWeatherData(_locationFromConfig) {
-  const [weatherData, setWeatherData] = useState(null);
+  const [weatherData, setWeatherData] = useState(() => {
+    const stored = localStorage.getItem(WEATHER_STORAGE_KEY);
+    if (!stored) return null;
+
+    try {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed?.weather_values) ? parsed : null;
+    } catch {
+      return null;
+    }
+  });
+  const hasWeatherDataRef = useRef(Boolean(weatherData?.weather_values?.length));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
+    let pollTimer;
 
     const startWeatherLoop = async () => {
       const resp = await fetch(`${HASS_BACKEND_URL}/start-weather`, {
@@ -26,6 +40,7 @@ export default function useWeatherData(_locationFromConfig) {
     const fetchWeather = async () => {
       setLoading(true);
       setError(null);
+      let hasWeatherData = hasWeatherDataRef.current;
 
       try {
         const resp = await fetch(`${HASS_BACKEND_URL}/weather`, {
@@ -50,20 +65,25 @@ export default function useWeatherData(_locationFromConfig) {
             : null,
         }));
 
-        if (!cancelled) {
-          setWeatherData({
+        if (!cancelled && weather_values.length > 0) {
+          const nextWeatherData = {
             place: "Outside",
             weather_values,
-          });
+          };
+          setWeatherData(nextWeatherData);
+          localStorage.setItem(WEATHER_STORAGE_KEY, JSON.stringify(nextWeatherData));
+          hasWeatherDataRef.current = true;
         }
+        hasWeatherData = weather_values.length > 0 || hasWeatherDataRef.current;
       } catch (e) {
         if (!cancelled) {
           setError(e.message);
-          setWeatherData(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
+
+      return hasWeatherData;
     };
 
     const startAndFetchWeather = async () => {
@@ -72,17 +92,24 @@ export default function useWeatherData(_locationFromConfig) {
       } catch (e) {
         if (!cancelled) setError(e.message);
       }
-      await fetchWeather();
+      const hasWeatherData = await fetchWeather();
+      scheduleNextFetch(hasWeatherData);
+    };
+
+    const scheduleNextFetch = (hasWeatherData) => {
+      if (cancelled) return;
+
+      pollTimer = window.setTimeout(async () => {
+        const nextHasWeatherData = await fetchWeather();
+        scheduleNextFetch(nextHasWeatherData);
+      }, hasWeatherData ? WEATHER_REFRESH_INTERVAL_MS : WEATHER_RETRY_INTERVAL_MS);
     };
 
     void startAndFetchWeather();
-    const pollTimer = window.setInterval(() => {
-      void fetchWeather();
-    }, WEATHER_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
-      window.clearInterval(pollTimer);
+      window.clearTimeout(pollTimer);
     };
   }, []);
 
