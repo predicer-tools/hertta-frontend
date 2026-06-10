@@ -11,7 +11,7 @@ import { print } from 'graphql/language/printer';
 const frac_windows = 0.1;
 const hight_wall = 3.0; // Height of walls in meters
 const cond_env_int = 0.04; // Internal environmental conduction coefficient
-const cond_windows = 0.8; // Conduction coefficient for windows
+const cond_windows = 0.0008; // Window conduction in kW/(m²K)
 const cond_wall_ext_env = 0.001; // External wall to environment conduction
 const cond_ceil_ext_env = 0.001; // External ceiling to environment conduction
 const cond_soil_env = 0.001; // Soil to environment conduction
@@ -101,11 +101,23 @@ export async function createRoomNodeDiffusions(room, outsideNodeName = 'outside'
     throw new Error(`Invalid room dimensions for room "${roomId}"`);
   }
 
-  const surf_area_walls_total = 2 * hight_wall * (width + length);
+  const outsideWalls = room.outsideWalls ?? {
+    widthWall1: true,
+    widthWall2: true,
+    lengthWall1: true,
+    lengthWall2: true,
+  };
+  const outsideWallLength =
+    (outsideWalls.widthWall1 ? width : 0) +
+    (outsideWalls.widthWall2 ? width : 0) +
+    (outsideWalls.lengthWall1 ? length : 0) +
+    (outsideWalls.lengthWall2 ? length : 0);
+  const surf_area_walls_total = hight_wall * outsideWallLength;
   const surf_area_walls = surf_area_walls_total * (1.0 - frac_windows);
   const surf_area_windows = surf_area_walls_total * frac_windows;
   const surf_area_floor = width * length;
-  const surf_area_ceiling = surf_area_floor; // Ceiling area equals floor area
+  const surf_area_ceiling = room.ceilingToOutside === false ? 0 : surf_area_floor;
+  const surf_area_soil = room.floorToSoil === false ? 0 : surf_area_floor;
 
   // Calculate diffusion coefficients
   const diff_ext_env =
@@ -116,10 +128,10 @@ export async function createRoomNodeDiffusions(room, outsideNodeName = 'outside'
   const diff_env_int =
     surf_area_walls * cond_env_int +
     surf_area_windows * cond_windows +
-    surf_area_floor * cond_env_int +
+    surf_area_soil * cond_env_int +
     surf_area_ceiling * cond_env_int;
 
-  const diff_soil_env = surf_area_floor * cond_soil_env;
+  const diff_soil_env = surf_area_soil * cond_soil_env;
 
   // Define node names
   const buildingEnvelopeNode = `${roomId}_envelope`;
@@ -129,13 +141,19 @@ export async function createRoomNodeDiffusions(room, outsideNodeName = 'outside'
   // Create diffusions
   try {
     // 1. outside -> building_envelope
-    await createNodeDiffusion(outsideNodeName, buildingEnvelopeNode, diff_ext_env);
+    if (diff_ext_env > 0) {
+      await createNodeDiffusion(outsideNodeName, buildingEnvelopeNode, diff_ext_env);
+    }
 
     // 2. building_envelope -> room_air
-    await createNodeDiffusion(buildingEnvelopeNode, roomAirNode, diff_env_int);
+    if (diff_env_int > 0) {
+      await createNodeDiffusion(buildingEnvelopeNode, roomAirNode, diff_env_int);
+    }
 
     // 3. building_envelope -> soil
-    await createNodeDiffusion(buildingEnvelopeNode, roomSoilNode, diff_soil_env);
+    if (diff_soil_env > 0) {
+      await createNodeDiffusion(buildingEnvelopeNode, roomSoilNode, diff_soil_env);
+    }
   } catch (error) {
     throw new Error(`Could not create diffusions for room "${roomId}": ${error.message}`);
   }

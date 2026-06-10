@@ -22,6 +22,14 @@ function EditRoomForm({ room, onClose }) {
   const [maxTemp, setMaxTemp] = useState(room.maxTemp);
   const [minTemp, setMinTemp] = useState(room.minTemp);
   const [selectedSensor, setSelectedSensor] = useState(room.sensorId);
+  const [outsideWalls, setOutsideWalls] = useState(room.outsideWalls ?? {
+    widthWall1: true,
+    widthWall2: true,
+    lengthWall1: true,
+    lengthWall2: true,
+  });
+  const [ceilingToOutside, setCeilingToOutside] = useState(room.ceilingToOutside ?? true);
+  const [floorToSoil, setFloorToSoil] = useState(room.floorToSoil ?? true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -65,6 +73,9 @@ function EditRoomForm({ room, onClose }) {
       maxTemp: parseFloat(maxTemp),
       minTemp: parseFloat(minTemp),
       sensorId: selectedSensor,
+      outsideWalls,
+      ceilingToOutside,
+      floorToSoil,
     };
 
     try {
@@ -127,6 +138,46 @@ function EditRoomForm({ room, onClose }) {
             min="0.1"
             step="0.1"
           />
+        </div>
+
+        <fieldset className={styles.boundarySettings}>
+          <legend>Outside Walls</legend>
+          {[
+            ['widthWall1', 'Width wall 1'],
+            ['widthWall2', 'Width wall 2'],
+            ['lengthWall1', 'Length wall 1'],
+            ['lengthWall2', 'Length wall 2'],
+          ].map(([key, label]) => (
+            <label key={key}>
+              <input
+                type="checkbox"
+                checked={outsideWalls[key]}
+                onChange={(event) =>
+                  setOutsideWalls((walls) => ({ ...walls, [key]: event.target.checked }))
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+
+        <div className={styles.boundarySettings}>
+          <label>
+            <input
+              type="checkbox"
+              checked={ceilingToOutside}
+              onChange={(event) => setCeilingToOutside(event.target.checked)}
+            />
+            Ceiling connected to outside
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={floorToSoil}
+              onChange={(event) => setFloorToSoil(event.target.checked)}
+            />
+            Floor connected to soil
+          </label>
         </div>
 
         {/* Default Temperature Limits */}
@@ -197,6 +248,9 @@ EditRoomForm.propTypes = {
     maxTemp: PropTypes.number.isRequired,
     minTemp: PropTypes.number.isRequired,
     sensorId: PropTypes.string.isRequired,
+    outsideWalls: PropTypes.object,
+    ceilingToOutside: PropTypes.bool,
+    floorToSoil: PropTypes.bool,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
 };

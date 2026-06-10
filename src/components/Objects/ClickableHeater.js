@@ -2,6 +2,7 @@
 
 import React, { useContext, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
 import styles from './ClickableHeater.module.css';
 import DataContext from '../../context/DataContext';
 
@@ -25,6 +26,9 @@ function ClickableHeater({ heater, onClick }) {
 
 
   const entityId = heater.id;
+  const electricalCapacity = Number(heater.capacity);
+  const heatingCop = Number(heater.heatingCop ?? 1);
+  const heatingCapacity = electricalCapacity * heatingCop;
 
   useEffect(() => {
     let cancelled = false;
@@ -97,12 +101,9 @@ function ClickableHeater({ heater, onClick }) {
         : 'OFF';
   }
 
-  const stateClass = currentState === 'ON' ? styles.on : styles.off;
-  const stateTextClass = currentState === 'ON' ? styles.stateOn : styles.stateOff;
-
   return (
     <div
-      className={`${styles.clickableHeater} ${stateClass}`}
+      className={styles.clickableHeater}
       onClick={() => onClick(heater)}
       tabIndex={0}
       role="button"
@@ -113,23 +114,34 @@ function ClickableHeater({ heater, onClick }) {
         }
       }}
     >
-      <h4 className={styles.heaterName}>{heater.name}</h4>
+      <div className={styles.header}>
+        <WhatshotIcon className={styles.icon} />
+        <div>
+          <h4 className={styles.heaterName}>{heater.name}</h4>
+          <p className={styles.entityId}>{heater.id}</p>
+        </div>
+        <span className={`${styles.state} ${currentState === 'ON' ? styles.stateOn : styles.stateOff}`}>
+          {currentState}
+        </span>
+      </div>
 
-      <p className={styles.heaterState}>
-        Current State:{' '}
-        <span className={stateTextClass}>{currentState}</span>
-      </p>
+      <div className={styles.metrics}>
+        <div>
+          <span>Electrical</span>
+          <strong>{electricalCapacity.toFixed(1)} kW</strong>
+        </div>
+        <div>
+          <span>Heating</span>
+          <strong>{heatingCapacity.toFixed(1)} kW</strong>
+          <small>COP {heatingCop.toFixed(1)}</small>
+        </div>
+      </div>
 
       {haLoading && (
         <p className={styles.heaterMeta}>HA: loading…</p>
       )}
       {haError && (
         <p className={styles.heaterMetaError}>HA error</p>
-      )}
-      {!haLoading && !haError && haState != null && (
-        <p className={styles.heaterMeta}>
-          HA state: <code>{haState}</code>
-        </p>
       )}
     </div>
   );

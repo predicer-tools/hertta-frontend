@@ -115,6 +115,7 @@ export async function updateRoomNodeStates(room, config, materials) {
     tEConversion: (materialHeatingCapacityPerArea * roomArea) - (AIR_HEATING_CAPACITY * roomArea),
   });
   await updateNodeState(`${room.roomId}_soil`, {
+    ...sharedState,
     tEConversion: FLOOR_CONCRETE_HEATING_CAPACITY * roomArea,
   });
 }
@@ -308,7 +309,7 @@ export async function createRoomNodes(room, config, materials) {
       stateLossProportional: 0.0,
       stateMin: 273.15,
       stateMax: 308.15,
-      initialState: 277.15,
+      initialState: sensorStateKelvin,
       isScenarioIndependent: false,
       isTemp: true,
       tEConversion: t_e_conversion_floor_slab,

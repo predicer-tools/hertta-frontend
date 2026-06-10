@@ -3,6 +3,7 @@
 import React, { useContext, useState } from 'react';
 import FormRoom from '../forms/FormRoom';
 import FormElectricHeater from '../forms/FormElectricHeater'; // Import the new form
+import FormAirSourceHeatPump from '../forms/FormAirSourceHeatPump';
 import DataTable from './DataTable'; // Import DataTable
 import Modal from '../components/Modal/Modal'; // Import Modal
 import styles from './InputData.module.css'; // Import the CSS module
@@ -18,6 +19,7 @@ function InputData() {
 
   // State to control Heating Device Modal visibility
   const [isHeaterModalOpen, setIsHeaterModalOpen] = useState(false);
+  const [isHeatPumpModalOpen, setIsHeatPumpModalOpen] = useState(false);
 
   // Functions to open modals
   const openRoomModal = () => {
@@ -55,6 +57,12 @@ function InputData() {
         >
           + Add Heating Device
         </button>
+        <button
+          className={`${styles.addButton} button-group button`}
+          onClick={() => setIsHeatPumpModalOpen(true)}
+        >
+          + Add Air-Source Heat Pump
+        </button>
       </div>
 
       {/* Modal for Adding Room */}
@@ -63,6 +71,13 @@ function InputData() {
           addRoom={addRoom}
           homeAssistantSensors={JSON.parse(localStorage.getItem('homeAssistantSensors')) || []}
           onClose={closeRoomModal} // Pass onClose to reset the modal after submission
+        />
+      </Modal>
+
+      <Modal isOpen={isHeatPumpModalOpen} onClose={() => setIsHeatPumpModalOpen(false)}>
+        <FormAirSourceHeatPump
+          fetchedDevices={devices}
+          onClose={() => setIsHeatPumpModalOpen(false)}
         />
       </Modal>
 

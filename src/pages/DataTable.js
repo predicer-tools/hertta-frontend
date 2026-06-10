@@ -17,7 +17,7 @@ function DataTable() {
   const [sensors, setSensors] = useState([]);
   const [devices, setDevices] = useState([]);
 
-  const { rooms, heaters, deleteRoom, deleteHeater, controlSignals, controlSignalTimes, fiPrices, fiPricesLoading, fiPricesError  } = useContext(DataContext); // Access rooms and heaters from DataContext
+  const { rooms, heaters, heatPumps, deleteRoom, deleteHeater, deleteAirSourceHeatPump, controlSignals, controlSignalTimes, fiPrices, fiPricesLoading, fiPricesError  } = useContext(DataContext); // Access rooms and heaters from DataContext
   const { getLocation } = useContext(ConfigContext);
   const location = getLocation();
   const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
@@ -48,10 +48,27 @@ function DataTable() {
     return new Date(timestamp).toLocaleString();
   };
 
+  const controlSignalColumns = [
+    ...heaters.map((heater) => ({
+      key: heater.id,
+      label: heater.name || heater.id,
+    })),
+    ...heatPumps.flatMap((heatPump) => [
+      {
+        key: `${heatPump.id}_heating`,
+        label: `${heatPump.name || heatPump.id} Heating`,
+      },
+      {
+        key: `${heatPump.id}_cooling`,
+        label: `${heatPump.name || heatPump.id} Cooling`,
+      },
+    ]),
+  ];
+
   const controlSignalRowCount = Math.max(
     controlSignalTimes.length,
-    ...heaters.map((heater) =>
-      Array.isArray(controlSignals[heater.id]) ? controlSignals[heater.id].length : 0
+    ...controlSignalColumns.map((column) =>
+      Array.isArray(controlSignals[column.key]) ? controlSignals[column.key].length : 0
     )
   );
 
@@ -94,6 +111,9 @@ function DataTable() {
               <th>Min Temp (°C)</th>
               <th>Sensor ID</th>
               <th>Sensor State</th>
+              <th>Outside Walls</th>
+              <th>Ceiling Outside</th>
+              <th>Floor to Soil</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -110,13 +130,18 @@ function DataTable() {
                   {room.sensorState} {room.sensorUnit}
                 </td>
                 <td>
+                  {Object.values(room.outsideWalls ?? {}).filter(Boolean).length}
+                </td>
+                <td>{room.ceilingToOutside ? 'Yes' : 'No'}</td>
+                <td>{room.floorToSoil ? 'Yes' : 'No'}</td>
+                <td>
                   <button className={styles.editButton} onClick={() => openRoomEditModal(room)}>Edit</button>
                   <button className={styles.deleteButton} onClick={() => deleteRoom(room.roomId)}>Delete</button>
                 </td>
               </tr>
             )) : (
               <tr>
-                <td colSpan="8">No rooms available</td>
+                <td colSpan="11">No rooms available</td>
               </tr>
             )}
           </tbody>
@@ -133,6 +158,8 @@ function DataTable() {
               <th>Heater ID</th>
               <th>Name</th>
               <th>Capacity (kW)</th>
+              <th>Heating COP</th>
+              <th>Cooling COP</th>
               <th>Room</th>
               <th>Status</th>
               <th>Action</th>
@@ -149,6 +176,8 @@ function DataTable() {
                   <td>{heater.id}</td>
                   <td>{heater.name}</td>
                   <td>{heater.capacity.toFixed(2)} kW</td>
+                  <td>{Number(heater.heatingCop ?? 1).toFixed(2)}</td>
+                  <td>{heater.coolingCop !== undefined ? Number(heater.coolingCop).toFixed(2) : '-'}</td>
                   <td>{roomName}</td>
                   <td>{heater.isEnabled ? 'Enabled' : 'Disabled'}</td>
                   <td>
@@ -159,7 +188,48 @@ function DataTable() {
               );
             }) : (
               <tr>
-                <td colSpan="6">No heating devices available</td>
+                <td colSpan="8">No heating devices available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Air-Source Heat Pumps</h3>
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Climate Entity</th>
+              <th>Room</th>
+              <th>Electrical Capacity (kW)</th>
+              <th>Heating COP</th>
+              <th>Cooling COP</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {heatPumps.length > 0 ? heatPumps.map((heatPump) => (
+              <tr key={heatPump.id}>
+                <td>{heatPump.name}</td>
+                <td>{heatPump.id}</td>
+                <td>{heatPump.roomId}</td>
+                <td>{heatPump.electricalCapacity.toFixed(2)}</td>
+                <td>{heatPump.heatingCop.toFixed(2)}</td>
+                <td>{heatPump.coolingCop.toFixed(2)}</td>
+                <td>
+                  <button
+                    className={styles.deleteButton}
+                    onClick={() => deleteAirSourceHeatPump(heatPump.id)}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan="7">No air-source heat pumps available</td>
               </tr>
             )}
           </tbody>
@@ -173,26 +243,26 @@ function DataTable() {
         <thead>
           <tr>
             <th>Timestamp</th>
-            {heaters.map((heater) => (
-              <th key={heater.id}>{heater.name || heater.id}</th>
+            {controlSignalColumns.map((column) => (
+              <th key={column.key}>{column.label}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {heaters.length > 0 && controlSignalRowCount > 0 ? (
+          {controlSignalColumns.length > 0 && controlSignalRowCount > 0 ? (
             Array.from({ length: controlSignalRowCount }, (_, index) => (
               <tr key={controlSignalTimes[index] || index}>
                 <td>{formatControlSignalTime(controlSignalTimes[index])}</td>
-                {heaters.map((heater) => {
-                  const signals = controlSignals[heater.id];
+                {controlSignalColumns.map((column) => {
+                  const signals = controlSignals[column.key];
                   const signal = Array.isArray(signals) ? signals[index] : undefined;
-                  return <td key={heater.id}>{signal ?? '-'}</td>;
+                  return <td key={column.key}>{signal ?? '-'}</td>;
                 })}
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan={Math.max(heaters.length + 1, 1)}>No control signals available</td>
+              <td colSpan={Math.max(controlSignalColumns.length + 1, 1)}>No control signals available</td>
             </tr>
           )}
         </tbody>

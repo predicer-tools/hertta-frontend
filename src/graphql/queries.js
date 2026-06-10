@@ -866,6 +866,14 @@ export const CREATE_PROCESS_MUTATION = gql`
   }
 `;
 
+export const DELETE_NODE_MUTATION = gql`
+  mutation DeleteNode($name: String!) {
+    deleteNode(name: $name) {
+      message
+    }
+  }
+`;
+
 export const UPDATE_PROCESS_MUTATION = gql`
   mutation UpdateProcess($name: String!, $process: ProcessUpdate!) {
     updateProcess(name: $name, process: $process) {
@@ -873,6 +881,14 @@ export const UPDATE_PROCESS_MUTATION = gql`
         field
         message
       }
+    }
+  }
+`;
+
+export const DELETE_PROCESS_MUTATION = gql`
+  mutation DeleteProcess($name: String!) {
+    deleteProcess(name: $name) {
+      message
     }
   }
 `;
@@ -985,6 +1001,14 @@ export const UPDATE_GEN_CONSTRAINT_MUTATION = gql`
         field
         message
       }
+    }
+  }
+`;
+
+export const DELETE_GEN_CONSTRAINT_MUTATION = gql`
+  mutation DeleteGenConstraint($name: String!) {
+    deleteGenConstraint(name: $name) {
+      message
     }
   }
 `;

@@ -10,6 +10,7 @@ import Modal from '../components/Modal/Modal';
 import EditRoomForm from '../forms/EditRoomForm';
 import EditElectricHeaterForm from '../forms/EditHeaterForm';
 import ClickableHeater from '../components/Objects/ClickableHeater';
+import HeatPumpCard from '../components/Objects/HeatPumpCard';
 import ClickablePaper from '../components/Objects/ClickablePaper';
 import Typography from '@mui/material/Typography';
 import WeatherDataTable from '../components/Table/WeatherDataTable';
@@ -26,8 +27,10 @@ function DashboardGrid() {
     const {
         rooms,
         heaters,
+        heatPumps,
 
         toggleHeaterEnabled,
+        toggleAirSourceHeatPumpEnabled,
 
         fiPrices,
         fiPricesLoading,
@@ -246,6 +249,11 @@ function DashboardGrid() {
                                     <Typography variant="h6" component="h3" gutterBottom>
                                         {room.roomId}
                                     </Typography>
+                                    <Typography variant="h4" component="p" sx={{ marginTop: 1 }}>
+                                        {Number.isFinite(Number(room.sensorState))
+                                            ? `${Number(room.sensorState).toFixed(1)} ${room.sensorUnit || '°C'}`
+                                            : 'Temperature unavailable'}
+                                    </Typography>
                                     {/* Current Hour Temperature Limits */}
                                 <Box
                                     sx={{
@@ -280,31 +288,54 @@ function DashboardGrid() {
                                             <Grid2
                                                 xs={12}
                                                 key={heater.id}
-                                                sx={{ display: 'flex', alignItems: 'center' }}
                                             >
-                                        
                                                 <ClickableHeater
                                                 heater={heater}
                                                 isOptimized={isOptimized}
                                                 onClick={() => handleOpenHeaterModal(heater)}
                                                 />
 
-                                                
-                                                <Switch
-                                                checked={heater.isEnabled}
-                                                onChange={() => toggleHeaterEnabled(heater.id)}
-                                                inputProps={{ 'aria-label': 'Include heater in optimization' }}
-                                                />
+                                                <Box sx={{ display: 'flex', alignItems: 'center', marginTop: 1 }}>
+                                                    <Switch
+                                                    checked={heater.isEnabled}
+                                                    onChange={() => toggleHeaterEnabled(heater.id)}
+                                                    inputProps={{ 'aria-label': 'Include heater in optimization' }}
+                                                    />
 
-                                                
-                                                <Typography variant="body2" sx={{ marginLeft: 1 }}>
-                                                {!heater.isEnabled
-                                                    ? 'Optimization disabled'
-                                                    : optimizeStarted
-                                                    ? 'Optimizing now'
-                                                    : 'Enabled (optimization off)'}
-                                                </Typography>
+                                                    <Typography variant="body2" sx={{ marginLeft: 1 }}>
+                                                    {!heater.isEnabled
+                                                        ? 'Optimization disabled'
+                                                        : optimizeStarted
+                                                        ? 'Optimizing now'
+                                                        : 'Enabled (optimization off)'}
+                                                    </Typography>
+                                                </Box>
                                             </Grid2>
+                                            );
+                                        })}
+                                        {heatPumps
+                                        .filter((heatPump) => heatPump.roomId === room.roomId)
+                                        .map((heatPump) => {
+                                            const isOptimized = optimizeStarted && heatPump.isEnabled;
+
+                                            return (
+                                                <Grid2 xs={12} key={heatPump.id}>
+                                                    <HeatPumpCard heatPump={heatPump} />
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', marginTop: 1 }}>
+                                                        <Switch
+                                                            checked={heatPump.isEnabled !== false}
+                                                            onChange={() => toggleAirSourceHeatPumpEnabled(heatPump.id)}
+                                                            inputProps={{ 'aria-label': 'Include air-source heat pump in optimization' }}
+                                                        />
+                                                        <Typography variant="body2" sx={{ marginLeft: 1 }}>
+                                                            {heatPump.isEnabled === false
+                                                                ? 'Optimization disabled'
+                                                                : isOptimized
+                                                                ? 'Optimizing now'
+                                                                : 'Enabled (optimization off)'}
+                                                        </Typography>
+                                                    </Box>
+                                                </Grid2>
                                             );
                                         })}
                                     </Grid2>

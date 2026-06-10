@@ -25,6 +25,25 @@
   box-sizing: border-box;
 }
 
+.boundarySettings {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 15px;
+  padding: 10px;
+}
+
+.boundarySettings label {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.boundarySettings input {
+  margin: 0;
+}
+
 .exceptionsSection {
   margin-top: 20px;
   padding: 10px;

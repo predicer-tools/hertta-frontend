@@ -15,6 +15,14 @@ function FormRoom({ homeAssistantSensors }) {
   const [maxTemp, setMaxTemp] = useState('');
   const [minTemp, setMinTemp] = useState('');
   const [selectedSensor, setSelectedSensor] = useState('');
+  const [outsideWalls, setOutsideWalls] = useState({
+    widthWall1: false,
+    widthWall2: false,
+    lengthWall1: false,
+    lengthWall2: false,
+  });
+  const [ceilingToOutside, setCeilingToOutside] = useState(false);
+  const [floorToSoil, setFloorToSoil] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -88,6 +96,9 @@ function FormRoom({ homeAssistantSensors }) {
       sensorId: selectedSensor, // Add the sensor ID
       sensorState: selectedSensorData?.state || 'N/A', // Add the sensor's state
       sensorUnit: selectedSensorData?.attributes?.unit_of_measurement || '°C', // Set default unit to °C
+      outsideWalls,
+      ceilingToOutside,
+      floorToSoil,
     };
 
     // Add room with sensor state information
@@ -162,6 +173,46 @@ function FormRoom({ homeAssistantSensors }) {
             min="0.1"
             step="0.1"
           />
+        </div>
+
+        <fieldset className="boundary-settings">
+          <legend>Outside Walls</legend>
+          {[
+            ['widthWall1', 'Width wall 1'],
+            ['widthWall2', 'Width wall 2'],
+            ['lengthWall1', 'Length wall 1'],
+            ['lengthWall2', 'Length wall 2'],
+          ].map(([key, label]) => (
+            <label key={key}>
+              <input
+                type="checkbox"
+                checked={outsideWalls[key]}
+                onChange={(event) =>
+                  setOutsideWalls((walls) => ({ ...walls, [key]: event.target.checked }))
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+
+        <div className="boundary-settings">
+          <label>
+            <input
+              type="checkbox"
+              checked={ceilingToOutside}
+              onChange={(event) => setCeilingToOutside(event.target.checked)}
+            />
+            Ceiling connected to outside
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={floorToSoil}
+              onChange={(event) => setFloorToSoil(event.target.checked)}
+            />
+            Floor connected to soil
+          </label>
         </div>
 
         {/* Temperature Limits */}
