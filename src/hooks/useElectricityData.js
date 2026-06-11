@@ -1,7 +1,7 @@
 // src/hooks/useElectricityData.js
 import { useState, useEffect } from 'react';
 
-const HASS_BACKEND_URL = 'http://localhost:4001';
+const HASS_BACKEND_URL = window.location.pathname.replace(/\/$/, '');
 
 // Configurable constants for tax and marginal price
 const TAX_PERCENTAGE = 25.5;      // 25.5% tax

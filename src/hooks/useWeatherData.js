@@ -1,7 +1,7 @@
 // src/hooks/useWeatherData.js
 import { useState, useEffect, useRef } from 'react';
 
-const HASS_BACKEND_URL = '';
+const HASS_BACKEND_URL = window.location.pathname.replace(/\/$/, '');
 const WEATHER_RETRY_INTERVAL_MS = 2_000;
 const WEATHER_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const WEATHER_STORAGE_KEY = 'weatherData';

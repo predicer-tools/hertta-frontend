@@ -6,7 +6,7 @@ import WhatshotIcon from '@mui/icons-material/Whatshot';
 import styles from './ClickableHeater.module.css';
 import DataContext from '../../context/DataContext';
 
-const HASS_BACKEND_URL = 'http://localhost:4001';
+const HASS_BACKEND_URL = window.location.pathname.replace(/\/$/, '');
 
 /**
  * ClickableHeater Component

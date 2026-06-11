@@ -13,7 +13,7 @@ import AddedModel from './AddedModel'; // Import the new AddedModel component
 import AddProcess from "./AddProcess";
 import { useQuery, gql } from '@apollo/client';
 
-const GRAPHQL_ENDPOINT = '/graphql';
+const GRAPHQL_ENDPOINT = `${window.location.pathname.replace(/\/$/, '')}/graphql`;
 
 // Queries
 const GET_NODES_QUERY = `

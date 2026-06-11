@@ -3,7 +3,7 @@ import AcUnitIcon from '@mui/icons-material/AcUnit';
 import PropTypes from 'prop-types';
 import styles from './HeatPumpCard.module.css';
 
-const HASS_BACKEND_URL = 'http://localhost:4001';
+const HASS_BACKEND_URL = window.location.pathname.replace(/\/$/, '');
 
 function HeatPumpCard({ heatPump }) {
   const [haState, setHaState] = useState(null);

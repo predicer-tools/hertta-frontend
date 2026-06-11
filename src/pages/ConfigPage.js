@@ -7,7 +7,7 @@ import ConfigContext from '../context/ConfigContext';
 import Modal from '../components/Modal/Modal';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
-const HASS_BACKEND_URL = 'http://localhost:4001';
+const HASS_BACKEND_URL = window.location.pathname.replace(/\/$/, '');
 
 function ConfigPage() {
   const [country, setCountry] = useState('');

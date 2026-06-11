@@ -5,7 +5,7 @@ import { applyDefaultModelSetup, setLocation } from '../graphql/configActions';
 import { ensureOutsideNode } from '../graphql/nodeCreation';
 import { saveModelOnServer } from '../graphql/modelPersistence';
 
-const HASS_BACKEND_URL = '';
+const HASS_BACKEND_URL = window.location.pathname.replace(/\/$/, '');
 
 const ConfigContext = createContext();
 

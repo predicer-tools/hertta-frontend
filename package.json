@@ -2,6 +2,7 @@
   "name": "hertta-frontend",
   "version": "0.1.0",
   "private": true,
+  "homepage": ".",
   "dependencies": {
     "@apollo/client": "^3.12.4",
     "@babel/core": "^7.26.0",

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter as Router } from 'react-router-dom'; // Import BrowserRouter
+import { HashRouter as Router } from 'react-router-dom';
 import './App.module.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
@@ -12,7 +12,7 @@ import { DataProvider } from './context/DataContext'; // Import DataProvider
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 
 const client = new ApolloClient({
-  uri: '/graphql',
+  uri: `${window.location.pathname.replace(/\/$/, '')}/graphql`,
   cache: new InMemoryCache(),
 });
 

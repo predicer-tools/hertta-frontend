@@ -21,7 +21,7 @@ import { deleteRoomModel } from '../graphql/roomDeletion';
 import { print } from 'graphql/language/printer';
 import { GRAPHQL_ENDPOINT, CLEAR_INPUT_DATA_MUTATION } from '../graphql/queries';
 
-const HASS_BACKEND_URL = 'http://localhost:4001';
+const HASS_BACKEND_URL = window.location.pathname.replace(/\/$/, '');
 const CONTROL_SIGNALS_POLL_INTERVAL_MS = 30_000;
 const ROOM_TEMPERATURE_POLL_INTERVAL_MS = 30_000;
 
