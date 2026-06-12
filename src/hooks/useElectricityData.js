@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 
 const HASS_BACKEND_URL = window.location.pathname.replace(/\/$/, '');
+const PRICE_RETRY_INTERVAL_MS = 2_000;
+const PRICE_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 
 // Configurable constants for tax and marginal price
 const TAX_PERCENTAGE = 25.5;      // 25.5% tax
@@ -38,7 +40,7 @@ const useElectricityData = () => {
 
   useEffect(() => {
     let aborted = false;
-    let intervalId = null;
+    let pollTimer = null;
 
     const ensurePriceLoopStarted = async () => {
       try {
@@ -54,7 +56,7 @@ const useElectricityData = () => {
     };
 
     const fetchElectricityPricesOnce = async () => {
-      if (aborted) return;
+      if (aborted) return false;
 
       setFiPricesLoading(true);
       setFiPricesError(null);
@@ -73,8 +75,10 @@ const useElectricityData = () => {
         if (aborted) return;
 
         if (json.status !== 'ok' || !json.data) {
-          console.warn('No electricity price data from backend:', json);
-          return;
+          if (json.status === 'error') {
+            throw new Error(json.message || 'Electricity price forecast failed');
+          }
+          return false;
         }
 
         const outcome = json.data;
@@ -116,11 +120,13 @@ const useElectricityData = () => {
 
         setFiPrices(processed);
         localStorage.setItem('fiElectricityPrices', JSON.stringify(processed));
+        return processed.length > 0;
       } catch (err) {
         if (!aborted) {
           console.error('Error fetching electricity prices from Rust backend:', err);
           setFiPricesError(err.message || 'An unexpected error occurred.');
         }
+        return false;
       } finally {
         if (!aborted) {
           setFiPricesLoading(false);
@@ -128,17 +134,23 @@ const useElectricityData = () => {
       }
     };
 
+    const scheduleNextFetch = (hasPrices) => {
+      if (aborted) return;
+      pollTimer = window.setTimeout(async () => {
+        const nextHasPrices = await fetchElectricityPricesOnce();
+        scheduleNextFetch(nextHasPrices);
+      }, hasPrices ? PRICE_REFRESH_INTERVAL_MS : PRICE_RETRY_INTERVAL_MS);
+    };
+
     (async () => {
       await ensurePriceLoopStarted();
-      await fetchElectricityPricesOnce();
-
-      // Optional polling: refresh once per hour to pick up new values
-      intervalId = window.setInterval(fetchElectricityPricesOnce, 60 * 60 * 1000);
+      const hasPrices = await fetchElectricityPricesOnce();
+      scheduleNextFetch(hasPrices);
     })();
 
     return () => {
       aborted = true;
-      if (intervalId) window.clearInterval(intervalId);
+      if (pollTimer) window.clearTimeout(pollTimer);
     };
   }, []);
 

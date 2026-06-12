@@ -56,3 +56,18 @@ export async function deleteAirSourceHeatPumpModel(heatPumpId) {
     );
   }
 }
+
+export async function deleteCoolingDeviceModel(coolingDeviceId) {
+  await deleteModelPart(
+    DELETE_GEN_CONSTRAINT_MUTATION,
+    { name: `c_${coolingDeviceId}_cooling_cop` },
+    'deleteGenConstraint',
+    { ignoreMissing: true }
+  );
+  await deleteModelPart(
+    DELETE_PROCESS_MUTATION,
+    { name: `${coolingDeviceId}_cooling` },
+    'deleteProcess',
+    { ignoreMissing: true }
+  );
+}

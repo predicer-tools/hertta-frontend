@@ -11,10 +11,15 @@ import {
   createAirSourceHeatPumpModel,
   updateAirSourceHeatPumpEnabled,
 } from '../graphql/airSourceHeatPumpCreation';
+import {
+  createCoolingDeviceModel,
+  updateCoolingDeviceEnabled,
+} from '../graphql/coolingDeviceCreation';
 import { createRoomGenConstraints, updateRoomGenConstraints } from '../graphql/genConstraintCreation';
 import { saveModelOnServer } from '../graphql/modelPersistence';
 import {
   deleteAirSourceHeatPumpModel,
+  deleteCoolingDeviceModel,
   deleteElectricHeaterModel,
 } from '../graphql/deviceDeletion';
 import { deleteRoomModel } from '../graphql/roomDeletion';
@@ -25,7 +30,7 @@ const HASS_BACKEND_URL = window.location.pathname.replace(/\/$/, '');
 const CONTROL_SIGNALS_POLL_INTERVAL_MS = 30_000;
 const ROOM_TEMPERATURE_POLL_INTERVAL_MS = 30_000;
 
-function mapControlSignalsToDevices(latestSignals, heaters, heatPumps) {
+function mapControlSignalsToDevices(latestSignals, heaters, heatPumps, coolingDevices) {
   const mapped = {};
 
   for (const heater of heaters) {
@@ -52,6 +57,16 @@ function mapControlSignalsToDevices(latestSignals, heaters, heatPumps) {
       if (signal && Array.isArray(signal.signal)) {
         mapped[`${heatPump.id}_${mode}`] = signal.signal.slice(0, 12);
       }
+    }
+  }
+
+  for (const coolingDevice of coolingDevices) {
+    const processName = `${coolingDevice.id}_cooling`;
+    const signal = latestSignals.find((candidate) =>
+      candidate?.name?.startsWith(`${processName}_electricitygrid_${processName}_`)
+    );
+    if (signal && Array.isArray(signal.signal)) {
+      mapped[processName] = signal.signal.slice(0, 12);
     }
   }
 
@@ -170,6 +185,11 @@ export const DataProvider = ({ children }) => {
     return Array.isArray(storedHeatPumps) ? storedHeatPumps : [];
   });
 
+  const [coolingDevices, setCoolingDevices] = useState(() => {
+    const storedCoolingDevices = JSON.parse(localStorage.getItem('coolingDevices'));
+    return Array.isArray(storedCoolingDevices) ? storedCoolingDevices : [];
+  });
+
   const roomSensorIds = rooms
     .map((room) => room.sensorId)
     .filter(Boolean)
@@ -264,7 +284,12 @@ export const DataProvider = ({ children }) => {
           return;
         }
 
-        const mapped = mapControlSignalsToDevices(latestSignals, heaters, heatPumps);
+        const mapped = mapControlSignalsToDevices(
+          latestSignals,
+          heaters,
+          heatPumps,
+          coolingDevices
+        );
         if (!cancelled && Object.keys(mapped).length > 0) {
           setControlSignals(mapped);
           localStorage.setItem('controlSignals', JSON.stringify(mapped));
@@ -286,7 +311,7 @@ export const DataProvider = ({ children }) => {
       cancelled = true;
       window.clearInterval(pollTimer);
     };
-  }, [heaters, heatPumps]);
+  }, [heaters, heatPumps, coolingDevices]);
 
   // =====================
   // Hooks
@@ -425,6 +450,10 @@ export const DataProvider = ({ children }) => {
     localStorage.setItem('heatPumps', JSON.stringify(heatPumps));
   }, [heatPumps]);
 
+  useEffect(() => {
+    localStorage.setItem('coolingDevices', JSON.stringify(coolingDevices));
+  }, [coolingDevices]);
+
   // =====================
   // Functions to Manipulate Rooms (Updated)
   // =====================
@@ -488,6 +517,7 @@ export const DataProvider = ({ children }) => {
   const deleteRoom = useCallback(async (roomId) => {
     const roomHeaters = heaters.filter((heater) => heater.roomId === roomId);
     const roomHeatPumps = heatPumps.filter((heatPump) => heatPump.roomId === roomId);
+    const roomCoolingDevices = coolingDevices.filter((device) => device.roomId === roomId);
 
     try {
       for (const heater of roomHeaters) {
@@ -495,6 +525,9 @@ export const DataProvider = ({ children }) => {
       }
       for (const heatPump of roomHeatPumps) {
         await deleteAirSourceHeatPumpModel(heatPump.id);
+      }
+      for (const coolingDevice of roomCoolingDevices) {
+        await deleteCoolingDeviceModel(coolingDevice.id);
       }
       await deleteRoomModel(roomId);
       await saveModelOnServer();
@@ -504,12 +537,18 @@ export const DataProvider = ({ children }) => {
       setHeatPumps((prevHeatPumps) =>
         prevHeatPumps.filter((heatPump) => heatPump.roomId !== roomId)
       );
+      setCoolingDevices((existingDevices) =>
+        existingDevices.filter((device) => device.roomId !== roomId)
+      );
       setControlSignals((existingSignals) => {
         const updatedSignals = { ...existingSignals };
         for (const heater of roomHeaters) delete updatedSignals[heater.id];
         for (const heatPump of roomHeatPumps) {
           delete updatedSignals[`${heatPump.id}_heating`];
           delete updatedSignals[`${heatPump.id}_cooling`];
+        }
+        for (const coolingDevice of roomCoolingDevices) {
+          delete updatedSignals[`${coolingDevice.id}_cooling`];
         }
         localStorage.setItem('controlSignals', JSON.stringify(updatedSignals));
         return updatedSignals;
@@ -521,7 +560,7 @@ export const DataProvider = ({ children }) => {
       console.error(`Could not delete room "${roomId}":`, error);
       return false;
     }
-  }, [heaters, heatPumps, refreshOptimizationIfActive]);
+  }, [heaters, heatPumps, coolingDevices, refreshOptimizationIfActive]);
 
   /**
    * Updates an existing room's details.
@@ -652,6 +691,58 @@ export const DataProvider = ({ children }) => {
     }
   }, [heatPumps, refreshOptimizationIfActive]);
 
+  const addCoolingDevice = useCallback(async (coolingDevice) => {
+    await createCoolingDeviceModel(coolingDevice);
+    await saveModelOnServer();
+    setCoolingDevices((existingDevices) => [...existingDevices, coolingDevice]);
+    await refreshOptimizationIfActive();
+    return true;
+  }, [refreshOptimizationIfActive]);
+
+  const deleteCoolingDevice = useCallback(async (coolingDeviceId) => {
+    try {
+      await deleteCoolingDeviceModel(coolingDeviceId);
+      await saveModelOnServer();
+      setCoolingDevices((existingDevices) =>
+        existingDevices.filter((device) => device.id !== coolingDeviceId)
+      );
+      setControlSignals((existingSignals) => {
+        const updatedSignals = { ...existingSignals };
+        delete updatedSignals[`${coolingDeviceId}_cooling`];
+        localStorage.setItem('controlSignals', JSON.stringify(updatedSignals));
+        return updatedSignals;
+      });
+      await refreshOptimizationIfActive();
+      return true;
+    } catch (error) {
+      console.error(`Could not delete cooling device "${coolingDeviceId}":`, error);
+      return false;
+    }
+  }, [refreshOptimizationIfActive]);
+
+  const toggleCoolingDeviceEnabled = useCallback(async (coolingDeviceId) => {
+    const existingDevice = coolingDevices.find((device) => device.id === coolingDeviceId);
+    if (!existingDevice) return;
+
+    const updatedDevice = {
+      ...existingDevice,
+      isEnabled: existingDevice.isEnabled === false,
+    };
+
+    try {
+      await updateCoolingDeviceEnabled(updatedDevice, updatedDevice.isEnabled);
+      await saveModelOnServer();
+      setCoolingDevices((existingDevices) =>
+        existingDevices.map((device) =>
+          device.id === coolingDeviceId ? updatedDevice : device
+        )
+      );
+      await refreshOptimizationIfActive();
+    } catch (error) {
+      console.error(`Could not update cooling device "${coolingDeviceId}":`, error);
+    }
+  }, [coolingDevices, refreshOptimizationIfActive]);
+
   /**
    * Deletes an electric heater from the heaters state based on heaterId.
    * @param {string} heaterId - The ID of the heater to delete.
@@ -732,6 +823,7 @@ export const DataProvider = ({ children }) => {
     setRooms([]);
     setHeaters([]);
     setHeatPumps([]);
+    setCoolingDevices([]);
     setControlSignals({});
     setControlSignalTimes([]);
     setOptimizeStarted(false);
@@ -741,6 +833,7 @@ export const DataProvider = ({ children }) => {
     localStorage.removeItem('rooms');
     localStorage.removeItem('heaters');
     localStorage.removeItem('heatPumps');
+    localStorage.removeItem('coolingDevices');
     localStorage.removeItem('fiElectricityPrices');
     localStorage.removeItem('weatherData');
     localStorage.removeItem('weatherDataGraphQL'); 
@@ -773,6 +866,10 @@ export const DataProvider = ({ children }) => {
     addAirSourceHeatPump,
     deleteAirSourceHeatPump,
     toggleAirSourceHeatPumpEnabled,
+    coolingDevices,
+    addCoolingDevice,
+    deleteCoolingDevice,
+    toggleCoolingDeviceEnabled,
 
     // Electricity Prices
     fiPrices,

@@ -17,7 +17,7 @@ function DataTable() {
   const [sensors, setSensors] = useState([]);
   const [devices, setDevices] = useState([]);
 
-  const { rooms, heaters, heatPumps, deleteRoom, deleteHeater, deleteAirSourceHeatPump, controlSignals, controlSignalTimes, fiPrices, fiPricesLoading, fiPricesError  } = useContext(DataContext); // Access rooms and heaters from DataContext
+  const { rooms, heaters, heatPumps, coolingDevices, deleteRoom, deleteHeater, deleteAirSourceHeatPump, deleteCoolingDevice, controlSignals, controlSignalTimes, fiPrices, fiPricesLoading, fiPricesError  } = useContext(DataContext); // Access rooms and heaters from DataContext
   const { getLocation } = useContext(ConfigContext);
   const location = getLocation();
   const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(location);
@@ -63,6 +63,10 @@ function DataTable() {
         label: `${heatPump.name || heatPump.id} Cooling`,
       },
     ]),
+    ...coolingDevices.map((coolingDevice) => ({
+      key: `${coolingDevice.id}_cooling`,
+      label: `${coolingDevice.name || coolingDevice.id} Cooling`,
+    })),
   ];
 
   const controlSignalRowCount = Math.max(
@@ -230,6 +234,51 @@ function DataTable() {
             )) : (
               <tr>
                 <td colSpan="7">No air-source heat pumps available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Cooling Devices</h3>
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Home Assistant Entity</th>
+              <th>Room</th>
+              <th>Electrical Capacity (kW)</th>
+              <th>Cooling Capacity (kW)</th>
+              <th>Cooling COP</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {coolingDevices.length > 0 ? coolingDevices.map((coolingDevice) => (
+              <tr key={coolingDevice.id}>
+                <td>{coolingDevice.name}</td>
+                <td>{coolingDevice.id}</td>
+                <td>{coolingDevice.roomId}</td>
+                <td>{Number(coolingDevice.electricalCapacity).toFixed(2)}</td>
+                <td>
+                  {(Number(coolingDevice.electricalCapacity) * Number(coolingDevice.coolingCop)).toFixed(2)}
+                </td>
+                <td>{Number(coolingDevice.coolingCop).toFixed(2)}</td>
+                <td>{coolingDevice.isEnabled === false ? 'Disabled' : 'Enabled'}</td>
+                <td>
+                  <button
+                    className={styles.deleteButton}
+                    onClick={() => deleteCoolingDevice(coolingDevice.id)}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan="8">No cooling devices available</td>
               </tr>
             )}
           </tbody>

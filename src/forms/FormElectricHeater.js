@@ -5,7 +5,7 @@ import './DataForm.css';
 import DataContext from '../context/DataContext';
 
 function FormElectricHeater({ fetchedDevices = [], onClose }) {
-  const { rooms, addElectricHeater, heaters } = useContext(DataContext);
+  const { rooms, addElectricHeater, heaters, heatPumps, coolingDevices } = useContext(DataContext);
 
   const [heaterId, setHeaterId] = useState('');
   const [capacity, setCapacity] = useState('');
@@ -34,7 +34,7 @@ function FormElectricHeater({ fetchedDevices = [], onClose }) {
     }
 
     // Prevent duplicate heater IDs
-    const existingHeater = heaters.find(
+    const existingHeater = [...heaters, ...heatPumps, ...coolingDevices].find(
       (h) => h.id.toLowerCase() === trimmedHeaterId.toLowerCase()
     );
     if (existingHeater) {

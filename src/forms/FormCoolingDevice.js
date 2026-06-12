@@ -2,13 +2,12 @@ import React, { useContext, useState } from 'react';
 import DataContext from '../context/DataContext';
 import './DataForm.css';
 
-function FormAirSourceHeatPump({ fetchedDevices = [], onClose }) {
-  const { rooms, heatPumps, heaters, coolingDevices, addAirSourceHeatPump } =
+function FormCoolingDevice({ fetchedDevices = [], onClose }) {
+  const { rooms, heaters, heatPumps, coolingDevices, addCoolingDevice } =
     useContext(DataContext);
   const [deviceId, setDeviceId] = useState('');
   const [roomId, setRoomId] = useState('');
   const [electricalCapacity, setElectricalCapacity] = useState('');
-  const [heatingCop, setHeatingCop] = useState('');
   const [coolingCop, setCoolingCop] = useState('');
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -18,14 +17,13 @@ function FormAirSourceHeatPump({ fetchedDevices = [], onClose }) {
     setError('');
 
     const capacity = Number(electricalCapacity);
-    const heatCop = Number(heatingCop);
-    const coolCop = Number(coolingCop);
-    if (!deviceId || !roomId || !capacity || !heatCop || !coolCop) {
+    const cop = Number(coolingCop);
+    if (!deviceId || !roomId || !capacity || !cop) {
       setError('Please fill in all required fields.');
       return;
     }
-    if (capacity <= 0 || heatCop <= 0 || coolCop <= 0) {
-      setError('Capacity and COP values must be greater than 0.');
+    if (capacity <= 0 || cop <= 0) {
+      setError('Electrical capacity and cooling COP must be greater than 0.');
       return;
     }
     if ([...heaters, ...heatPumps, ...coolingDevices].some((device) => device.id === deviceId)) {
@@ -36,18 +34,17 @@ function FormAirSourceHeatPump({ fetchedDevices = [], onClose }) {
     const selectedDevice = fetchedDevices.find((device) => device.entity_id === deviceId);
     setIsSaving(true);
     try {
-      await addAirSourceHeatPump({
+      await addCoolingDevice({
         id: deviceId,
         name: selectedDevice?.attributes?.friendly_name || deviceId,
         roomId,
         electricalCapacity: capacity,
-        heatingCop: heatCop,
-        coolingCop: coolCop,
+        coolingCop: cop,
         isEnabled: true,
       });
       if (onClose) onClose();
     } catch (submitError) {
-      setError(submitError.message || 'Could not create air-source heat pump model.');
+      setError(submitError.message || 'Could not create cooling device model.');
     } finally {
       setIsSaving(false);
     }
@@ -55,13 +52,13 @@ function FormAirSourceHeatPump({ fetchedDevices = [], onClose }) {
 
   return (
     <div className="device-form">
-      <h3>Add Air-Source Heat Pump</h3>
+      <h3>Add Cooling Device</h3>
       {error && <div className="error-message">{error}</div>}
       <form onSubmit={handleSubmit}>
         <div className="input-group">
-          <label htmlFor="heatPumpDevice">Home Assistant Device:</label>
+          <label htmlFor="coolingDevice">Home Assistant Device:</label>
           <select
-            id="heatPumpDevice"
+            id="coolingDevice"
             value={deviceId}
             onChange={(event) => setDeviceId(event.target.value)}
             required
@@ -76,9 +73,9 @@ function FormAirSourceHeatPump({ fetchedDevices = [], onClose }) {
         </div>
 
         <div className="input-group">
-          <label htmlFor="heatPumpRoom">Room:</label>
+          <label htmlFor="coolingDeviceRoom">Room:</label>
           <select
-            id="heatPumpRoom"
+            id="coolingDeviceRoom"
             value={roomId}
             onChange={(event) => setRoomId(event.target.value)}
             required
@@ -91,50 +88,39 @@ function FormAirSourceHeatPump({ fetchedDevices = [], onClose }) {
         </div>
 
         <div className="input-group">
-          <label htmlFor="heatPumpElectricalCapacity">Electrical Input Capacity (kW):</label>
+          <label htmlFor="coolingDeviceElectricalCapacity">Electrical Input Capacity (kW):</label>
           <input
-            id="heatPumpElectricalCapacity"
+            id="coolingDeviceElectricalCapacity"
             type="number"
-            min="0.1"
-            step="0.1"
+            min="0.01"
+            step="0.01"
             value={electricalCapacity}
             onChange={(event) => setElectricalCapacity(event.target.value)}
+            placeholder="0.97"
             required
           />
         </div>
 
         <div className="input-group">
-          <label htmlFor="heatingCop">Heating COP:</label>
+          <label htmlFor="coolingDeviceCop">Cooling COP:</label>
           <input
-            id="heatingCop"
+            id="coolingDeviceCop"
             type="number"
             min="0.1"
-            step="0.1"
-            value={heatingCop}
-            onChange={(event) => setHeatingCop(event.target.value)}
-            required
-          />
-        </div>
-
-        <div className="input-group">
-          <label htmlFor="coolingCop">Cooling COP:</label>
-          <input
-            id="coolingCop"
-            type="number"
-            min="0.1"
-            step="0.1"
+            step="0.01"
             value={coolingCop}
             onChange={(event) => setCoolingCop(event.target.value)}
+            placeholder="2.68"
             required
           />
         </div>
 
         <button type="submit" disabled={isSaving}>
-          {isSaving ? 'Adding...' : 'Add Air-Source Heat Pump'}
+          {isSaving ? 'Adding...' : 'Add Cooling Device'}
         </button>
       </form>
     </div>
   );
 }
 
-export default FormAirSourceHeatPump;
+export default FormCoolingDevice;

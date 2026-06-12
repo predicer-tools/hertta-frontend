@@ -11,6 +11,7 @@ import EditRoomForm from '../forms/EditRoomForm';
 import EditElectricHeaterForm from '../forms/EditHeaterForm';
 import ClickableHeater from '../components/Objects/ClickableHeater';
 import HeatPumpCard from '../components/Objects/HeatPumpCard';
+import CoolingDeviceCard from '../components/Objects/CoolingDeviceCard';
 import ClickablePaper from '../components/Objects/ClickablePaper';
 import Typography from '@mui/material/Typography';
 import WeatherDataTable from '../components/Table/WeatherDataTable';
@@ -28,9 +29,11 @@ function DashboardGrid() {
         rooms,
         heaters,
         heatPumps,
+        coolingDevices,
 
         toggleHeaterEnabled,
         toggleAirSourceHeatPumpEnabled,
+        toggleCoolingDeviceEnabled,
 
         fiPrices,
         fiPricesLoading,
@@ -329,6 +332,31 @@ function DashboardGrid() {
                                                         />
                                                         <Typography variant="body2" sx={{ marginLeft: 1 }}>
                                                             {heatPump.isEnabled === false
+                                                                ? 'Optimization disabled'
+                                                                : isOptimized
+                                                                ? 'Optimizing now'
+                                                                : 'Enabled (optimization off)'}
+                                                        </Typography>
+                                                    </Box>
+                                                </Grid2>
+                                            );
+                                        })}
+                                        {coolingDevices
+                                        .filter((coolingDevice) => coolingDevice.roomId === room.roomId)
+                                        .map((coolingDevice) => {
+                                            const isOptimized = optimizeStarted && coolingDevice.isEnabled;
+
+                                            return (
+                                                <Grid2 xs={12} key={coolingDevice.id}>
+                                                    <CoolingDeviceCard coolingDevice={coolingDevice} />
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', marginTop: 1 }}>
+                                                        <Switch
+                                                            checked={coolingDevice.isEnabled !== false}
+                                                            onChange={() => toggleCoolingDeviceEnabled(coolingDevice.id)}
+                                                            inputProps={{ 'aria-label': 'Include cooling device in optimization' }}
+                                                        />
+                                                        <Typography variant="body2" sx={{ marginLeft: 1 }}>
+                                                            {coolingDevice.isEnabled === false
                                                                 ? 'Optimization disabled'
                                                                 : isOptimized
                                                                 ? 'Optimizing now'

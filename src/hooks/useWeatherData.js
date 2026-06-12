@@ -53,7 +53,9 @@ export default function useWeatherData(_locationFromConfig) {
         const json = await resp.json();
 
         if (!resp.ok || json.status !== 'ok') {
-          throw new Error('Weather task is running, but no weather data is available yet');
+          throw new Error(
+            json.message || 'Weather task is running, but no weather data is available yet'
+          );
         }
 
         const outcome = json.data;
