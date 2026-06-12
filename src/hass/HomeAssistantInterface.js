@@ -1,5 +1,6 @@
 import axios from 'axios';
 const homeAssistantURL = 'http://192.168.1.110:8123/api';
+const ON_SIGNAL_EPSILON = 1e-6;
 
 export async function sendControlSignalToHomeAssistant(apiKey, entityId, value) {
   try {
@@ -8,12 +9,12 @@ export async function sendControlSignalToHomeAssistant(apiKey, entityId, value) 
     let payload = { entity_id: entityId };
 
     if (domain === 'switch' || domain === 'light') {
-      service = value > 0 ? 'turn_on' : 'turn_off';
+      service = value > ON_SIGNAL_EPSILON ? 'turn_on' : 'turn_off';
     } else if (domain === 'climate') {
       service = 'set_temperature';
       payload.temperature = value;
     } else {
-      service = value > 0 ? 'turn_on' : 'turn_off';
+      service = value > ON_SIGNAL_EPSILON ? 'turn_on' : 'turn_off';
     }
 
     await axios.post(

@@ -39,7 +39,7 @@ function mapControlSignalsToDevices(latestSignals, heaters, heatPumps, coolingDe
     );
 
     if (signal && Array.isArray(signal.signal)) {
-      mapped[heater.id] = signal.signal.slice(0, 12);
+      mapped[heater.id] = signal.signal.slice();
     }
   }
 
@@ -55,7 +55,7 @@ function mapControlSignalsToDevices(latestSignals, heaters, heatPumps, coolingDe
       );
 
       if (signal && Array.isArray(signal.signal)) {
-        mapped[`${heatPump.id}_${mode}`] = signal.signal.slice(0, 12);
+        mapped[`${heatPump.id}_${mode}`] = signal.signal.slice();
       }
     }
   }
@@ -66,7 +66,7 @@ function mapControlSignalsToDevices(latestSignals, heaters, heatPumps, coolingDe
       candidate?.name?.startsWith(`${processName}_electricitygrid_${processName}_`)
     );
     if (signal && Array.isArray(signal.signal)) {
-      mapped[processName] = signal.signal.slice(0, 12);
+      mapped[processName] = signal.signal.slice();
     }
   }
 
@@ -381,6 +381,15 @@ export const DataProvider = ({ children }) => {
     localStorage.setItem('lastOptimizedTime', JSON.stringify(now.toISOString()));
 
     try {
+      await Promise.all(
+        coolingDevices.map((device) =>
+          updateCoolingDeviceEnabled(device, device.isEnabled !== false)
+        )
+      );
+      if (coolingDevices.length > 0) {
+        await saveModelOnServer();
+      }
+
       const resp = await fetch(`${HASS_BACKEND_URL}/start-hourly-optimization`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -401,7 +410,7 @@ export const DataProvider = ({ children }) => {
       setOptimizeStarted(false);
       localStorage.setItem('optimizeStarted', JSON.stringify(false));
     }
-  }, [optimizeStarted]);
+  }, [optimizeStarted, coolingDevices]);
 
 
   const stopOptimization = useCallback(async () => {

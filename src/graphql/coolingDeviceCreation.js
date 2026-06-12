@@ -8,6 +8,7 @@ import {
   GET_NODE_QUERY,
   GRAPHQL_ENDPOINT,
   MODEL_QUERY,
+  UPDATE_PROCESS_MUTATION,
   UPDATE_TOPOLOGY_MUTATION,
 } from './queries';
 
@@ -51,17 +52,17 @@ async function createProcess(name) {
         name,
         conversion: 'UNIT',
         isCfFix: false,
-        isOnline: false,
+        isOnline: true,
         isRes: false,
         eff: 1,
-        loadMin: 0,
+        loadMin: 1,
         loadMax: 1,
         startCost: 0,
         minOnline: 0,
         maxOnline: 0,
         minOffline: 0,
         maxOffline: 0,
-        initialState: true,
+        initialState: false,
         isScenarioIndependent: false,
         cf: [],
         effTs: [],
@@ -180,6 +181,19 @@ export async function updateCoolingDeviceEnabled(coolingDevice, isEnabled) {
     : 0;
   const roomAirNode = `${coolingDevice.roomId.trim().replace(/\s+/g, '_')}_air`;
   const processName = `${coolingDevice.id}_cooling`;
+
+  await graphqlRequest(
+    UPDATE_PROCESS_MUTATION,
+    {
+      name: processName,
+      process: {
+        isOnline: true,
+        loadMin: 1,
+        loadMax: 1,
+      },
+    },
+    'updateProcess'
+  );
 
   const updateTopology = (sourceNodeName, sinkNodeName, capacity) =>
     graphqlRequest(

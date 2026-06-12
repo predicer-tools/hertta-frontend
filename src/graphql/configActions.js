@@ -269,10 +269,10 @@ export async function setLocation(location) {
 /**
  * Set the model time line to:
  *  - duration: 12 hours
- *  - step: 1 hour
+ *  - step: 15 minutes
  *  - start: CURRENT_HOUR
  */
-export async function setTimeline12hHourlyFromCurrentHour() {
+export async function setTimeline12hQuarterHourlyFromCurrentHour() {
   const mutation = `
     mutation UpdateTimeLine($timeLineInput: TimeLineUpdate!) {
       updateTimeLine(timeLineInput: $timeLineInput) {
@@ -283,7 +283,7 @@ export async function setTimeline12hHourlyFromCurrentHour() {
 
   const timeLineInput = {
     duration: { hours: 12, minutes: 0, seconds: 0 },
-    step: { hours: 1, minutes: 0, seconds: 0 },
+    step: { hours: 0, minutes: 15, seconds: 0 },
     start: { clockChoice: 'CURRENT_HOUR' },
   };
 
@@ -305,7 +305,7 @@ export async function setTimeline12hHourlyFromCurrentHour() {
  * 5) set risks: alfa=0.1, beta=0.0
  * 6) set device location (country/place) if provided
  * 7) create NPE energy market on electricitygrid with group "p1"
- * 8) set timeline to 12h duration, 1h step, starting at CURRENT_HOUR
+ * 8) set timeline to 12h duration, 15-minute step, starting at CURRENT_HOUR
  */
 export async function applyDefaultModelSetup(userLocation /* { country, place } */) {
   await ensureElectricityGridNode();
@@ -323,8 +323,8 @@ export async function applyDefaultModelSetup(userLocation /* { country, place } 
   await createNPEnergyMarket();
   await connectNPEnergyMarketToElering();
 
-  // Timeline setup (12h horizon, 1h step, start at CURRENT_HOUR)
-  await setTimeline12hHourlyFromCurrentHour();
+  // Timeline setup (12h horizon, 15-minute step, start at CURRENT_HOUR)
+  await setTimeline12hQuarterHourlyFromCurrentHour();
 
   return { processGroupMessage: pgMsg || null };
 }

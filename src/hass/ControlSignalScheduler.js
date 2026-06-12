@@ -15,6 +15,8 @@
 
 import { sendControlSignalToHomeAssistant } from './HomeAssistantInterface';
 
+const CONTROL_SIGNAL_INTERVAL_MS = 15 * 60 * 1000;
+
 // Valid Home Assistant domains.  Only entities from these domains will
 // be scheduled for dispatch.  Entities from other domains are ignored.
 const VALID_DOMAINS = new Set(['switch', 'light', 'climate', 'number', 'fan', 'cover']);
@@ -96,9 +98,9 @@ export function extractEntityId(name) {
  * Start or update a schedule for a given entity.  If a schedule already
  * exists for the entity, its interval is cleared and replaced with a new
  * interval based on the provided values.  The first value is dispatched
- * immediately, and subsequent values are dispatched every hour.  Once
+ * immediately, and subsequent values are dispatched every 15 minutes.  Once
  * the schedule runs out of values, the fallback (last value) is sent
- * repeatedly at hourly intervals until a new schedule arrives.
+ * repeatedly every 15 minutes until a new schedule arrives.
  *
  * @param {string} apiKey Home Assistant long‑lived access token.
  * @param {string} entityId The Home Assistant entity_id.
@@ -131,7 +133,7 @@ function startOrUpdateSchedule(apiKey, entityId, values) {
       lastValue: firstValue,
       lastSentAt: new Date(),
       nextValue: schedule.values.length > 1 ? schedule.values[1] : schedule.fallback,
-      nextSentAt: new Date(Date.now() + 60 * 60 * 1000),
+      nextSentAt: new Date(Date.now() + CONTROL_SIGNAL_INTERVAL_MS),
     };
   } else {
     // No values to send immediately; still initialise status
@@ -139,10 +141,10 @@ function startOrUpdateSchedule(apiKey, entityId, values) {
       lastValue: null,
       lastSentAt: null,
       nextValue: schedule.fallback,
-      nextSentAt: new Date(Date.now() + 60 * 60 * 1000),
+      nextSentAt: new Date(Date.now() + CONTROL_SIGNAL_INTERVAL_MS),
     };
   }
-  // Create an interval to dispatch subsequent values every hour (3600000 ms).
+  // Dispatch subsequent values at the model's 15-minute time step.
   schedule.intervalId = setInterval(() => {
     schedule.index++;
     let value;
@@ -160,9 +162,9 @@ function startOrUpdateSchedule(apiKey, entityId, values) {
       lastValue: value,
       lastSentAt: new Date(),
       nextValue: nextValue,
-      nextSentAt: new Date(Date.now() + 60 * 60 * 1000),
+      nextSentAt: new Date(Date.now() + CONTROL_SIGNAL_INTERVAL_MS),
     };
-  }, 60 * 60 * 1000);
+  }, CONTROL_SIGNAL_INTERVAL_MS);
 }
 
 /**
